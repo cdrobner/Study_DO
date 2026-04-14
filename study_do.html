@@ -415,7 +415,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwssU6Xmhh9x7tNrJShdbxRmRqmO5I9W7vjps15CcGPA6e39BC0JmoyQv4Qi06ZAh9qYw/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzQjwWnh3-PxHnyHh-hQiaEN25cjcrVyvaGmUdTyC1xQV1timUUuG4BFAjT6CvsA3n77g/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -3009,8 +3009,8 @@ SCREENS.results = () => {
       <h3>Payment Breakdown</h3>
       <div class="payment-line"><span>Show-up fee</span><span>$${CONFIG.showUpFee.toFixed(2)}</span></div>
       <div class="payment-line"><span>Manager payment (${roundLabel}: ${payRound.hCount} H × $0.20)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Initial belief prize (up to $${CONFIG.beliefBonusInitial}, your guess: ${STATE.initialGamma}%)</span><span>$${STATE.beliefBonusInitial_amount.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Round belief prize (up to $${stake}, ${beliefRoundLabelB} guess: ${beliefValueB}%)</span><span>$${STATE.beliefBonusRound_amount.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Initial belief prize (your guess: ${STATE.initialGamma}%)</span><span>$${STATE.beliefBonusInitial_amount.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Round belief prize (${beliefRoundLabelB} guess: ${beliefValueB}%)</span><span>$${STATE.beliefBonusRound_amount.toFixed(2)}</span></div>
       <div class="payment-total"><span>Total payment</span><span>$${STATE.totalBonus.toFixed(2)}</span></div>
     </div>
 
@@ -3114,21 +3114,21 @@ async function submitData() {
   // Store as backup
   window._experimentData = data;
 
-  // Send to Google Sheets with retry
+  // Send to Google Sheets. We use mode:'no-cors' because Apps Script responds with
+  // a 302 redirect that the browser can't read under CORS. As a result, the fetch
+  // promise often rejects even when the POST was processed server-side, so retrying
+  // would just create duplicate rows. Fire once, don't await, don't retry.
   if (CONFIG.googleSheetsURL) {
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        await fetch(CONFIG.googleSheetsURL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        });
-        break; // success
-      } catch (e) {
-        console.error(`Submit attempt ${attempt} failed:`, e);
-        if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt));
-      }
+    try {
+      fetch(CONFIG.googleSheetsURL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        keepalive: true,
+      }).catch(function(e) { console.error('Submit error (ignored):', e); });
+    } catch (e) {
+      console.error('Submit threw synchronously:', e);
     }
   } else {
     console.log('DATA (no endpoint configured):', JSON.stringify(data, null, 2));
