@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwdP5AEmw3RyBBOLlH5JUWuxAHGw8iY6oigxu3IpO1qecXKgLHPRAKKsjBs438r2-0_wA/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbziaMZuf63diJa7vT7ojMhC5sZfQJkR60KSw3e3pgJtaAV0Y2We3LarTThtS4wYp9qX/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -435,18 +435,21 @@ const CONFIG = {
   randomProbDisplay: null,
 
   // ---- Prior score distribution (for computing γ* and drawing opponents) ----
-  // Placeholder synthetic distributions (n=100 each) for a plausible Prolific US
-  // sample on the Study 2 quiz (12 questions: 4 shared + 8 condition-specific).
+  // Synthetic distributions (n=100 each) for a plausible Prolific US sample on the
+  // Study 2 quiz (12 questions: 4 shared + 8 condition-specific).
   // Each entry is a score (number of correct answers out of 12).
   // γ* = fraction of same-condition scores strictly lower + 0.5 × fraction equal.
-  // After the 100-participant pilot, replace these arrays with the observed pilot scores.
-  // EASY synthetic: mean ≈ 8.77, SD ≈ 2.30
-  // HARD synthetic: mean ≈ 5.71, SD ≈ 2.64
+  // Recalibrated after pilot 2 (N=11), benchmark means pinned to pilot sample means
+  // while retaining wider Prolific-like tails (lapses on easy, ceiling-breakers on hard).
+  //   pilot easy (N=4): mean 10.50, sd 1.29 → benchmark mean 10.46, sd 1.73, range [5,12]
+  //   pilot hard (N=7): mean 4.71,  sd 2.14 → benchmark mean 4.70,  sd 2.59, range [0,12]
+  // EASY synthetic: mean ≈ 10.46, SD ≈ 1.73
+  // HARD synthetic: mean ≈ 4.70, SD ≈ 2.59
   study1ScoresEasy: [
-    2,3,3,4,4,4,5,5,5,5,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,12,12,12,12,12,12,12,12,12,12
+    5,5,6,6,6,6,6,6,7,8,9,9,9,9,9,9,9,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12
   ],
   study1ScoresHard: [
-    0,0,1,1,1,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,10,10,10,10,11,11,11,12,12
+    0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,9,10,11,12,12
   ],
 
   // ---- Quiz questions ----
@@ -1146,7 +1149,8 @@ const CONFIG = {
       </ul>
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin:18px 0;">
         <p style="margin:0 0 10px;font-weight:600;color:#1e40af;">Why does your manager choice matter for your guess?</p>
-        <p style="margin:0;">Because the Performance Manager's bonuses are determined by comparing your score to other participants, observing those bonuses may help you form a better guess about how you compare. The <strong class="eval-random">Random Manager's</strong> bonuses are determined by random draws at a known probability, so observing those bonuses does not give you new information about your quiz performance.</p>
+        <p style="margin:0 0 10px;">The <strong class="eval-performance">Performance Manager's</strong> bonuses are based on 5 comparisons of your quiz performance with randomly picked participants. Observing these bonuses may help you form a better guess about how you compare.</p>
+        <p style="margin:0;">The <strong class="eval-random">Random Manager's</strong> bonuses are <strong>NOT</strong> based on 5 comparisons of your quiz performance with randomly picked participants &mdash; they come from a fixed, known probability. Observing these bonuses does not give you new information about your quiz performance.</p>
       </div>
 
       <p><strong>The way we calculate belief bonuses is designed so that reporting your true beliefs maximizes your chance of winning.</strong> Because any single round could be the one that counts, treat every round seriously.</p>`,
@@ -1267,12 +1271,18 @@ const STATE = {
   curiosityAnswers: new Array(10).fill(null),
   // SBPS (Struk, Carriere, Cheyne, & Danckert, 2015): 8 Likert ratings, ints 1..7 (or null until answered)
   boredomAnswers: new Array(8).fill(null),
-  // Open-ended follow-up: triggered if the participant ever picked the Performance
-  // manager for a round t even though their PRIOR belief γ_{t-1} (or γ₀ for t=1) was
-  // strictly less than the known Random-manager H-probability (randomProbShown).
-  perfChoiceExplanationShown: false,         // did we show the screen?
-  perfChoiceExplanationRounds: [],           // 1-indexed rounds meeting the trigger
-  perfChoiceExplanation: '',                 // free-text answer (empty if not asked)
+  // Open-ended follow-ups: triggered when the chosen manager is NOT the one the
+  // participant's PRIOR belief γ_{t-1} (or γ₀ for t=1) implied had the higher
+  // H-probability. Split into TWO questions by direction of inconsistency.
+  perfChoiceExplanationShown: false,         // did we show the screen (either Q)?
+  perfChoiceExplanationRounds: [],           // UNION of rounds across both Qs (legacy)
+  perfChoiceExplanation: '',                 // combined text (legacy; joined for back-compat)
+  // Direction A: chose Random but prior belief > rp (belief favored Performance)
+  choseRandomAgainstBeliefRounds: [],
+  choseRandomAgainstBeliefText: '',
+  // Direction B: chose Performance but prior belief < rp (belief favored Random)
+  chosePerfAgainstBeliefRounds: [],
+  chosePerfAgainstBeliefText: '',
   demographicAge: null,
   demographicGender: null,
   feedbackClarity: '',
@@ -1418,17 +1428,37 @@ function buildManagerChoiceHTML(round, belief, onChoose) {
     const pH = isPerf ? belief : rp;       // probability of H
     const pL = 100 - pH;                   // probability of L
 
-    // Main statement combining probability and payoff.
-    const mainText = isPerf
-      ? `Based on your latest guess about beating a randomly picked participant, each of the 5 bonuses pays <strong>H</strong> ($${payH}) with probability <strong>${pH}%</strong> and <strong>L</strong> ($0.00) with probability <strong>${pL}%</strong>.`
-      : `Each of the 5 bonuses pays <strong>H</strong> ($${payH}) with a fixed probability of <strong>${pH}%</strong> and <strong>L</strong> ($0.00) with probability <strong>${pL}%</strong>.`;
+    // Context + implication text (links guess → bonus probability for performance card).
+    const contextHTML = isPerf
+      ? `Your current best guess is that you would beat a randomly picked participant <strong>${pH}%</strong> of the time. This would imply that you receive:`
+      : `The H-probability is fixed and known. If you choose this manager, you receive:`;
+
+    // Two-row probability display: H (green) and L (red), with dollar amounts.
+    const probDisplay = `
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.25rem;font-weight:700;color:#065f46;">H</span>
+            <span style="font-size:0.95rem;color:#047857;">($${payH})</span>
+            <span style="font-size:0.95rem;color:#047857;">with probability</span>
+          </div>
+          <span style="font-size:1.45rem;font-weight:700;color:#065f46;">${pH}%</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.25rem;font-weight:700;color:#991b1b;">L</span>
+            <span style="font-size:0.95rem;color:#b91c1c;">($0.00)</span>
+            <span style="font-size:0.95rem;color:#b91c1c;">with probability</span>
+          </div>
+          <span style="font-size:1.45rem;font-weight:700;color:#991b1b;">${pL}%</span>
+        </div>
+      </div>`;
 
     return `
       <div style="flex:1;border:2px solid #e2e8f0;border-radius:12px;padding:18px 16px 14px;display:flex;flex-direction:column;gap:12px;">
         <h3 style="margin:0;text-align:center;" class="${colorClass}">${managerName(mgr)}</h3>
-        <div style="background:#f8fafc;border-radius:8px;padding:12px 14px;">
-          <p style="margin:0;font-size:0.92rem;line-height:1.45;">${mainText}</p>
-        </div>
+        <p style="margin:0;font-size:0.9rem;line-height:1.45;color:#475569;min-height:4.35em;">${contextHTML}</p>
+        ${probDisplay}
         <button class="btn btn-choice" style="margin-top:auto;width:100%;" onclick="${onChoose}('${mgr}')">
           Choose<br>${managerLabel(mgr)}
         </button>
@@ -2537,21 +2567,12 @@ function roundShowBonuses() {
   outcomesDiv.style.display = '';
   const mgrName = mgr === 'performance' ? 'Performance Manager' : 'Random Manager';
   const mgrClass = mgr === 'performance' ? 'eval-performance' : 'eval-random';
-  const payH = CONFIG.payPerH.toFixed(2);
-  // Latest belief: previous round's belief if available, else initial γ₀.
-  const latestBelief = STATE.rounds.length > 0
-    ? STATE.rounds[STATE.rounds.length - 1].belief
-    : STATE.belief_0;
-  const pH = (mgr === 'performance') ? latestBelief : STATE.randomProbShown;
-  const pL = 100 - pH;
   const mechanismLine = (mgr === 'performance')
-    ? `Based on your latest guess about beating a randomly picked participant, each bonus pays <strong>H</strong> ($${payH}) with probability <strong>${pH}%</strong> and <strong>L</strong> ($0.00) with probability <strong>${pL}%</strong>.`
-    : `Each bonus pays <strong>H</strong> ($${payH}) with a fixed probability of <strong>${pH}%</strong> and <strong>L</strong> ($0.00) with probability <strong>${pL}%</strong>.`;
+    ? `these bonuses are based on 5 comparisons of your quiz performance with randomly picked participants.`
+    : `these bonuses are <strong style="color:#b91c1c;font-weight:800;">NOT</strong> based on 5 comparisons of your quiz performance with randomly picked participants.`;
   outcomesDiv.innerHTML = `
-    <p style="margin:14px 0 18px;">You decided to receive bonuses from the <strong class="${mgrClass}">${mgrName}</strong> in this round. ${mechanismLine}</p>
-
-    <h3 class="step-heading">Bonuses from your manager</h3>
-    <p>Click each box to reveal your bonuses from ${managerLabel(mgr)}:</p>
+    <h3 class="step-heading ${mgrClass}">Bonuses from the ${mgrName} in this round</h3>
+    <p style="margin:14px 0 18px;">You chose the <strong class="${mgrClass}">${mgrName}</strong>. Click each box to reveal your 5 bonuses &mdash; ${mechanismLine}</p>
 
     <div class="outcomes-row">
       ${outcomes.map((o, i) => `
@@ -3105,12 +3126,14 @@ function submitBoredom() {
     if (err) err.classList.add('visible');
     return;
   }
-  // Compute the "anti-VoI" trigger: any round where the participant picked
-  // Performance despite their PRIOR stated belief (γ_{t-1}, or γ₀ for t=1)
-  // being strictly below the known Random-manager H-probability.
-  const r = computePerfChoiceExplanationTrigger();
-  STATE.perfChoiceExplanationRounds = r;
-  if (r.length > 0) {
+  // Compute the belief-inconsistency triggers, split by direction:
+  //  A. chose Random while prior > rp   (belief favored Performance)
+  //  B. chose Performance while prior < rp (belief favored Random)
+  const split = computeChoiceExplanationTriggers();
+  STATE.choseRandomAgainstBeliefRounds = split.aRoundsRandomVsPerf;
+  STATE.chosePerfAgainstBeliefRounds   = split.bRoundsPerfVsRandom;
+  STATE.perfChoiceExplanationRounds    = [...split.aRoundsRandomVsPerf, ...split.bRoundsPerfVsRandom].sort((x,y)=>x-y);
+  if (STATE.perfChoiceExplanationRounds.length > 0) {
     STATE.perfChoiceExplanationShown = true;
     showScreen('perfChoiceExplanation');
   } else {
@@ -3118,16 +3141,16 @@ function submitBoredom() {
   }
 }
 
-// Helper: list (1-indexed) of rounds t where the participant chose Performance
-// but the prior belief was strictly less than randomProbShown.
-function computePerfChoiceExplanationTrigger() {
+// Helper: returns { aRoundsRandomVsPerf, bRoundsPerfVsRandom } — 1-indexed
+// round lists split by direction of belief-inconsistent manager choice.
+function computeChoiceExplanationTriggers() {
   const rp = Number(STATE.randomProbShown);
-  if (!Number.isFinite(rp)) return [];
-  const hits = [];
+  const out = { aRoundsRandomVsPerf: [], bRoundsPerfVsRandom: [] };
+  if (!Number.isFinite(rp)) return out;
   const rounds = STATE.rounds || [];
   for (let i = 0; i < rounds.length; i++) {
     const rd = rounds[i];
-    if (!rd || rd.manager !== 'performance') continue;
+    if (!rd || !rd.manager) continue;
     const t = rd.roundNum;
     // Prior belief for round t: belief_0 if t===1 else belief from round t-1
     let prior;
@@ -3138,69 +3161,94 @@ function computePerfChoiceExplanationTrigger() {
       prior = prev ? prev.belief : null;
     }
     if (prior == null || !Number.isFinite(Number(prior))) continue;
-    if (Number(prior) < rp) hits.push(t);
+    const priorN = Number(prior);
+    if      (rd.manager === 'random'      && priorN > rp) out.aRoundsRandomVsPerf.push(t);
+    else if (rd.manager === 'performance' && priorN < rp) out.bRoundsPerfVsRandom.push(t);
   }
-  return hits;
+  return out;
 }
 
-// ---- 3.2d Open-ended follow-up: Performance pick despite believing Random was better ----
-// Shown ONLY if computePerfChoiceExplanationTrigger() returns a non-empty round list.
+// ---- 3.2d Open-ended follow-ups: belief-inconsistent manager choices ----
+// One question per direction, each only shown if that direction has ≥1 round.
 SCREENS.perfChoiceExplanation = () => {
-  const rounds = STATE.perfChoiceExplanationRounds || [];
-  const rp = STATE.randomProbShown;
-  const nStr = rounds.length === 1 ? 'one round' : `${rounds.length} rounds`;
-  const roundsStr = rounds.length === 1
-    ? `round ${rounds[0]}`
-    : `rounds ${rounds.slice(0, -1).join(', ')} and ${rounds[rounds.length - 1]}`;
+  const aRounds = STATE.choseRandomAgainstBeliefRounds || []; // chose Random vs belief→Perf
+  const bRounds = STATE.chosePerfAgainstBeliefRounds   || []; // chose Perf vs belief→Random
+
+  function fmtRounds(rs) {
+    if (rs.length === 1) return `round ${rs[0]}`;
+    if (rs.length === 2) return `rounds ${rs[0]} and ${rs[1]}`;
+    return `rounds ${rs.slice(0,-1).join(', ')}, and ${rs[rs.length-1]}`;
+  }
+  function nStr(rs) { return rs.length === 1 ? 'one round' : `${rs.length} rounds`; }
+
+  const blockA = aRounds.length === 0 ? '' : `
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin:16px 0;">
+      <p style="margin:0 0 10px;">
+        In ${nStr(aRounds)} (${fmtRounds(aRounds)}) you chose the <strong class="eval-random">Random Manager</strong>
+        even though your latest guess suggested the <strong class="eval-performance">Performance Manager</strong> had
+        a higher chance of paying&nbsp;H.
+      </p>
+      <p style="margin:0 0 10px;"><strong>What made you pick the Random Manager in those rounds?</strong></p>
+      <textarea id="explain-chose-random" rows="4"
+        placeholder="Please write at least a sentence or two..."
+        style="width:100%;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"
+        oninput="checkChoiceExplanations()"></textarea>
+    </div>`;
+
+  const blockB = bRounds.length === 0 ? '' : `
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin:16px 0;">
+      <p style="margin:0 0 10px;">
+        In ${nStr(bRounds)} (${fmtRounds(bRounds)}) you chose the <strong class="eval-performance">Performance Manager</strong>
+        even though your latest guess suggested the <strong class="eval-random">Random Manager</strong> had
+        a higher chance of paying&nbsp;H.
+      </p>
+      <p style="margin:0 0 10px;"><strong>What made you pick the Performance Manager in those rounds?</strong></p>
+      <textarea id="explain-chose-perf" rows="4"
+        placeholder="Please write at least a sentence or two..."
+        style="width:100%;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"
+        oninput="checkChoiceExplanations()"></textarea>
+    </div>`;
 
   container.innerHTML = `
     <div class="screen-header"><h2>One last question</h2></div>
-
-    <p>
-      In ${nStr} of the study (${roundsStr}) you chose the
-      <strong>Performance Manager</strong> even though, based on the guess you had
-      reported just before that round, you expected the
-      <strong>Random Manager</strong> to give you a higher chance of H&nbsp;bonuses
-      (${rp}%&nbsp;H from the Random Manager versus a lower chance you had reported
-      for yourself).
-    </p>
-
-    <p><strong>What made you pick the Performance Manager in that situation?</strong>
-    Any reason is fine — curiosity, a gut feeling, wanting to learn how you actually
-    do, a mistake, something about the task, or anything else.</p>
-
-    <div style="margin:16px 0 8px;">
-      <textarea id="perf-choice-explanation" rows="5"
-        placeholder="Please write at least a sentence or two..."
-        style="width:100%;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"
-        oninput="checkPerfChoiceExplanation()"></textarea>
-    </div>
-
-    <div class="error-msg" id="perf-choice-error">Please write a short answer before continuing.</div>
+    ${blockA}
+    ${blockB}
+    <div class="error-msg" id="choice-explain-error">Please write a short answer before continuing.</div>
     <div class="nav-row">
-      <button class="btn btn-primary" id="perf-choice-next" disabled onclick="submitPerfChoiceExplanation()">Next →</button>
+      <button class="btn btn-primary" id="choice-explain-next" disabled onclick="submitChoiceExplanations()">Next →</button>
     </div>`;
   updateProgress(0.96);
 };
 
-function checkPerfChoiceExplanation() {
-  const el = document.getElementById('perf-choice-explanation');
-  const btn = document.getElementById('perf-choice-next');
-  const err = document.getElementById('perf-choice-error');
-  const ok = el && el.value.trim().length >= 3;
+function checkChoiceExplanations() {
+  const aEl = document.getElementById('explain-chose-random');
+  const bEl = document.getElementById('explain-chose-perf');
+  const btn = document.getElementById('choice-explain-next');
+  const err = document.getElementById('choice-explain-error');
+  const aOk = !aEl || aEl.value.trim().length >= 3;
+  const bOk = !bEl || bEl.value.trim().length >= 3;
+  const ok = aOk && bOk;
   if (btn) btn.disabled = !ok;
   if (ok && err) err.style.display = 'none';
 }
 
-function submitPerfChoiceExplanation() {
-  const el = document.getElementById('perf-choice-explanation');
-  const text = el ? el.value.trim() : '';
-  if (text.length < 3) {
-    const err = document.getElementById('perf-choice-error');
+function submitChoiceExplanations() {
+  const aEl = document.getElementById('explain-chose-random');
+  const bEl = document.getElementById('explain-chose-perf');
+  const aText = aEl ? aEl.value.trim() : '';
+  const bText = bEl ? bEl.value.trim() : '';
+  if ((aEl && aText.length < 3) || (bEl && bText.length < 3)) {
+    const err = document.getElementById('choice-explain-error');
     if (err) err.classList.add('visible');
     return;
   }
-  STATE.perfChoiceExplanation = text;
+  STATE.choseRandomAgainstBeliefText = aText;
+  STATE.chosePerfAgainstBeliefText   = bText;
+  // Legacy combined field for back-compat
+  const parts = [];
+  if (aText) parts.push('[chose Random vs belief→Perf] ' + aText);
+  if (bText) parts.push('[chose Perf vs belief→Random] ' + bText);
+  STATE.perfChoiceExplanation = parts.join(' | ');
   showScreen('demographics');
 }
 
@@ -3473,11 +3521,15 @@ async function submitData() {
       return a.every(v => v != null) ? a.reduce((s, v) => s + v, 0) : null;
     })(),
 
-    // Open-ended follow-up for Performance-pick-despite-Random-better.
-    // Shown only if triggered; otherwise these are logged as false/[]/''.
+    // Open-ended follow-ups for belief-inconsistent manager choices.
+    // Split by direction; legacy fields populated as the union / combined text.
     perfChoiceExplanationShown: STATE.perfChoiceExplanationShown ? 1 : 0,
     perfChoiceExplanationRounds: JSON.stringify(STATE.perfChoiceExplanationRounds || []),
     perfChoiceExplanation: STATE.perfChoiceExplanation || '',
+    choseRandomAgainstBeliefRounds: JSON.stringify(STATE.choseRandomAgainstBeliefRounds || []),
+    choseRandomAgainstBeliefText:   STATE.choseRandomAgainstBeliefText || '',
+    chosePerfAgainstBeliefRounds:   JSON.stringify(STATE.chosePerfAgainstBeliefRounds || []),
+    chosePerfAgainstBeliefText:     STATE.chosePerfAgainstBeliefText || '',
 
     feedbackClarity: STATE.feedbackClarity,
     feedbackComplaints: STATE.feedbackComplaints,
