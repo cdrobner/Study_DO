@@ -3273,4 +3273,16 @@ function init() {
   getUrlParams();
   STATE.startTime = Date.now();
   STATE.bsrStakeRound = CONFIG.beliefBonusRound;
-  if (isMobileDevice()) 
+  if (isMobileDevice()) {
+    showMobileBlocked();
+    return;
+  }
+  showScreen('welcome');
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
+ 
