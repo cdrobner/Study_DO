@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbyO6QxVH9MTrmDaHFBHzKgwIoz9IyPaJH0ZBGvAZGqjKqCV5YsMlseRvw1YkM-r48QfMQ/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwwI7cGZtJRZR0Hc0V8JVa7cysMzI8gYLwR5jJZWfUL60Nix6be-ReSYsYg5rQzM2FyAQ/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -475,53 +475,92 @@ const CONFIG = {
       correctAnswer: 1
     },
     {
-      id: 'SE2',
+      // SX1: Ceiling-breaker. Triple-independent rule — shape, color, and size
+      // each vary with a DIFFERENT linear function of (row, col):
+      //   shape = (r + c)  mod 3   -> [circle, square, triangle]
+      //   color = (r + 2c) mod 3   -> [blue, red, green]
+      //   size  = (2r + c) mod 3   -> [18, 24, 30]
+      // All three features depend on BOTH row and column, so the task cannot
+      // be decomposed into separate row- and column-only sub-rules.
+      // Missing cell (2,2): shape=square, color=blue, size=24.
+      id: 'SX1',
       renderGrid: function() {
-        const pattern = ['circle','square','circle','square','circle','square','circle','square'];
-        const cells = [];
-        for (let i = 0; i < 8; i++) {
-          cells.push(svgShape(pattern[i], COLORS.green, 22));
-        }
-        return cells;
-      },
-      renderAnswers: function() {
-        return [
-          svgShape('triangle', COLORS.green, 22),
-          svgShape('square', COLORS.green, 22),
-          svgShape('diamond', COLORS.green, 22),
-          svgShape('circle', COLORS.green, 22),
-        ];
-      },
-      correctAnswer: 3
-    },
-    {
-      id: 'SH1',
-      renderGrid: function() {
-        const shapes = ['star', 'hexagon', 'cross'];
-        const sizes = [14, 22, 30];
-        const fillGrid = [
-          ['#fff',       COLORS.orange, COLORS.purple],
-          [COLORS.purple, '#fff',       COLORS.orange],
-          [COLORS.orange, COLORS.purple, '#fff'],
-        ];
+        const shapes = ['circle', 'square', 'triangle'];
+        const palette = [COLORS.blue, COLORS.red, COLORS.green];
+        const sizes = [18, 24, 30];
         const cells = [];
         for (let r = 0; r < 3; r++) {
           for (let c = 0; c < 3; c++) {
             if (r === 2 && c === 2) continue;
-            cells.push(svgShape(shapes[c], fillGrid[r][c], sizes[r]));
+            const si = (r + c) % 3;
+            const ci = (r + 2 * c) % 3;
+            const zi = (2 * r + c) % 3;
+            cells.push(svgShape(shapes[si], palette[ci], sizes[zi]));
           }
         }
         return cells;
       },
       renderAnswers: function() {
+        // Correct: square, blue, size 24.
+        // Distractors: each differs from the correct answer on exactly one feature.
         return [
-          svgShape('cross', '#fff', 30),
-          svgShape('cross', COLORS.purple, 30),
-          svgShape('cross', COLORS.orange, 30),
-          svgShape('hexagon', '#fff', 30),
+          svgShape('square',   COLORS.blue,  24),  // CORRECT
+          svgShape('square',   COLORS.blue,  18),  // size wrong
+          svgShape('circle',   COLORS.blue,  24),  // shape wrong
+          svgShape('square',   COLORS.green, 24),  // color wrong
         ];
       },
       correctAnswer: 0
+    },
+    {
+      // SX2: Ceiling-breaker. Each cell is an overlay of an outer outline
+      // shape and an inner solid shape. The two shapes follow DIFFERENT
+      // rules that run in opposite directions on the same offset:
+      //   outer = (r + c)  mod 3   -> [circle, square, triangle]
+      //   inner = (r - c + 3) mod 3 -> [circle, square, triangle]
+      // A participant who spots only one rule picks a near-miss distractor.
+      // Missing cell (2,2): outer = (2+2)%3 = 1 = square,
+      //                     inner = (2-2+3)%3 = 0 = circle.
+      id: 'SX2',
+      renderGrid: function() {
+        const shapes = ['circle', 'square', 'triangle'];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const outer = shapes[(r + c) % 3];
+            const inner = shapes[((r - c) % 3 + 3) % 3];
+            cells.push(svgOverlay([
+              { shape: outer, fill: '#fff',       size: 28, stroke: COLORS.purple, strokeWidth: 2.5 },
+              { shape: inner, fill: COLORS.purple, size: 12 },
+            ]));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Correct: outer = square, inner = circle.
+        // Distractors each flip exactly one rule.
+        return [
+          svgOverlay([
+            { shape: 'triangle', fill: '#fff',        size: 28, stroke: COLORS.purple, strokeWidth: 2.5 },
+            { shape: 'circle',   fill: COLORS.purple, size: 12 },
+          ]), // outer rule reversed
+          svgOverlay([
+            { shape: 'square',   fill: '#fff',        size: 28, stroke: COLORS.purple, strokeWidth: 2.5 },
+            { shape: 'circle',   fill: COLORS.purple, size: 12 },
+          ]), // CORRECT
+          svgOverlay([
+            { shape: 'square',   fill: '#fff',        size: 28, stroke: COLORS.purple, strokeWidth: 2.5 },
+            { shape: 'triangle', fill: COLORS.purple, size: 12 },
+          ]), // inner rule reversed
+          svgOverlay([
+            { shape: 'circle',   fill: '#fff',        size: 28, stroke: COLORS.purple, strokeWidth: 2.5 },
+            { shape: 'square',   fill: COLORS.purple, size: 12 },
+          ]), // both rules swapped
+        ];
+      },
+      correctAnswer: 1
     },
     {
       id: 'SH2',
@@ -1157,6 +1196,13 @@ const CONFIG = {
     ambiguityUrnReminder: `Urn&nbsp;A = unknown mixture &nbsp;·&nbsp; Urn&nbsp;B = exactly 50&nbsp;white / 50&nbsp;black`,
     ambiguityQuestion: `From which urn would you prefer to draw your ball?`,
 
+    // CEI-II — Curiosity and Exploration Inventory II (Kashdan et al., 2009)
+    curiosityIntro: `Below are statements people use to describe themselves. Please rate each statement for how accurately it reflects the way you <strong>generally</strong> feel and behave.`,
+    curiosityInstructions: `Do not rate what you think you should do, or wish you do, or things you no longer do. Please be as honest as possible.`,
+
+    // SBPS — Short Boredom Proneness Scale (Struk, Carriere, Cheyne, & Danckert, 2015)
+    boredomIntro: `Please rate how much you agree or disagree with each of the following statements as a description of yourself.`,
+
     resultsReveal: (payRoundNum, payRoundMgrId) => {
       const mgrLabel = payRoundMgrId === 'performance'
         ? '<span class="eval-performance">Performance Manager</span>'
@@ -1183,6 +1229,7 @@ const STATE = {
 
   // Condition assignment
   quizCondition: null,    // 'easy' or 'hard'
+  quizConditionDraw: null,// raw uniform draw in [0,1) used to assign quizCondition (audit trail)
   bsrStakeRound: null,    // $ BSR stake for round-level beliefs (assigned in init() from CONFIG.beliefBonusRound)
 
   // Quiz
@@ -1216,6 +1263,16 @@ const STATE = {
   // Post-experiment
   riskPreference: null,
   ambiguityAnswers: { comprehensionAttempts: 0 },
+  // CEI-II (Kashdan et al. 2009): 10 Likert ratings, array of ints 1..5 (or null until answered)
+  curiosityAnswers: new Array(10).fill(null),
+  // SBPS (Struk, Carriere, Cheyne, & Danckert, 2015): 8 Likert ratings, ints 1..7 (or null until answered)
+  boredomAnswers: new Array(8).fill(null),
+  // Open-ended follow-up: triggered if the participant ever picked the Performance
+  // manager for a round t even though their PRIOR belief γ_{t-1} (or γ₀ for t=1) was
+  // strictly less than the known Random-manager H-probability (randomProbShown).
+  perfChoiceExplanationShown: false,         // did we show the screen?
+  perfChoiceExplanationRounds: [],           // 1-indexed rounds meeting the trigger
+  perfChoiceExplanation: '',                 // free-text answer (empty if not asked)
   demographicAge: null,
   demographicGender: null,
   feedbackClarity: '',
@@ -1960,8 +2017,21 @@ let currentQuizQ = 0;
 let quizQuestions = [];
 
 function startQuiz() {
-  // Assign condition
-  STATE.quizCondition = Math.random() < 0.5 ? 'easy' : 'hard';
+  // Individual-level random assignment to 'easy' vs 'hard' quiz condition.
+  // Use crypto.getRandomValues for a provably uniform draw (Math.random is
+  // implementation-dependent). We store the raw draw so randomness can be
+  // audited ex-post from the submitted data.
+  let draw;
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    draw = buf[0] / 0x100000000; // uniform in [0, 1)
+  } else {
+    draw = Math.random(); // fallback
+  }
+  STATE.quizConditionDraw = draw;
+  STATE.quizCondition = draw < 0.5 ? 'easy' : 'hard';
+
   const conditionQs = STATE.quizCondition === 'easy'
     ? CONFIG.quizQuestionsEasyOnly
     : CONFIG.quizQuestionsHardOnly;
@@ -2329,42 +2399,6 @@ function renderComprehensionCheck(checkConfig, onPass, checkId) {
   window._comprehensionCheckId = checkId;
 }
 
-function showComprehensionExcluded(checkId) {
-  if (_excluded) return;
-  _excluded = true;
-  const currentScreen = STATE.screenTimestamps.length > 0
-    ? STATE.screenTimestamps[STATE.screenTimestamps.length - 1].screen : 'unknown';
-
-  container.innerHTML = `
-    <div class="screen-header"><h2>Study Terminated</h2></div>
-    <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:24px;margin:20px 0;">
-      <p style="font-size:1.1rem;"><strong>You will not receive any payment beyond the show-up fee.</strong></p>
-      <p>You have failed the same comprehension check more than twice. As stated in the instructions, this means you will not receive any payment beyond the show-up fee.</p>
-      <p>If you believe this is an error, please contact the researchers at <strong>drobnerc@ceu.edu</strong> and include your Prolific ID: <strong>${STATE.prolificPid || 'N/A'}</strong>.</p>
-    </div>
-    <div class="nav-row">
-      <a href="https://app.prolific.com" class="btn btn-primary" style="text-decoration:none;">Return to Prolific</a>
-    </div>`;
-
-  // Log exclusion to Google Sheets
-  if (CONFIG.googleSheetsURL) {
-    fetch(CONFIG.googleSheetsURL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prolificPid: STATE.prolificPid || 'unknown',
-        sessionId: STATE.sessionId || '',
-        studyId: STATE.studyId || '',
-        quizCondition: 'COMPREHENSION_EXCLUDED',
-        excludedOnScreen: currentScreen,
-        failedCheckId: checkId,
-        comprehensionAttempts: JSON.stringify(STATE.comprehensionAttempts),
-        timestamp: new Date().toISOString(),
-      }),
-    }).catch(() => {});
-  }
-}
-
 function validateComprehension() {
   const items = document.querySelectorAll('#check-items input[type="checkbox"]');
   const checkId = window._comprehensionCheckId;
@@ -2381,13 +2415,9 @@ function validateComprehension() {
   if (allCorrect) {
     window._comprehensionCallback();
   } else {
-    // Track failed attempts
+    // Track failed attempts (logged for ex-post filtering; no in-study exclusion).
     STATE.comprehensionAttempts[checkId] = (STATE.comprehensionAttempts[checkId] || 0) + 1;
-    if (STATE.comprehensionAttempts[checkId] >= 3) {
-      showComprehensionExcluded(checkId);
-    } else {
-      document.getElementById('check-error').classList.add('visible');
-    }
+    document.getElementById('check-error').classList.add('visible');
   }
 }
 
@@ -2899,6 +2929,278 @@ function checkAmbiguityComplete() {
 }
 
 function submitAmbiguity() {
+  showScreen('curiosity');
+}
+
+// ---- 3.2b Curiosity (CEI-II; Kashdan, Gallagher, Silvia, Winterstein, Breen, Terhar, Steger, 2009) ----
+// 10 items, 5-point Likert (1 = Very slightly or not at all ... 5 = Extremely).
+// Subscale: Stretching (items 1,3,5,7,9); Embracing (items 2,4,6,8,10).
+// Subscale labels are hidden from participants.
+SCREENS.curiosity = () => {
+  const items = [
+    /* 1  Stretching */ "I actively seek as much information as I can in new situations.",
+    /* 2  Embracing  */ "I am the type of person who really enjoys the uncertainty of everyday life.",
+    /* 3  Stretching */ "I am at my best when doing something that is complex or challenging.",
+    /* 4  Embracing  */ "Everywhere I go, I am out looking for new things or experiences.",
+    /* 5  Stretching */ "I view challenging situations as an opportunity to grow and learn.",
+    /* 6  Embracing  */ "I like to do things that are a little frightening.",
+    /* 7  Stretching */ "I am always looking for experiences that challenge how I think about myself and the world.",
+    /* 8  Embracing  */ "I prefer jobs that are excitingly unpredictable.",
+    /* 9  Stretching */ "I frequently find myself looking for new opportunities to grow as a person (e.g., information, people, resources).",
+    /* 10 Embracing  */ "I am the kind of person who embraces unfamiliar people, events, and places."
+  ];
+  const labels = [
+    "Very slightly or not at all",
+    "A little",
+    "Moderately",
+    "Quite a bit",
+    "Extremely"
+  ];
+
+  const rows = items.map((txt, idx) => {
+    const rowIdx = idx; // 0..9
+    const opts = labels.map((lbl, v) => {
+      const val = v + 1; // 1..5
+      return `
+        <div class="cei-opt" data-row="${rowIdx}" data-val="${val}"
+             onclick="selectCuriosityRating(${rowIdx}, ${val})"
+             style="flex:1;text-align:center;padding:10px 6px;border:1px solid #ddd;cursor:pointer;background:#fff;">
+          <div class="radio-circle" style="width:16px;height:16px;border:2px solid #999;border-radius:50%;margin:0 auto 6px;background:#fff;"></div>
+          <div style="font-size:0.75rem;color:#555;line-height:1.25;">${lbl}</div>
+        </div>`;
+    }).join('');
+    return `
+      <div style="margin:14px 0;padding:10px 12px;background:#fff;border:1px solid #e3e8ef;border-radius:8px;">
+        <p style="margin:0 0 8px;font-size:0.95rem;"><strong>${rowIdx + 1}.</strong> ${txt}</p>
+        <div style="display:flex;justify-content:center;gap:0;">
+          ${opts}
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="screen-header"><h2>Additional Questions</h2></div>
+    <p>${CONFIG.texts.curiosityIntro}</p>
+    <p style="font-size:0.92rem;color:#555;">${CONFIG.texts.curiosityInstructions}</p>
+
+    ${rows}
+
+    <div class="error-msg" id="cei-error">Please rate every statement before continuing.</div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="cei-next" disabled onclick="submitCuriosity()">Next →</button>
+    </div>`;
+  updateProgress(0.95);
+};
+
+function selectCuriosityRating(rowIdx, val) {
+  STATE.curiosityAnswers[rowIdx] = val;
+  // Update visuals: highlight the selected option in this row only
+  document.querySelectorAll(`.cei-opt[data-row="${rowIdx}"]`).forEach(el => {
+    const isSel = Number(el.dataset.val) === val;
+    const circle = el.querySelector('.radio-circle');
+    el.style.background = isSel ? '#eff6ff' : '#fff';
+    if (circle) {
+      circle.style.background = isSel ? '#2563eb' : '#fff';
+      circle.style.borderColor = isSel ? '#2563eb' : '#999';
+    }
+  });
+  const allAnswered = STATE.curiosityAnswers.every(v => v !== null);
+  document.getElementById('cei-next').disabled = !allAnswered;
+  if (allAnswered) {
+    const err = document.getElementById('cei-error');
+    if (err) err.style.display = 'none';
+  }
+}
+
+function submitCuriosity() {
+  if (!STATE.curiosityAnswers.every(v => v !== null)) {
+    const err = document.getElementById('cei-error');
+    if (err) err.classList.add('visible');
+    return;
+  }
+  showScreen('boredom');
+}
+
+// ---- 3.2c Short Boredom Proneness Scale (Struk, Carriere, Cheyne, & Danckert, 2015) ----
+// 8 items, 7-point Likert (1 = Strongly disagree ... 7 = Strongly agree).
+// Unidimensional: sum of all 8 items = SBPS score. No reverse-coded items.
+SCREENS.boredom = () => {
+  const items = [
+    /* 1 */ "I often find myself at \u201Cloose ends,\u201D not knowing what to do.",
+    /* 2 */ "I find it hard to entertain myself.",
+    /* 3 */ "Many things I have to do are repetitive and monotonous.",
+    /* 4 */ "It takes more stimulation to get me going than most people.",
+    /* 5 */ "I don\u2019t feel motivated by most things that I do.",
+    /* 6 */ "In most situations, it is hard for me to find something to do or see to keep me interested.",
+    /* 7 */ "Much of the time, I just sit around doing nothing.",
+    /* 8 */ "Unless I am doing something exciting, even dangerous, I feel half-dead and dull."
+  ];
+  // 7-point Likert anchors; middle point is neutral.
+  const labels = [
+    "Strongly disagree",
+    "Disagree",
+    "Somewhat disagree",
+    "Neither agree nor disagree",
+    "Somewhat agree",
+    "Agree",
+    "Strongly agree"
+  ];
+
+  const rows = items.map((txt, idx) => {
+    const rowIdx = idx; // 0..7
+    const opts = labels.map((lbl, v) => {
+      const val = v + 1; // 1..7
+      return `
+        <div class="sbps-opt" data-row="${rowIdx}" data-val="${val}"
+             onclick="selectBoredomRating(${rowIdx}, ${val})"
+             style="flex:1;text-align:center;padding:10px 4px;border:1px solid #ddd;cursor:pointer;background:#fff;">
+          <div class="radio-circle" style="width:16px;height:16px;border:2px solid #999;border-radius:50%;margin:0 auto 6px;background:#fff;"></div>
+          <div style="font-size:0.72rem;color:#555;line-height:1.25;">${lbl}</div>
+        </div>`;
+    }).join('');
+    return `
+      <div style="margin:14px 0;padding:10px 12px;background:#fff;border:1px solid #e3e8ef;border-radius:8px;">
+        <p style="margin:0 0 8px;font-size:0.95rem;"><strong>${rowIdx + 1}.</strong> ${txt}</p>
+        <div style="display:flex;justify-content:center;gap:0;">
+          ${opts}
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="screen-header"><h2>Additional Questions</h2></div>
+    <p>${CONFIG.texts.boredomIntro}</p>
+
+    ${rows}
+
+    <div class="error-msg" id="sbps-error">Please rate every statement before continuing.</div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="sbps-next" disabled onclick="submitBoredom()">Next →</button>
+    </div>`;
+  updateProgress(0.97);
+};
+
+function selectBoredomRating(rowIdx, val) {
+  STATE.boredomAnswers[rowIdx] = val;
+  document.querySelectorAll(`.sbps-opt[data-row="${rowIdx}"]`).forEach(el => {
+    const isSel = Number(el.dataset.val) === val;
+    const circle = el.querySelector('.radio-circle');
+    el.style.background = isSel ? '#eff6ff' : '#fff';
+    if (circle) {
+      circle.style.background = isSel ? '#2563eb' : '#fff';
+      circle.style.borderColor = isSel ? '#2563eb' : '#999';
+    }
+  });
+  const allAnswered = STATE.boredomAnswers.every(v => v !== null);
+  document.getElementById('sbps-next').disabled = !allAnswered;
+  if (allAnswered) {
+    const err = document.getElementById('sbps-error');
+    if (err) err.style.display = 'none';
+  }
+}
+
+function submitBoredom() {
+  if (!STATE.boredomAnswers.every(v => v !== null)) {
+    const err = document.getElementById('sbps-error');
+    if (err) err.classList.add('visible');
+    return;
+  }
+  // Compute the "anti-VoI" trigger: any round where the participant picked
+  // Performance despite their PRIOR stated belief (γ_{t-1}, or γ₀ for t=1)
+  // being strictly below the known Random-manager H-probability.
+  const r = computePerfChoiceExplanationTrigger();
+  STATE.perfChoiceExplanationRounds = r;
+  if (r.length > 0) {
+    STATE.perfChoiceExplanationShown = true;
+    showScreen('perfChoiceExplanation');
+  } else {
+    showScreen('demographics');
+  }
+}
+
+// Helper: list (1-indexed) of rounds t where the participant chose Performance
+// but the prior belief was strictly less than randomProbShown.
+function computePerfChoiceExplanationTrigger() {
+  const rp = Number(STATE.randomProbShown);
+  if (!Number.isFinite(rp)) return [];
+  const hits = [];
+  const rounds = STATE.rounds || [];
+  for (let i = 0; i < rounds.length; i++) {
+    const rd = rounds[i];
+    if (!rd || rd.manager !== 'performance') continue;
+    const t = rd.roundNum;
+    // Prior belief for round t: belief_0 if t===1 else belief from round t-1
+    let prior;
+    if (t === 1) {
+      prior = STATE.belief_0;
+    } else {
+      const prev = rounds.find(x => x && x.roundNum === (t - 1));
+      prior = prev ? prev.belief : null;
+    }
+    if (prior == null || !Number.isFinite(Number(prior))) continue;
+    if (Number(prior) < rp) hits.push(t);
+  }
+  return hits;
+}
+
+// ---- 3.2d Open-ended follow-up: Performance pick despite believing Random was better ----
+// Shown ONLY if computePerfChoiceExplanationTrigger() returns a non-empty round list.
+SCREENS.perfChoiceExplanation = () => {
+  const rounds = STATE.perfChoiceExplanationRounds || [];
+  const rp = STATE.randomProbShown;
+  const nStr = rounds.length === 1 ? 'one round' : `${rounds.length} rounds`;
+  const roundsStr = rounds.length === 1
+    ? `round ${rounds[0]}`
+    : `rounds ${rounds.slice(0, -1).join(', ')} and ${rounds[rounds.length - 1]}`;
+
+  container.innerHTML = `
+    <div class="screen-header"><h2>One last question</h2></div>
+
+    <p>
+      In ${nStr} of the study (${roundsStr}) you chose the
+      <strong>Performance Manager</strong> even though, based on the guess you had
+      reported just before that round, you expected the
+      <strong>Random Manager</strong> to give you a higher chance of H&nbsp;bonuses
+      (${rp}%&nbsp;H from the Random Manager versus a lower chance you had reported
+      for yourself).
+    </p>
+
+    <p><strong>What made you pick the Performance Manager in that situation?</strong>
+    Any reason is fine — curiosity, a gut feeling, wanting to learn how you actually
+    do, a mistake, something about the task, or anything else.</p>
+
+    <div style="margin:16px 0 8px;">
+      <textarea id="perf-choice-explanation" rows="5"
+        placeholder="Please write at least a sentence or two..."
+        style="width:100%;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"
+        oninput="checkPerfChoiceExplanation()"></textarea>
+    </div>
+
+    <div class="error-msg" id="perf-choice-error">Please write a short answer before continuing.</div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="perf-choice-next" disabled onclick="submitPerfChoiceExplanation()">Next →</button>
+    </div>`;
+  updateProgress(0.96);
+};
+
+function checkPerfChoiceExplanation() {
+  const el = document.getElementById('perf-choice-explanation');
+  const btn = document.getElementById('perf-choice-next');
+  const err = document.getElementById('perf-choice-error');
+  const ok = el && el.value.trim().length >= 3;
+  if (btn) btn.disabled = !ok;
+  if (ok && err) err.style.display = 'none';
+}
+
+function submitPerfChoiceExplanation() {
+  const el = document.getElementById('perf-choice-explanation');
+  const text = el ? el.value.trim() : '';
+  if (text.length < 3) {
+    const err = document.getElementById('perf-choice-error');
+    if (err) err.classList.add('visible');
+    return;
+  }
+  STATE.perfChoiceExplanation = text;
   showScreen('demographics');
 }
 
@@ -3076,18 +3378,20 @@ function redirectToProlific() {
 
 async function submitData() {
   // Quiz breakdown:
-  //   - shared     = SE1, SE2, SH1, SH2          (seen by ALL participants)
-  //   - sharedEasy = SE1, SE2                    (shared, easy-difficulty items)
-  //   - sharedHard = SH1, SH2                    (shared, hard-difficulty items)
-  //   - distinct   = condition-specific 8 items  (E1–E8 in Easy; H1–H8 in Hard)
+  //   - shared         = SE1, SH2, SX1, SX2       (seen by ALL participants)
+  //   - sharedEasy     = SE1                       (shared, easy-difficulty item)
+  //   - sharedHard     = SH2                       (shared, hard-difficulty item)
+  //   - sharedCeiling  = SX1, SX2                  (shared, ceiling-breaker items)
+  //   - distinct       = condition-specific 8 items  (E1–E8 in Easy; H1–H8 in Hard)
   const quizBreakdown = (STATE.quizAnswers || []).reduce((acc, a) => {
     if (!a.correct) return acc;
     const id = a.questionId || '';
-    if (id === 'SE1' || id === 'SE2')        { acc.shared++; acc.sharedEasy++; }
-    else if (id === 'SH1' || id === 'SH2')   { acc.shared++; acc.sharedHard++; }
+    if (id === 'SE1')                         { acc.shared++; acc.sharedEasy++; }
+    else if (id === 'SH2')                    { acc.shared++; acc.sharedHard++; }
+    else if (id === 'SX1' || id === 'SX2')    { acc.shared++; acc.sharedCeiling++; }
     else if (/^[EH]\d+$/.test(id))            { acc.distinct++; }
     return acc;
-  }, { shared: 0, sharedEasy: 0, sharedHard: 0, distinct: 0 });
+  }, { shared: 0, sharedEasy: 0, sharedHard: 0, sharedCeiling: 0, distinct: 0 });
 
   const data = {
     // Identifiers
@@ -3098,14 +3402,16 @@ async function submitData() {
 
     // Condition
     quizCondition: STATE.quizCondition,
+    quizConditionDraw: STATE.quizConditionDraw,
     bsrStakeRound: STATE.bsrStakeRound,
 
     // Quiz
     quizScore: STATE.quizScore,
-    quizScoreShared: quizBreakdown.shared,           // 0–4 (SE1, SE2, SH1, SH2)
-    quizScoreSharedEasy: quizBreakdown.sharedEasy,   // 0–2 (SE1, SE2)
-    quizScoreSharedHard: quizBreakdown.sharedHard,   // 0–2 (SH1, SH2)
-    quizScoreDistinct: quizBreakdown.distinct,       // 0–8 (E1–E8 if Easy cond; H1–H8 if Hard cond)
+    quizScoreShared: quizBreakdown.shared,                 // 0–4 (SE1, SH2, SX1, SX2)
+    quizScoreSharedEasy: quizBreakdown.sharedEasy,         // 0–1 (SE1)
+    quizScoreSharedHard: quizBreakdown.sharedHard,         // 0–1 (SH2)
+    quizScoreSharedCeiling: quizBreakdown.sharedCeiling,   // 0–2 (SX1, SX2)
+    quizScoreDistinct: quizBreakdown.distinct,             // 0–8 (E1–E8 if Easy cond; H1–H8 if Hard cond)
     gammaStar: STATE.gammaStar,
     randomProbShown: STATE.randomProbShown,
     quizAnswers: JSON.stringify(STATE.quizAnswers),
@@ -3143,6 +3449,36 @@ async function submitData() {
     demographicGender: STATE.demographicGender,
     ambiguityColor: STATE.ambiguityAnswers.color,
     ambiguityUrnPreference: STATE.ambiguityAnswers.urnPreference,
+
+    // CEI-II: 10 raw item ratings (1..5) + subscale sums.
+    // Stretching = items 1,3,5,7,9; Embracing = items 2,4,6,8,10.
+    ...Object.fromEntries(STATE.curiosityAnswers.map((v, i) => [`curiosityItem_${i + 1}`, v])),
+    curiosityStretching: (() => {
+      const a = STATE.curiosityAnswers;
+      return [0, 2, 4, 6, 8].every(i => a[i] != null)
+        ? [0, 2, 4, 6, 8].reduce((s, i) => s + a[i], 0)
+        : null;
+    })(),
+    curiosityEmbracing: (() => {
+      const a = STATE.curiosityAnswers;
+      return [1, 3, 5, 7, 9].every(i => a[i] != null)
+        ? [1, 3, 5, 7, 9].reduce((s, i) => s + a[i], 0)
+        : null;
+    })(),
+
+    // SBPS: 8 raw item ratings (1..7) + unidimensional total.
+    ...Object.fromEntries(STATE.boredomAnswers.map((v, i) => [`boredomItem_${i + 1}`, v])),
+    boredomTotal: (() => {
+      const a = STATE.boredomAnswers;
+      return a.every(v => v != null) ? a.reduce((s, v) => s + v, 0) : null;
+    })(),
+
+    // Open-ended follow-up for Performance-pick-despite-Random-better.
+    // Shown only if triggered; otherwise these are logged as false/[]/''.
+    perfChoiceExplanationShown: STATE.perfChoiceExplanationShown ? 1 : 0,
+    perfChoiceExplanationRounds: JSON.stringify(STATE.perfChoiceExplanationRounds || []),
+    perfChoiceExplanation: STATE.perfChoiceExplanation || '',
+
     feedbackClarity: STATE.feedbackClarity,
     feedbackComplaints: STATE.feedbackComplaints,
 
@@ -3160,6 +3496,11 @@ async function submitData() {
     totalDurationMs: Date.now() - STATE.startTime,
     screenTimestamps: JSON.stringify(STATE.screenTimestamps),
     screenDurations: JSON.stringify(STATE.screenDurations),
+
+    // Comprehension-check attempts (for ex-post filtering; no in-study exclusion)
+    comprehensionAttempts: JSON.stringify(STATE.comprehensionAttempts),
+    ambiguityComprehensionAttempts: STATE.ambiguityAnswers.comprehensionAttempts || 0,
+    ambiguityComprehensionCorrect: STATE.ambiguityAnswers.comprehensionCorrect === true ? 1 : 0,
 
     // Focus tracking
     tabSwitchCount: STATE.tabSwitches.length,
