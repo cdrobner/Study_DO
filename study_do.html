@@ -415,7 +415,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbyxUnHX5WYm551IbLTsYNZxsFaiKjd-V04Uy4Qj5NdHfUlMWoTio_mpGT73seXy_rthlg/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxGXcDXTjx2VUmJ8P69MZ6lvgE25TBZfgAT3ZCebTutKWMSa572dEtyTXFrCPLmqJYsoA/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -1204,7 +1204,7 @@ const STATE = {
   // Post-managerInstructions1 H-likelihood elicitation
   elicitedPerfHProb: null,
   elicitedRandHProb: null,
-  elicitedBetterManager: null,   // 'performance' | 'random' | 'same'
+  elicitedBetterManager: null,   // 'performance' | 'random'
 
   // Rounds data: array of round objects
   rounds: [],
@@ -2186,8 +2186,6 @@ SCREENS.hProbElicitation = () => {
                 onclick="selectBetterManager('performance')"><span class="eval-performance">Performance Manager</span></button>
         <button class="btn btn-choice" id="better-rand-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
                 onclick="selectBetterManager('random')"><span class="eval-random">Random Manager</span></button>
-        <button class="btn btn-choice" id="better-same-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
-                onclick="selectBetterManager('same')">About the same</button>
       </div>
     </div>
 
@@ -2223,12 +2221,10 @@ SCREENS.hProbElicitation = () => {
 function selectBetterManager(choice) {
   window._selectedBetterManager = choice;
   // Update button styling
-  ['better-perf-btn', 'better-rand-btn', 'better-same-btn'].forEach(id => {
+  ['better-perf-btn', 'better-rand-btn'].forEach(id => {
     document.getElementById(id).classList.remove('selected');
   });
-  const btnId = choice === 'performance' ? 'better-perf-btn'
-              : choice === 'random' ? 'better-rand-btn'
-              : 'better-same-btn';
+  const btnId = choice === 'performance' ? 'better-perf-btn' : 'better-rand-btn';
   document.getElementById(btnId).classList.add('selected');
 
   // Re-check if form is complete
@@ -2250,7 +2246,14 @@ function submitHProbElicitation() {
 
   const correctPerf = STATE.initialGamma;
   const correctRand = STATE.randomProbShown;
-  if (perfVal !== correctPerf || randVal !== correctRand) {
+  // Correct "better manager" choice: whichever has the higher H-probability.
+  // On a tie we accept either answer since "About the same" is not offered.
+  let betterOk;
+  if (correctPerf > correctRand)      betterOk = window._selectedBetterManager === 'performance';
+  else if (correctPerf < correctRand) betterOk = window._selectedBetterManager === 'random';
+  else                                betterOk = (window._selectedBetterManager === 'performance'
+                                                || window._selectedBetterManager === 'random');
+  if (perfVal !== correctPerf || randVal !== correctRand || !betterOk) {
     document.getElementById('mgr-prob-error').style.display = 'block';
     return;
   }
@@ -3006,8 +3009,8 @@ SCREENS.results = () => {
       <h3>Payment Breakdown</h3>
       <div class="payment-line"><span>Show-up fee</span><span>$${CONFIG.showUpFee.toFixed(2)}</span></div>
       <div class="payment-line"><span>Manager payment (${roundLabel}: ${payRound.hCount} H × $0.20)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Initial belief payment ($${CONFIG.beliefBonusInitial} BSR, your guess: ${STATE.initialGamma}%)</span><span>$${STATE.beliefBonusInitial_amount.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Round belief payment ($${stake} BSR, ${beliefRoundLabelB} guess: ${beliefValueB}%)</span><span>$${STATE.beliefBonusRound_amount.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Initial belief prize (up to $${CONFIG.beliefBonusInitial}, your guess: ${STATE.initialGamma}%)</span><span>$${STATE.beliefBonusInitial_amount.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Round belief prize (up to $${stake}, ${beliefRoundLabelB} guess: ${beliefValueB}%)</span><span>$${STATE.beliefBonusRound_amount.toFixed(2)}</span></div>
       <div class="payment-total"><span>Total payment</span><span>$${STATE.totalBonus.toFixed(2)}</span></div>
     </div>
 
@@ -3270,15 +3273,4 @@ function init() {
   getUrlParams();
   STATE.startTime = Date.now();
   STATE.bsrStakeRound = CONFIG.beliefBonusRound;
-  if (isMobileDevice()) {
-    showMobileBlocked();
-    return;
-  }
-  showScreen('welcome');
-}
-
-// Start
-init();
-</script>
-</body>
-</html>
+  if (isMobileDevice()) 
