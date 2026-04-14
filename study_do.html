@@ -289,7 +289,6 @@ const COLORS = {
   blue: '#3b82f6',
   red: '#ef4444',
   green: '#22c55e',
-  gray: '#94a3b8',
   black: '#1e293b',
   orange: '#f97316',
   purple: '#8b5cf6',
@@ -415,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwMSg7rjUx0FMLPIyWKG1rBN7erypuq83RWP_74nUkbe0Cx2XmzJGZ9vsGSN5X09tOINg/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbyO6QxVH9MTrmDaHFBHzKgwIoz9IyPaJH0ZBGvAZGqjKqCV5YsMlseRvw1YkM-r48QfMQ/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -426,7 +425,7 @@ const CONFIG = {
   payPerH: 0.20,           // $ per H outcome
   showUpFee: 2.00,         // $ flat fee
   beliefBonusInitial: 1.00,   // $ BSR stake on initial belief
-  beliefBonusRound: 1.00,     // $ BSR stake on round-level belief (fixed)
+  beliefBonusRound: 1.00,     // $ BSR stake on round-level belief
   quizTimePerQuestion: 10, // seconds
   numQuizQuestions: 12,
 
@@ -1071,8 +1070,6 @@ const CONFIG = {
       <p>We will ask you to give us your best guess about your chance of beating them (ties decided by a coin flip), and then to tell us how confident you are about that guess.</p>
       <p>The more accurate your guess, the higher your chance of winning a <strong>$1 prize</strong>. <strong>The way we calculate this prize is designed so that reporting your true beliefs maximizes your chance of winning.</strong></p>`,
 
-    confidencePrompt: `How certain or uncertain are you about this guess?`,
-
     transition: `<p>Your quiz performance will now be used to determine some of your earnings in the next part of the study.</p>
       <p>Please read the following instructions carefully. After each instruction page, short questions will help make sure everything is clear. You can only continue once all questions are answered correctly, and you can always go back to re-read the instructions.</p>`,
 
@@ -1146,8 +1143,6 @@ const CONFIG = {
       </ol>
       <p>One random round determines your manager payment, and one random guess is scored for the belief payment. Ready?</p>`,
 
-    beliefQ2: `What is the percent chance you would beat a randomly picked participant on the quiz, where ties are decided by a coin flip?`,
-
     riskPreferences: `<p>How do you see yourself: are you a person who is generally willing to take risks, or do you try to avoid taking risks?</p>
       <p>Please use a scale from 0 to 10, where 0 means you are "completely unwilling to take risks" and 10 means you are "very willing to take risks." You can also use the values in-between to indicate where you fall on the scale.</p>`,
 
@@ -1188,7 +1183,7 @@ const STATE = {
 
   // Condition assignment
   quizCondition: null,    // 'easy' or 'hard'
-  bsrStakeRound: 2.00,    // $ BSR stake for round-level beliefs (fixed)
+  bsrStakeRound: null,    // $ BSR stake for round-level beliefs (assigned in init() from CONFIG.beliefBonusRound)
 
   // Quiz
   quizAnswers: [],     // [{questionId, selected, correct, timeSpent}]
@@ -1228,10 +1223,10 @@ const STATE = {
 
   // Payment resolution
   selectedPaymentRound: null,
-  // Initial belief bonus (initial gamma, $2 BSR)
+  // Initial belief bonus (BSR on γ₀; stake = CONFIG.beliefBonusInitial)
   beliefBonusInitial_won: false,
   beliefBonusInitial_amount: 0,
-  // Round belief bonus (one random round γ belief, BSR stake = bsrStakeRound)
+  // Round belief bonus (BSR on one randomly selected round's γ_t; stake = STATE.bsrStakeRound)
   selectedBeliefRound: null,
   beliefBonusRound_won: false,
   beliefBonusRound_amount: 0,
@@ -1353,10 +1348,6 @@ function managerClass(mgr_id) {
 function managerLabel(mgr_id) {
   return `<span class="${managerClass(mgr_id)}">${managerName(mgr_id)}</span>`;
 }
-function otherManager(mgr_id) {
-  return mgr_id === 'performance' ? 'random' : 'performance';
-}
-
 // Unified manager-choice screen used for ALL rounds (including round 1).
 // `belief` is the participant's current γ estimate; `round` is the upcoming round number.
 // `onChoose` is the JS function name to call: 'roundInitialChoice' (round 1) or 'roundMakeChoiceByMgr' (rounds 2+).
