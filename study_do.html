@@ -415,7 +415,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzQjwWnh3-PxHnyHh-hQiaEN25cjcrVyvaGmUdTyC1xQV1timUUuG4BFAjT6CvsA3n77g/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxqXbZErKrfdDgLT8riOW7lMk-hwo6ls0nYXBc4BB3KEe2tHrqGgcM2uqeFs1OewabWfw/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -1153,11 +1153,14 @@ const CONFIG = {
 
     ambiguityPreferencesIntro: `Please imagine the following <strong>hypothetical</strong> situation (no actual payment is involved):`,
     ambiguityPreferencesBold: `You can choose between drawing a ball from two different urns, urn&nbsp;A and urn&nbsp;B.`,
-    urnADescription: `<strong>Urn&nbsp;A</strong> contains 100&nbsp;balls, some are white and some are black. However, you don't know how many balls are white and how many balls are black. Any combination is possible. There might be from 0 to 100 white balls, with the remaining balls being black.`,
-    urnBDescription: `<strong>Urn&nbsp;B</strong> contains 100&nbsp;balls as well, but you know that it contains exactly 50&nbsp;white balls and 50&nbsp;black balls.`,
-    ambiguityColorPrompt: `Now choose a color, either <strong>White</strong> or <strong>Black</strong>.`,
-    ambiguityPayoff: `Suppose you win <strong>$100</strong> if you draw a ball of the color you have selected. If the ball is of the other color, you win nothing.`,
-    ambiguityQuestion: `From which urn would you prefer drawing a ball?`,
+    urnADescription: `<strong>Urn&nbsp;A</strong> contains 100&nbsp;balls that are either white or black. You do <strong>not</strong> know the mix — any split is equally possible, from 0&nbsp;white / 100&nbsp;black all the way to 100&nbsp;white / 0&nbsp;black.`,
+    urnBDescription: `<strong>Urn&nbsp;B</strong> contains 100&nbsp;balls as well, but you know that it contains exactly <strong>50&nbsp;white and 50&nbsp;black</strong>.`,
+    ambiguityComprehensionPrompt: `<strong>Quick check:</strong> Which urn has a <strong>known</strong> composition?`,
+    ambiguityComprehensionWrong: `Not quite — please re-read the descriptions above.`,
+    ambiguityPayoff: `Suppose you win <strong>$100</strong> if a ball of a color you choose is drawn from the urn you pick. If the ball is of the other color, you win nothing.`,
+    ambiguityColorPrompt: `First, pick the color you want to bet on:`,
+    ambiguityUrnReminder: `Urn&nbsp;A = unknown mixture &nbsp;·&nbsp; Urn&nbsp;B = exactly 50&nbsp;white / 50&nbsp;black`,
+    ambiguityQuestion: `From which urn would you prefer to draw your ball?`,
 
     resultsReveal: (payRoundNum, payRoundMgrId) => {
       const mgrLabel = payRoundMgrId === 'performance'
@@ -1194,9 +1197,8 @@ const STATE = {
   randomProbShown: null, // the [XX]% shown to participant
 
   // Initial beliefs (post-quiz, μ + 7-level confidence elicitation)
-  initialMu: null,             // Best guess μ (0–100 integer)
+  belief_0: null,              // Best guess γ₀ at t=0 (0–100 integer; mean of Beta prior)
   initialConfidence: null,     // Confidence level (1–7 integer)
-  initialGamma: null,          // alias for initialMu (kept for legacy code paths)
   initialBeliefEdits: [],      // [{ timestamp, field: 'mu'|'confidence', oldValue, newValue, trigger }]
   initialAlpha: null,          // Beta α fitted to (P10, P50, P90)
   initialBeta: null,           // Beta β fitted to (P10, P50, P90)
@@ -1211,14 +1213,14 @@ const STATE = {
   // Each round: { roundNum (1-10), manager ('performance'|'random'),
   //   transferred (bool, null for round 1), outcomes: ['H'|'L',...],
   //   opponentScores: [int,...], earnings: float,
-  //   beliefGamma: int (0-100) }
+  //   belief: int (0-100) }
 
   currentManager: null, // 'performance' or 'random'
   currentRound: 1,        // 1-10
 
   // Post-experiment
   riskPreference: null,
-  ambiguityAnswers: {},
+  ambiguityAnswers: { comprehensionAttempts: 0 },
   demographicAge: null,
   demographicGender: null,
   feedbackClarity: '',
@@ -2117,11 +2119,10 @@ function submitInitialBeliefs() {
   const mu = parseInt(document.getElementById('init-mu-slider').value);
   const kappa = CONF_LEVELS[_initConfidence].kappa;
   const muC = Math.max(0.005, Math.min(0.995, mu / 100));
-  STATE.initialMu         = mu;
+  STATE.belief_0          = mu;
   STATE.initialConfidence = _initConfidence + 1;   // store as 1–7
   STATE.initialAlpha      = muC * kappa;
   STATE.initialBeta       = (1 - muC) * kappa;
-  STATE.initialGamma      = mu;                    // legacy alias
   showScreen('transition');
 }
 
@@ -2145,7 +2146,7 @@ SCREENS.managerInstructions1 = () => {
     ${t.performance}
 
     <div class="info-panel" style="margin:14px 0;">
-      <p style="margin:0;"><strong>Reminder:</strong> Earlier, you guessed a <strong>${STATE.initialGamma}%</strong> chance that you would beat a randomly picked participant on the quiz, where ties are decided by a coin flip. Since the Performance Manager pays H whenever you beat a randomly picked participant, this means you would expect the Performance Manager to give you H about <strong>${STATE.initialGamma}%</strong> of the time.</p>
+      <p style="margin:0;"><strong>Reminder:</strong> Earlier, you guessed a <strong>${STATE.belief_0}%</strong> chance that you would beat a randomly picked participant on the quiz, where ties are decided by a coin flip. Since the Performance Manager pays H whenever you beat a randomly picked participant, this means you would expect the Performance Manager to give you H about <strong>${STATE.belief_0}%</strong> of the time.</p>
     </div>
 
     ${t.random}
@@ -2244,7 +2245,7 @@ function submitHProbElicitation() {
   STATE.elicitedRandHProb = randVal;
   STATE.elicitedBetterManager = window._selectedBetterManager;
 
-  const correctPerf = STATE.initialGamma;
+  const correctPerf = STATE.belief_0;
   const correctRand = STATE.randomProbShown;
   // Correct "better manager" choice: whichever has the higher H-probability.
   // On a tie we accept either answer since "About the same" is not offered.
@@ -2422,7 +2423,7 @@ function showRoundScreen() {
     opponentScores: null,
     hCount: null,
     earnings: null,
-    beliefGamma: null,
+    belief: null,
     beliefSliderTouched: false,
     tsRoundStart: Date.now(),
     tsBonusesShown: null,
@@ -2435,7 +2436,7 @@ function showRoundScreen() {
   if (isFirstRound) {
     // Round 1: show manager choice using the same unified layout as later rounds.
     // Use the initial belief (γ₀) elicited before Phase 2 started.
-    const initialBelief = STATE.initialGamma;
+    const initialBelief = STATE.belief_0;
     container.innerHTML = `
       <div id="round-step-choice">
         ${buildManagerChoiceHTML(r, initialBelief, 'roundInitialChoice')}
@@ -2518,8 +2519,8 @@ function roundShowBonuses() {
   const payH = CONFIG.payPerH.toFixed(2);
   // Latest belief: previous round's belief if available, else initial γ₀.
   const latestBelief = STATE.rounds.length > 0
-    ? STATE.rounds[STATE.rounds.length - 1].beliefGamma
-    : STATE.initialGamma;
+    ? STATE.rounds[STATE.rounds.length - 1].belief
+    : STATE.belief_0;
   const pH = (mgr === 'performance') ? latestBelief : STATE.randomProbShown;
   const pL = 100 - pH;
   const mechanismLine = (mgr === 'performance')
@@ -2587,8 +2588,8 @@ function roundShowGamma() {
   roundData.tsGammaShown = Date.now();
   const isFirstGammaUpdate = STATE.rounds.length === 0;
   const prevGamma = isFirstGammaUpdate
-    ? STATE.initialGamma
-    : STATE.rounds[STATE.rounds.length - 1].beliefGamma;
+    ? STATE.belief_0
+    : STATE.rounds[STATE.rounds.length - 1].belief;
   const stake = STATE.bsrStakeRound.toFixed(0);
 
   const gammaDiv = document.getElementById('round-step-gamma');
@@ -2627,7 +2628,7 @@ function roundShowGamma() {
 function roundSubmitGamma() {
   const roundData = window._pendingRound;
   const slider = document.getElementById('gamma-round-slider');
-  roundData.beliefGamma = parseInt(slider.value);
+  roundData.belief = parseInt(slider.value);
   roundData.beliefSliderTouched = slider.dataset.touched === '1';
   roundData.tsGammaSubmit = Date.now();
   STATE.rounds.push(roundData);
@@ -2652,7 +2653,7 @@ function roundSubmitGamma() {
 
 function showManagerChoiceScreen() {
   // Get the participant's latest belief (just submitted)
-  const latestBelief = STATE.rounds[STATE.rounds.length - 1].beliefGamma;
+  const latestBelief = STATE.rounds[STATE.rounds.length - 1].belief;
 
   container.innerHTML = buildManagerChoiceHTML(
     STATE.currentRound, latestBelief, 'roundMakeChoiceByMgr'
@@ -2787,14 +2788,31 @@ SCREENS.ambiguityPreferences = () => {
       </div>
     </div>
 
-    <p>${CONFIG.texts.ambiguityColorPrompt}</p>
-    <div style="display:flex;gap:16px;justify-content:center;margin:12px 0 20px;">
-      <button class="btn" style="min-width:120px;background:#fff;border:2px solid #999;color:#333;" onclick="selectAmbiguityColor('white',this)">White</button>
-      <button class="btn" style="min-width:120px;background:#1a1a1a;border:2px solid #000;color:#fff;" onclick="selectAmbiguityColor('black',this)">Black</button>
+    <!-- (2) Comprehension check, gates the rest of the screen -->
+    <div id="amb-comprehension-section" style="margin:20px 0 8px;padding:14px 18px;background:#f7f9fc;border:1px solid #e3e8ef;border-radius:8px;">
+      <p style="margin:0 0 10px;">${CONFIG.texts.ambiguityComprehensionPrompt}</p>
+      <div style="display:flex;gap:16px;justify-content:center;">
+        <button class="btn" id="amb-comp-A" style="min-width:120px;" onclick="selectAmbiguityComprehension('A',this)">Urn A</button>
+        <button class="btn" id="amb-comp-B" style="min-width:120px;" onclick="selectAmbiguityComprehension('B',this)">Urn B</button>
+      </div>
+      <div id="amb-comp-feedback" style="display:none;margin-top:10px;color:#b91c1c;font-size:0.9rem;text-align:center;">${CONFIG.texts.ambiguityComprehensionWrong}</div>
+    </div>
+
+    <!-- (1) Payoff described BEFORE the color choice -->
+    <div id="amb-color-section" style="display:none;">
+      <p>${CONFIG.texts.ambiguityPayoff}</p>
+      <p>${CONFIG.texts.ambiguityColorPrompt}</p>
+      <div style="display:flex;gap:16px;justify-content:center;margin:12px 0 20px;">
+        <button class="btn" style="min-width:120px;background:#fff;border:2px solid #999;color:#333;" onclick="selectAmbiguityColor('white',this)">White</button>
+        <button class="btn" style="min-width:120px;background:#1a1a1a;border:2px solid #000;color:#fff;" onclick="selectAmbiguityColor('black',this)">Black</button>
+      </div>
     </div>
 
     <div id="urn-preference-section" style="display:none;">
-    <p>${CONFIG.texts.ambiguityPayoff}</p>
+    <!-- (3) Urn-composition reminder pinned above the Likert -->
+    <div style="margin:8px 0 14px;padding:8px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;text-align:center;font-size:0.92rem;color:#7c2d12;">
+      ${CONFIG.texts.ambiguityUrnReminder}
+    </div>
     <p><strong>${CONFIG.texts.ambiguityQuestion}</strong></p>
     <div style="display:flex;justify-content:center;gap:0;margin:16px 0;">
       <div class="likert-option" onclick="selectAmbiguityUrn(-2)" style="flex:1;text-align:center;padding:12px 8px;border:1px solid #ddd;cursor:pointer;">
@@ -2826,6 +2844,37 @@ SCREENS.ambiguityPreferences = () => {
     </div>`;
   updateProgress(0.93);
 };
+
+function selectAmbiguityComprehension(choice, btn) {
+  STATE.ambiguityAnswers.comprehensionAttempts =
+    (STATE.ambiguityAnswers.comprehensionAttempts || 0) + 1;
+  const feedback  = document.getElementById('amb-comp-feedback');
+  const colorSect = document.getElementById('amb-color-section');
+  const btnA = document.getElementById('amb-comp-A');
+  const btnB = document.getElementById('amb-comp-B');
+  [btnA, btnB].forEach(b => {
+    if (!b) return;
+    b.style.outline = 'none'; b.style.boxShadow = 'none';
+    b.style.background = '#fff'; b.style.color = '#333';
+    b.style.borderColor = '#999';
+  });
+  if (choice === 'B') {
+    STATE.ambiguityAnswers.comprehensionCorrect = true;
+    btn.style.outline = '3px solid #16a34a';
+    btn.style.boxShadow = '0 0 0 3px rgba(22,163,74,0.25)';
+    if (feedback) feedback.style.display = 'none';
+    if (colorSect) colorSect.style.display = '';
+  } else {
+    STATE.ambiguityAnswers.comprehensionCorrect = false;
+    btn.style.outline = '3px solid #b91c1c';
+    btn.style.boxShadow = '0 0 0 3px rgba(185,28,28,0.25)';
+    if (feedback) feedback.style.display = '';
+    if (colorSect) colorSect.style.display = 'none';
+    // Also re-hide the Likert in case the participant had already progressed
+    const urnSection = document.getElementById('urn-preference-section');
+    if (urnSection) urnSection.style.display = 'none';
+  }
+}
 
 function selectAmbiguityColor(color, btn) {
   STATE.ambiguityAnswers.color = color;
@@ -2962,7 +3011,7 @@ function computePayment() {
     const s1scores = STATE.quizCondition === 'easy' ? CONFIG.study1ScoresEasy : CONFIG.study1ScoresHard;
     const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
     const beat = STATE.quizScore > oppScore || (STATE.quizScore === oppScore && Math.random() < 0.5);
-    const bsr = resolveBSR(STATE.initialGamma, beat, CONFIG.beliefBonusInitial);
+    const bsr = resolveBSR(STATE.belief_0, beat, CONFIG.beliefBonusInitial);
     STATE.beliefBonusInitial_won = bsr.won;
     STATE.beliefBonusInitial_amount = bsr.amount;
   }
@@ -2975,7 +3024,7 @@ function computePayment() {
     const s1scores = STATE.quizCondition === 'easy' ? CONFIG.study1ScoresEasy : CONFIG.study1ScoresHard;
     const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
     const beat = STATE.quizScore > oppScore || (STATE.quizScore === oppScore && Math.random() < 0.5);
-    const bsr = resolveBSR(beliefRound.beliefGamma, beat, STATE.bsrStakeRound);
+    const bsr = resolveBSR(beliefRound.belief, beat, STATE.bsrStakeRound);
     STATE.beliefBonusRound_won = bsr.won;
     STATE.beliefBonusRound_amount = bsr.amount;
   }
@@ -2996,7 +3045,7 @@ SCREENS.results = () => {
 
   // Round belief details
   const beliefRoundB = STATE.rounds[STATE.selectedBeliefRound];
-  const beliefValueB = beliefRoundB.beliefGamma;
+  const beliefValueB = beliefRoundB.belief;
   const beliefRoundLabelB = `Round ${beliefRoundB.roundNum}`;
   const stake = STATE.bsrStakeRound.toFixed(0);
 
@@ -3009,7 +3058,7 @@ SCREENS.results = () => {
       <h3>Payment Breakdown</h3>
       <div class="payment-line"><span>Show-up fee</span><span>$${CONFIG.showUpFee.toFixed(2)}</span></div>
       <div class="payment-line"><span>Manager payment (${roundLabel}: ${payRound.hCount} H × $0.20)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Initial belief prize (your guess: ${STATE.initialGamma}%)</span><span>$${STATE.beliefBonusInitial_amount.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Initial belief prize (your guess: ${STATE.belief_0}%)</span><span>$${STATE.beliefBonusInitial_amount.toFixed(2)}</span></div>
       <div class="payment-line"><span>Round belief prize (${beliefRoundLabelB} guess: ${beliefValueB}%)</span><span>$${STATE.beliefBonusRound_amount.toFixed(2)}</span></div>
       <div class="payment-total"><span>Total payment</span><span>$${STATE.totalBonus.toFixed(2)}</span></div>
     </div>
@@ -3035,6 +3084,20 @@ function redirectToProlific() {
    ============================================================== */
 
 async function submitData() {
+  // Quiz breakdown:
+  //   - shared     = SE1, SE2, SH1, SH2          (seen by ALL participants)
+  //   - sharedEasy = SE1, SE2                    (shared, easy-difficulty items)
+  //   - sharedHard = SH1, SH2                    (shared, hard-difficulty items)
+  //   - distinct   = condition-specific 8 items  (E1–E8 in Easy; H1–H8 in Hard)
+  const quizBreakdown = (STATE.quizAnswers || []).reduce((acc, a) => {
+    if (!a.correct) return acc;
+    const id = a.questionId || '';
+    if (id === 'SE1' || id === 'SE2')        { acc.shared++; acc.sharedEasy++; }
+    else if (id === 'SH1' || id === 'SH2')   { acc.shared++; acc.sharedHard++; }
+    else if (/^[EH]\d+$/.test(id))            { acc.distinct++; }
+    return acc;
+  }, { shared: 0, sharedEasy: 0, sharedHard: 0, distinct: 0 });
+
   const data = {
     // Identifiers
     prolificPid: STATE.prolificPid,
@@ -3048,14 +3111,17 @@ async function submitData() {
 
     // Quiz
     quizScore: STATE.quizScore,
+    quizScoreShared: quizBreakdown.shared,           // 0–4 (SE1, SE2, SH1, SH2)
+    quizScoreSharedEasy: quizBreakdown.sharedEasy,   // 0–2 (SE1, SE2)
+    quizScoreSharedHard: quizBreakdown.sharedHard,   // 0–2 (SH1, SH2)
+    quizScoreDistinct: quizBreakdown.distinct,       // 0–8 (E1–E8 if Easy cond; H1–H8 if Hard cond)
     gammaStar: STATE.gammaStar,
     randomProbShown: STATE.randomProbShown,
     quizAnswers: JSON.stringify(STATE.quizAnswers),
 
-    // Initial beliefs (μ + 7-level confidence elicitation; Beta from μ + κ)
-    initialMu: STATE.initialMu,
+    // Initial beliefs (γ₀ + 7-level confidence elicitation; Beta from γ₀ + κ)
+    belief_0: STATE.belief_0,
     initialConfidence: STATE.initialConfidence,
-    initialGamma: STATE.initialGamma,  // alias = initialMu (kept for legacy consumers)
     initialAlpha: STATE.initialAlpha,
     initialBeta: STATE.initialBeta,
     initialBeliefEdits: JSON.stringify(STATE.initialBeliefEdits || []),
@@ -3073,7 +3139,7 @@ async function submitData() {
         [`transferred_${i}`,   r.transferred],
         [`hCount_${i}`,        r.hCount],
         [`earnings_${i}`,      r.earnings],
-        [`beliefGamma_${i}`,   r.beliefGamma],
+        [`belief_${i}`,   r.belief],
         [`beliefSliderTouched_${i}`, r.beliefSliderTouched ? 1 : 0],
         [`outcomes_${i}`,      (r.outcomes || []).join('')],          // e.g. "HHLHH"
         [`opponentScores_${i}`, (r.opponentScores || []).join(',')],  // e.g. "7,4,9,3,6"
