@@ -1,0 +1,3284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision-Making Study</title>
+<style>
+/* ============================================================
+   STYLES — edit colors/fonts here if needed
+   ============================================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #f5f5f5;
+  color: #1a1a1a;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+#experiment-container {
+  max-width: 780px;
+  margin: 30px auto;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 40px 48px;
+  min-height: 500px;
+  position: relative;
+}
+
+/* Progress bar */
+#progress-bar-container {
+  position: fixed; top: 0; left: 0; right: 0; height: 4px;
+  background: #e0e0e0; z-index: 100;
+}
+#progress-bar {
+  height: 100%; background: #2563eb; transition: width 0.4s ease;
+}
+
+/* Typography */
+h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 16px; color: #111; }
+h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 12px; color: #222; }
+h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 8px; }
+.step-heading {
+  font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: #0369a1; margin: 0 0 10px 0;
+}
+p, li { margin-bottom: 10px; font-size: 0.97rem; }
+ul, ol { padding-left: 24px; margin-bottom: 14px; }
+strong { font-weight: 600; }
+
+/* Screen title bar */
+.screen-header {
+  background: #f0f0f0; margin: -40px -48px 24px -48px;
+  padding: 14px 48px; border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid #ddd;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.screen-header h2 { margin: 0; font-size: 1.1rem; }
+.screen-header .round-info { font-size: 0.9rem; color: #555; }
+
+/* Buttons */
+.btn {
+  display: inline-block; padding: 12px 32px; border: none; border-radius: 6px;
+  font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s;
+  text-align: center;
+}
+.btn-primary { background: #2563eb; color: #fff; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+.btn-secondary { background: #e2e8f0; color: #334155; }
+.btn-secondary:hover { background: #cbd5e1; }
+.btn-choice {
+  background: #fafafa; color: #1a1a1a; border: 2px solid #ccc;
+  padding: 18px 36px; font-size: 1.05rem; min-width: 240px;
+  border-radius: 8px;
+}
+.btn-choice:hover { border-color: #2563eb; background: #f0f4ff; }
+.btn-choice.selected { border-color: #2563eb; background: #eff6ff; box-shadow: 0 0 0 2px #2563eb; }
+
+.nav-row {
+  margin-top: 28px; display: flex; justify-content: flex-end; gap: 12px;
+}
+
+/* Manager labels — types are disclosed from the start */
+:root { --eval-color-perf: #6d28d9; --eval-color-random: #0e7490; }
+.eval-performance { color: var(--eval-color-perf); font-weight: 600; }
+.eval-random { color: var(--eval-color-random); font-weight: 600; }
+
+/* Info panel */
+.info-panel {
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 18px 22px; margin: 18px 0;
+}
+.info-panel h3 { margin-bottom: 10px; font-size: 0.95rem; color: #334155; }
+.info-panel .belief-item { margin-bottom: 6px; font-size: 0.93rem; }
+.info-panel .reminder { font-size: 0.85rem; color: #64748b; margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+
+/* Outcome boxes */
+.outcomes-row {
+  display: flex; gap: 14px; justify-content: center; margin: 20px 0;
+}
+.outcome-box {
+  width: 64px; height: 64px; border: 2px solid #d1d5db; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; font-weight: 700; background: #fff;
+  flex-direction: column;
+}
+.outcome-box .outcome-label {
+  font-size: 0.65rem; font-weight: 400; color: #666; margin-bottom: 2px;
+}
+.outcome-box.outcome-H { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
+.outcome-box.outcome-L { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
+
+/* Slider styles */
+.slider-container { margin: 16px 0 20px 0; }
+.slider-container label { display: block; margin-bottom: 6px; font-weight: 500; }
+.slider-row {
+  display: flex; align-items: center; gap: 14px;
+}
+.slider-row input[type="range"] {
+  flex: 1; height: 6px; -webkit-appearance: none; appearance: none;
+  background: #e2e8f0; border-radius: 3px; outline: none;
+}
+.slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #2563eb; cursor: pointer; border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.slider-value {
+  min-width: 52px; text-align: center; font-weight: 700;
+  font-size: 1.1rem; color: #2563eb;
+}
+.slider-untouched::-webkit-slider-thumb {
+  background: #94a3b8 !important;
+}
+.slider-untouched::-moz-range-thumb {
+  background: #94a3b8 !important;
+}
+.slider-hidden-thumb::-webkit-slider-thumb {
+  opacity: 0 !important;
+}
+.slider-hidden-thumb::-moz-range-thumb {
+  opacity: 0 !important;
+}
+.slider-warning {
+  color: #dc2626; font-size: 0.88rem; margin-top: 4px; display: none;
+}
+.slider-labels {
+  display: flex; justify-content: space-between; font-size: 0.8rem; color: #888;
+  margin-top: 2px;
+}
+
+/* Quiz styles */
+.quiz-timer {
+  font-size: 1.3rem; font-weight: 700; text-align: center; margin-bottom: 12px;
+  color: #dc2626;
+}
+.quiz-timer.warning { color: #dc2626; animation: pulse 0.5s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: 1; } to { opacity: 0.5; } }
+
+.pattern-grid-wrapper {
+  display: flex; justify-content: center; margin: 20px 0;
+}
+
+.pattern-grid {
+  display: grid; grid-template-columns: repeat(3, 96px); gap: 4px;
+}
+
+.grid-cell {
+  width: 96px; height: 96px; border: 2px solid #e2e8f0; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; background: #fff;
+}
+
+.grid-cell.mystery {
+  background: #f8fafc; border: 2px dashed #cbd5e1; color: #64748b; font-size: 2rem;
+  font-weight: 700;
+}
+
+.grid-cell.mystery::after {
+  content: '?';
+}
+
+.answer-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0;
+}
+
+.answer-option {
+  border: 2px solid #e2e8f0; border-radius: 12px; padding: 12px; background: #fff;
+  cursor: pointer; transition: all 0.15s; text-align: center; position: relative;
+  min-height: 140px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center;
+}
+
+.answer-option:hover {
+  border-color: #93c5fd; background: #f8fafc; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.answer-option.selected {
+  border-color: #2563eb; background: #eff6ff; box-shadow: 0 4px 12px rgba(37,99,235,0.2);
+}
+
+.answer-option > svg {
+  width: 80px; height: 80px;
+}
+
+/* Comprehension check */
+.check-item {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px;
+  padding: 10px 14px; border-radius: 6px; cursor: pointer;
+  border: 1px solid transparent; transition: background 0.15s;
+}
+.check-item:hover { background: #f8fafc; }
+.check-item input[type="checkbox"] {
+  margin-top: 3px; width: 18px; height: 18px; accent-color: #2563eb;
+}
+
+/* Choice buttons row */
+.choice-row {
+  display: flex; gap: 20px; justify-content: center; margin: 24px 0;
+}
+
+/* Results */
+.results-section {
+  background: #f8fafc; border-radius: 8px; padding: 20px; margin: 16px 0;
+  border: 1px solid #e2e8f0;
+}
+.payment-line {
+  display: flex; justify-content: space-between; padding: 6px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.payment-line:last-child { border: none; }
+.payment-total {
+  display: flex; justify-content: space-between; padding: 10px 0;
+  font-weight: 700; font-size: 1.1rem; border-top: 2px solid #334155;
+  margin-top: 6px;
+}
+
+/* Risk scale */
+.risk-scale {
+  display: flex; gap: 0; justify-content: center; margin: 16px 0;
+}
+.risk-btn {
+  width: 48px; height: 48px; border: 1px solid #cbd5e1;
+  background: #fff; cursor: pointer; font-size: 1rem; font-weight: 500;
+  transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+}
+.risk-btn:first-child { border-radius: 6px 0 0 6px; }
+.risk-btn:last-child { border-radius: 0 6px 6px 0; }
+.risk-btn:hover { background: #f0f4ff; }
+.risk-btn.selected { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+/* Error message */
+.error-msg {
+  color: #dc2626; font-size: 0.9rem; margin-top: 8px;
+  padding: 8px 12px; background: #fef2f2; border-radius: 6px;
+  display: none;
+}
+.error-msg.visible { display: block; }
+
+/* Hidden */
+.hidden { display: none !important; }
+
+/* Consent checkbox */
+.consent-row { display: flex; align-items: center; gap: 10px; margin: 18px 0; }
+.consent-row input { width: 20px; height: 20px; accent-color: #2563eb; }
+</style>
+</head>
+<body>
+
+<div id="progress-bar-container"><div id="progress-bar" style="width:0%"></div></div>
+<div id="experiment-container"></div>
+
+<script>
+/* ==============================================================
+   CONFIGURATION — EDIT THIS SECTION
+   ==============================================================
+   All instruction text, parameters, and quiz content live here.
+   You can change any text without touching the code below.
+   ============================================================== */
+
+// ============================================================================
+// SVG HELPER FUNCTIONS AND COLORS
+// ============================================================================
+
+const COLORS = {
+  blue: '#3b82f6',
+  red: '#ef4444',
+  green: '#22c55e',
+  gray: '#94a3b8',
+  black: '#1e293b',
+  orange: '#f97316',
+  purple: '#8b5cf6',
+};
+
+function svgShape(shape, fill, size, rotation=0, stroke='#1e293b', strokeWidth=2, extraAttrs='') {
+  const s = size;
+  const cx = 40, cy = 40;
+  const w = 80, h = 80;
+
+  let fillStyle = fill;
+  let hatching = '';
+  const pid = Math.random().toString(36).substr(2,8);
+  if (fill === 'striped') {
+    fillStyle = `url(#str-${pid})`;
+    hatching = `<defs><pattern id="str-${pid}" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="${stroke}" stroke-width="1.5"/></pattern></defs>`;
+  }
+  if (fill === 'dotted') {
+    fillStyle = `url(#dot-${pid})`;
+    hatching = `<defs><pattern id="dot-${pid}" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="1.5" fill="${stroke}"/></pattern></defs>`;
+  }
+
+  let shapeEl = '';
+  switch (shape) {
+    case 'circle':
+      shapeEl = `<circle cx="${cx}" cy="${cy}" r="${s}" fill="${fillStyle}" stroke="${stroke}" stroke-width="${strokeWidth}"/>`;
+      break;
+    case 'square':
+      shapeEl = `<rect x="${cx-s}" y="${cy-s}" width="${s*2}" height="${s*2}" fill="${fillStyle}" stroke="${stroke}" stroke-width="${strokeWidth}"/>`;
+      break;
+    case 'triangle':
+      const tx = cx, ty = cy - s;
+      const bx1 = cx - s, by1 = cy + s*0.8;
+      const bx2 = cx + s, by2 = cy + s*0.8;
+      shapeEl = `<polygon points="${tx},${ty} ${bx1},${by1} ${bx2},${by2}" fill="${fillStyle}" stroke="${stroke}" stroke-width="${strokeWidth}"/>`;
+      break;
+    case 'diamond':
+      shapeEl = `<polygon points="${cx},${cy-s} ${cx+s},${cy} ${cx},${cy+s} ${cx-s},${cy}" fill="${fillStyle}" stroke="${stroke}" stroke-width="${strokeWidth}"/>`;
+      break;
+    case 'hexagon':
+      const hpts = [];
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * 60 - 90) * Math.PI / 180;
+        hpts.push(`${cx + s * Math.cos(angle)},${cy + s * Math.sin(angle)}`);
+      }
+      shapeEl = `<polygon points="${hpts.join(' ')}" fill="${fillStyle}" stroke="${stroke}" stroke-width="${strokeWidth}"/>`;
+      break;
+    case 'star':
+      const spts = [];
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? s : s * 0.45;
+        const angle = (i * 36 - 90) * Math.PI / 180;
+        spts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+      }
+      shapeEl = `<polygon points="${spts.join(' ')}" fill="${fillStyle}" stroke="${stroke}" stroke-width="${strokeWidth}"/>`;
+      break;
+    case 'cross':
+      const t = s * 0.35;
+      shapeEl = `<polygon points="${cx-t},${cy-s} ${cx+t},${cy-s} ${cx+t},${cy-t} ${cx+s},${cy-t} ${cx+s},${cy+t} ${cx+t},${cy+t} ${cx+t},${cy+s} ${cx-t},${cy+s} ${cx-t},${cy+t} ${cx-s},${cy+t} ${cx-s},${cy-t} ${cx-t},${cy-t}" fill="${fillStyle}" stroke="${stroke}" stroke-width="${strokeWidth}"/>`;
+      break;
+    case 'arrow':
+      shapeEl = `<polygon points="${cx},${cy-s} ${cx+s*0.7},${cy+s*0.3} ${cx+s*0.25},${cy+s*0.3} ${cx+s*0.25},${cy+s} ${cx-s*0.25},${cy+s} ${cx-s*0.25},${cy+s*0.3} ${cx-s*0.7},${cy+s*0.3}" fill="${fillStyle}" stroke="${stroke}" stroke-width="${strokeWidth}"/>`;
+      break;
+  }
+
+  const transform = rotation ? `transform="rotate(${rotation}, ${cx}, ${cy})"` : '';
+  return `<svg class="shape" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${hatching}<g ${transform} ${extraAttrs}>${shapeEl}</g></svg>`;
+}
+
+function svgMultiShape(shape, fill, count, size, stroke='#1e293b') {
+  const w = 80, h = 80;
+  let inner = '';
+  const pid = Math.random().toString(36).substr(2,8);
+  let defs = '';
+  let fillStyle = fill;
+  if (fill === 'striped') {
+    fillStyle = `url(#str-${pid})`;
+    defs = `<defs><pattern id="str-${pid}" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="${stroke}" stroke-width="1.5"/></pattern></defs>`;
+  }
+
+  const positions = {
+    1: [[40,40]],
+    2: [[25,40],[55,40]],
+    3: [[40,22],[22,52],[58,52]],
+    4: [[25,25],[55,25],[25,55],[55,55]],
+  };
+  const ps = positions[count] || positions[1];
+  const r = count <= 2 ? size : size * 0.7;
+
+  ps.forEach(([cx,cy]) => {
+    switch(shape) {
+      case 'circle':
+        inner += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fillStyle}" stroke="${stroke}" stroke-width="2"/>`;
+        break;
+      case 'square':
+        inner += `<rect x="${cx-r}" y="${cy-r}" width="${r*2}" height="${r*2}" fill="${fillStyle}" stroke="${stroke}" stroke-width="2"/>`;
+        break;
+      case 'triangle':
+        inner += `<polygon points="${cx},${cy-r} ${cx-r},${cy+r*0.8} ${cx+r},${cy+r*0.8}" fill="${fillStyle}" stroke="${stroke}" stroke-width="2"/>`;
+        break;
+      case 'diamond':
+        inner += `<polygon points="${cx},${cy-r} ${cx+r},${cy} ${cx},${cy+r} ${cx-r},${cy}" fill="${fillStyle}" stroke="${stroke}" stroke-width="2"/>`;
+        break;
+    }
+  });
+  return `<svg class="shape" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${defs}${inner}</svg>`;
+}
+
+function svgOverlay(elements) {
+  const w = 80, h = 80;
+  let inner = '';
+  elements.forEach(el => {
+    inner += svgShape(el.shape, el.fill, el.size, el.rotation || 0, el.stroke || '#1e293b', el.strokeWidth || 2)
+      .replace(/<\/?svg[^>]*>/g, '').replace(/<defs>.*?<\/defs>/g, '');
+  });
+  return `<svg class="shape" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${inner}</svg>`;
+}
+
+const CONFIG = {
+
+  // ---- Prolific settings ----
+  prolificCompletionURL: 'https://app.prolific.com/submissions/complete?cc=C1FZIOGC',
+
+  // ---- Google Sheets endpoint ----
+  // After setting up the Google Apps Script, paste the URL here:
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbx6i8y1jrrSJnp2d87759a6bcTCvKrJ5GAJVtAOch2LC1yvsIkV6HXLfc5CgcDvaZp8ug/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+
+  // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
+  tabSwitchExclusionEnabled: false,
+
+  // ---- Study parameters ----
+  numChoiceRounds: 10,
+  outcomesPerRound: 5,
+  payPerH: 0.20,           // $ per H outcome
+  showUpFee: 2.00,         // $ flat fee
+  beliefBonusInitial: 1.00,   // $ BSR stake on initial belief
+  beliefBonusRound: 1.00,     // $ BSR stake on round-level belief (fixed)
+  quizTimePerQuestion: 10, // seconds
+  numQuizQuestions: 12,
+
+  // ---- Random Manager probability display ----
+  // Set to null to use participant's γ* (computed from Study 1 data).
+  // Set to a number (e.g. 40) to show a fixed value to all participants.
+  randomProbDisplay: null,
+
+  // ---- Prior score distribution (for computing γ* and drawing opponents) ----
+  // Placeholder synthetic distributions (n=100 each) for a plausible Prolific US
+  // sample on the Study 2 quiz (12 questions: 4 shared + 8 condition-specific).
+  // Each entry is a score (number of correct answers out of 12).
+  // γ* = fraction of same-condition scores strictly lower + 0.5 × fraction equal.
+  // After the 100-participant pilot, replace these arrays with the observed pilot scores.
+  // EASY synthetic: mean ≈ 8.77, SD ≈ 2.30
+  // HARD synthetic: mean ≈ 5.71, SD ≈ 2.64
+  study1ScoresEasy: [
+    2,3,3,4,4,4,5,5,5,5,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,12,12,12,12,12,12,12,12,12,12
+  ],
+  study1ScoresHard: [
+    0,0,1,1,1,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,10,10,10,10,11,11,11,12,12
+  ],
+
+  // ---- Quiz questions ----
+  // Each question: { id, renderGrid(), renderAnswers(), correctAnswer: 0-3 }
+  // SVG shapes rendered inline — no external image files needed.
+  // 4 shared (2 very easy + 2 very hard) + 8 condition-specific = 12 per participant.
+
+  quizQuestionsShared: [
+    {
+      id: 'SE1',
+      renderGrid: function() {
+        const cells = [];
+        for (let i = 0; i < 8; i++) {
+          cells.push(svgShape('circle', COLORS.blue, 24));
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          svgShape('circle', COLORS.red, 24),
+          svgShape('circle', COLORS.blue, 24),
+          svgShape('square', COLORS.blue, 24),
+          svgShape('circle', '#fff', 24),
+        ];
+      },
+      correctAnswer: 1
+    },
+    {
+      id: 'SE2',
+      renderGrid: function() {
+        const pattern = ['circle','square','circle','square','circle','square','circle','square'];
+        const cells = [];
+        for (let i = 0; i < 8; i++) {
+          cells.push(svgShape(pattern[i], COLORS.green, 22));
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          svgShape('triangle', COLORS.green, 22),
+          svgShape('square', COLORS.green, 22),
+          svgShape('diamond', COLORS.green, 22),
+          svgShape('circle', COLORS.green, 22),
+        ];
+      },
+      correctAnswer: 3
+    },
+    {
+      id: 'SH1',
+      renderGrid: function() {
+        const shapes = ['star', 'hexagon', 'cross'];
+        const sizes = [14, 22, 30];
+        const fillGrid = [
+          ['#fff',       COLORS.orange, COLORS.purple],
+          [COLORS.purple, '#fff',       COLORS.orange],
+          [COLORS.orange, COLORS.purple, '#fff'],
+        ];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            cells.push(svgShape(shapes[c], fillGrid[r][c], sizes[r]));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          svgShape('cross', '#fff', 30),
+          svgShape('cross', COLORS.purple, 30),
+          svgShape('cross', COLORS.orange, 30),
+          svgShape('hexagon', '#fff', 30),
+        ];
+      },
+      correctAnswer: 0
+    },
+    {
+      id: 'SH2',
+      renderGrid: function() {
+        const cells = [];
+        cells.push(svgShape('circle', '#fff', 28, 0, COLORS.blue, 2.5));
+        cells.push(svgShape('triangle', '#fff', 28, 0, COLORS.blue, 2.5));
+        cells.push(svgShape('hexagon', '#fff', 28, 0, COLORS.blue, 2.5));
+        cells.push(svgShape('square', COLORS.blue, 12));
+        cells.push(svgShape('diamond', COLORS.blue, 12));
+        cells.push(svgShape('star', COLORS.blue, 12));
+        cells.push(svgOverlay([{shape:'circle',fill:'#fff',size:28,stroke:COLORS.blue,strokeWidth:2.5},{shape:'square',fill:COLORS.blue,size:12}]));
+        cells.push(svgOverlay([{shape:'triangle',fill:'#fff',size:28,stroke:COLORS.blue,strokeWidth:2.5},{shape:'diamond',fill:COLORS.blue,size:12}]));
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          svgOverlay([{shape:'hexagon',fill:'#fff',size:28,stroke:COLORS.blue,strokeWidth:2.5},{shape:'diamond',fill:COLORS.blue,size:12}]),
+          svgOverlay([{shape:'circle',fill:'#fff',size:28,stroke:COLORS.blue,strokeWidth:2.5},{shape:'star',fill:COLORS.blue,size:12}]),
+          svgOverlay([{shape:'hexagon',fill:'#fff',size:28,stroke:COLORS.blue,strokeWidth:2.5},{shape:'star',fill:COLORS.blue,size:12}]),
+          svgOverlay([{shape:'hexagon',fill:'#fff',size:28,stroke:COLORS.blue,strokeWidth:2.5},{shape:'circle',fill:COLORS.blue,size:12}]),
+        ];
+      },
+      correctAnswer: 2
+    },
+  ],
+  quizQuestionsEasyOnly: [
+    {
+      id: 'E1',
+      renderGrid: function() {
+        const colors = [COLORS.blue, COLORS.red, COLORS.green];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            cells.push(svgShape('circle', colors[c], 24));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          svgShape('circle', COLORS.green, 24),
+          svgShape('circle', COLORS.blue, 24),
+          svgShape('circle', COLORS.red, 24),
+          svgShape('square', COLORS.green, 24),
+        ];
+      },
+      correctAnswer: 0
+    },
+    {
+      id: 'E2',
+      renderGrid: function() {
+        const fills = [COLORS.red, '#fff', 'striped'];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            cells.push(svgShape('square', fills[r], 24, 0, r === 1 ? COLORS.red : '#1e293b'));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          svgShape('square', COLORS.red, 24),
+          svgShape('square', 'striped', 24),
+          svgShape('square', '#fff', 24),
+          svgShape('circle', 'striped', 24),
+        ];
+      },
+      correctAnswer: 1
+    },
+    {
+      id: 'E3',
+      renderGrid: function() {
+        const sizes = [12, 22, 32];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            cells.push(svgShape('diamond', COLORS.blue, sizes[c]));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          svgShape('diamond', COLORS.blue, 22),
+          svgShape('diamond', COLORS.blue, 12),
+          svgShape('diamond', COLORS.blue, 32),
+          svgShape('diamond', COLORS.red, 32),
+        ];
+      },
+      correctAnswer: 2
+    },
+    {
+      id: 'E4',
+      renderGrid: function() {
+        const shapes = ['circle', 'square', 'triangle'];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            cells.push(svgShape(shapes[c], COLORS.red, 24));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          svgShape('triangle', COLORS.red, 24),
+          svgShape('square', COLORS.red, 24),
+          svgShape('circle', COLORS.red, 24),
+          svgShape('triangle', COLORS.blue, 24),
+        ];
+      },
+      correctAnswer: 0
+    },
+    {
+      id: 'E5',
+      renderGrid: function() {
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            cells.push(svgMultiShape('square', COLORS.blue, c+1, 12));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          svgMultiShape('square', COLORS.blue, 2, 12),
+          svgMultiShape('square', COLORS.blue, 1, 12),
+          svgMultiShape('circle', COLORS.blue, 3, 12),
+          svgMultiShape('square', COLORS.blue, 3, 12),
+        ];
+      },
+      correctAnswer: 3
+    },
+    {
+      id: 'E6',
+      renderGrid: function() {
+        const rots = [0, 90, 180];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            cells.push(svgShape('arrow', COLORS.blue, 22, rots[c]));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          svgShape('arrow', COLORS.blue, 22, 90),
+          svgShape('arrow', COLORS.blue, 22, 180),
+          svgShape('arrow', COLORS.blue, 22, 270),
+          svgShape('arrow', COLORS.blue, 22, 0),
+        ];
+      },
+      correctAnswer: 1
+    },
+    {
+      id: 'E7',
+      renderGrid: function() {
+        const strokes = [1, 3, 5];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            cells.push(svgShape('circle', '#fff', 24, 0, COLORS.black, strokes[r]));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          svgShape('circle', '#fff', 24, 0, COLORS.black, 1),
+          svgShape('circle', '#fff', 24, 0, COLORS.black, 3),
+          svgShape('circle', '#fff', 24, 0, COLORS.black, 5),
+          svgShape('square', '#fff', 24, 0, COLORS.black, 5),
+        ];
+      },
+      correctAnswer: 2
+    },
+    {
+      id: 'E8',
+      renderGrid: function() {
+        const cells = [];
+        const positions = [
+          [[15,15],[40,15],[65,15]],
+          [[15,40],[40,40],[65,40]],
+          [[15,65],[40,65],[65,65]],
+        ];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const [px,py] = positions[r][c];
+            cells.push(`<svg class="shape" width="80" height="80" viewBox="0 0 80 80"><circle cx="${px}" cy="${py}" r="10" fill="${COLORS.blue}"/></svg>`);
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          `<svg class="shape" width="80" height="80" viewBox="0 0 80 80"><circle cx="65" cy="65" r="10" fill="${COLORS.blue}"/></svg>`,
+          `<svg class="shape" width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="65" r="10" fill="${COLORS.blue}"/></svg>`,
+          `<svg class="shape" width="80" height="80" viewBox="0 0 80 80"><circle cx="65" cy="40" r="10" fill="${COLORS.blue}"/></svg>`,
+          `<svg class="shape" width="80" height="80" viewBox="0 0 80 80"><circle cx="15" cy="65" r="10" fill="${COLORS.blue}"/></svg>`,
+        ];
+      },
+      correctAnswer: 0
+    },
+  ],
+  quizQuestionsHardOnly: [
+    {
+      // H1: Triple Latin square — shape, fill, size each cycle with a different linear offset.
+      // shape=(r+c)%3, fill=(r+2c)%3, size=(2r+c)%3
+      id: 'H1',
+      renderGrid: function() {
+        const shapes = ['circle', 'square', 'triangle'];
+        const fills = [COLORS.blue, '#fff', 'striped'];
+        const sizes = [18, 24, 30];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const si = (r + c) % 3;
+            const fi = (r + 2 * c) % 3;
+            const zi = (2 * r + c) % 3;
+            cells.push(svgShape(shapes[si], fills[fi], sizes[zi]));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Missing (2,2): shape=(2+2)%3=1=square, fill=(2+4)%3=0=blue, size=(4+2)%3=0=18
+        return [
+          svgShape('square', COLORS.blue, 24),  // size off
+          svgShape('square', '#fff', 18),       // fill off
+          svgShape('square', COLORS.blue, 18),  // CORRECT
+          svgShape('circle', COLORS.blue, 18),  // shape off
+        ];
+      },
+      correctAnswer: 2
+    },
+    {
+      // H2: Rotation + shape + fill with different offsets; uses rotatable shapes only.
+      // shape=(r+c)%3, rot=((c-r+3)%3)*120, fill=(2r+c)%3
+      id: 'H2',
+      renderGrid: function() {
+        const shapes = ['triangle', 'arrow', 'diamond'];
+        const fills = [COLORS.blue, COLORS.red, '#fff'];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const si = (r + c) % 3;
+            const rot = ((c - r + 3) % 3) * 120;
+            const fi = (2 * r + c) % 3;
+            cells.push(svgShape(shapes[si], fills[fi], 24, rot));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Missing (2,2): shape=arrow, rot=0°, fill=blue
+        return [
+          svgShape('arrow', COLORS.blue, 24, 0),   // CORRECT
+          svgShape('arrow', COLORS.blue, 24, 120), // rotation off
+          svgShape('arrow', COLORS.red, 24, 0),    // fill off
+          svgShape('triangle', COLORS.blue, 24, 0),// shape off
+        ];
+      },
+      correctAnswer: 0
+    },
+    {
+      // H3: Count + shape + fill, each with different linear offsets. Uses svgMultiShape.
+      // shape=(2r+c)%3, fill=(r+c)%3, count=((r+2c)%3)+1
+      id: 'H3',
+      renderGrid: function() {
+        const shapes = ['circle', 'square', 'triangle'];
+        const fills = [COLORS.green, '#fff', 'striped'];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const si = (2 * r + c) % 3;
+            const fi = (r + c) % 3;
+            const count = ((r + 2 * c) % 3) + 1;
+            cells.push(svgMultiShape(shapes[si], fills[fi], count, 12));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Missing (2,2): shape=(4+2)%3=0=circle, fill=(2+2)%3=1=#fff, count=((2+4)%3)+1=1
+        return [
+          svgMultiShape('circle', '#fff', 2, 12),     // count off
+          svgMultiShape('circle', COLORS.green, 1, 12),// fill off
+          svgMultiShape('triangle', '#fff', 1, 12),    // shape off
+          svgMultiShape('circle', '#fff', 1, 12),      // CORRECT
+        ];
+      },
+      correctAnswer: 3
+    },
+    {
+      // H4: Overlay — outer shape, inner shape, and outer fill each cycle independently.
+      // outer=(r+c)%3, inner=(2r+c)%3, outerFill=(r+2c)%3
+      id: 'H4',
+      renderGrid: function() {
+        const outerShapes = ['circle', 'square', 'hexagon'];
+        const innerShapes = ['diamond', 'star', 'cross'];
+        const outerFills = ['#fff', COLORS.blue, 'striped'];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const oi = (r + c) % 3;
+            const ii = (2 * r + c) % 3;
+            const fi = (r + 2 * c) % 3;
+            cells.push(svgOverlay([
+              { shape: outerShapes[oi], fill: outerFills[fi], size: 30 },
+              { shape: innerShapes[ii], fill: COLORS.red, size: 12 },
+            ]));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Missing (2,2): outer=(2+2)%3=1=square, inner=(4+2)%3=0=diamond, outerFill=(2+4)%3=0=#fff
+        const correct = svgOverlay([
+          { shape: 'square', fill: '#fff', size: 30 },
+          { shape: 'diamond', fill: COLORS.red, size: 12 },
+        ]);
+        const fillOff = svgOverlay([
+          { shape: 'square', fill: COLORS.blue, size: 30 },
+          { shape: 'diamond', fill: COLORS.red, size: 12 },
+        ]);
+        const outerOff = svgOverlay([
+          { shape: 'circle', fill: '#fff', size: 30 },
+          { shape: 'diamond', fill: COLORS.red, size: 12 },
+        ]);
+        const innerOff = svgOverlay([
+          { shape: 'square', fill: '#fff', size: 30 },
+          { shape: 'star', fill: COLORS.red, size: 12 },
+        ]);
+        return [fillOff, outerOff, correct, innerOff];
+      },
+      correctAnswer: 2
+    },
+    {
+      // H5: Size + fill + shape, Latin square on all three with different offsets.
+      // shape=(r+2c)%3, fill=(2r+c)%3, size=(r+c)%3
+      id: 'H5',
+      renderGrid: function() {
+        const shapes = ['diamond', 'star', 'cross'];
+        const fills = [COLORS.purple, COLORS.orange, '#fff'];
+        const sizes = [16, 22, 28];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const si = (r + 2 * c) % 3;
+            const fi = (2 * r + c) % 3;
+            const zi = (r + c) % 3;
+            cells.push(svgShape(shapes[si], fills[fi], sizes[zi]));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Missing (2,2): shape=(2+4)%3=0=diamond, fill=(4+2)%3=0=purple, size=(2+2)%3=1=22
+        return [
+          svgShape('diamond', COLORS.purple, 28), // size off
+          svgShape('diamond', COLORS.purple, 22), // CORRECT
+          svgShape('diamond', COLORS.orange, 22), // fill off
+          svgShape('star', COLORS.purple, 22),    // shape off
+        ];
+      },
+      correctAnswer: 1
+    },
+    {
+      // H6: Count (multi-shape) + shape + fill cycling with different offsets.
+      // shape=(r+2c)%3, fill=(2r+c)%3, count=((r+c)%3)+1
+      id: 'H6',
+      renderGrid: function() {
+        const shapes = ['circle', 'square', 'triangle'];
+        const fills = [COLORS.red, COLORS.blue, COLORS.green];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const si = (r + 2 * c) % 3;
+            const fi = (2 * r + c) % 3;
+            const count = ((r + c) % 3) + 1;
+            cells.push(svgMultiShape(shapes[si], fills[fi], count, 12));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Missing (2,2): shape=(2+4)%3=0=circle, fill=(4+2)%3=0=red, count=((2+2)%3)+1=2
+        return [
+          svgMultiShape('circle', COLORS.blue, 2, 12),  // fill off
+          svgMultiShape('circle', COLORS.red, 1, 12),   // count off
+          svgMultiShape('square', COLORS.red, 2, 12),   // shape off
+          svgMultiShape('circle', COLORS.red, 2, 12),   // CORRECT
+        ];
+      },
+      correctAnswer: 3
+    },
+    {
+      // H7: FOUR-dimensional — shape + fill + size + rotation, all cycling with different offsets.
+      // shape=(r+c)%3, fill=(r+2c)%3, size=(2r+c)%3, rot=((r+c+1)%3)*120
+      id: 'H7',
+      renderGrid: function() {
+        const shapes = ['triangle', 'arrow', 'diamond'];
+        const fills = [COLORS.blue, COLORS.red, COLORS.green];
+        const sizes = [18, 24, 30];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const si = (r + c) % 3;
+            const fi = (r + 2 * c) % 3;
+            const zi = (2 * r + c) % 3;
+            const rot = ((r + c + 1) % 3) * 120;
+            cells.push(svgShape(shapes[si], fills[fi], sizes[zi], rot));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Missing (2,2): shape=(2+2)%3=1=arrow, fill=(2+4)%3=0=blue, size=(4+2)%3=0=18, rot=((2+2+1)%3)*120=240
+        return [
+          svgShape('arrow', COLORS.blue, 18, 240),  // CORRECT
+          svgShape('arrow', COLORS.blue, 18, 0),    // rotation off
+          svgShape('arrow', COLORS.blue, 24, 240),  // size off
+          svgShape('arrow', COLORS.red, 18, 240),   // fill off
+        ];
+      },
+      correctAnswer: 0
+    },
+    {
+      // H8: Size + shape + fill (third triple Latin square with different shape set).
+      // shape=(r+c)%3, fill=(2r+c)%3, size=(r+2c)%3
+      id: 'H8',
+      renderGrid: function() {
+        const shapes = ['star', 'hexagon', 'cross'];
+        const fills = ['#fff', COLORS.blue, 'striped'];
+        const sizes = [16, 22, 28];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const si = (r + c) % 3;
+            const fi = (2 * r + c) % 3;
+            const zi = (r + 2 * c) % 3;
+            cells.push(svgShape(shapes[si], fills[fi], sizes[zi]));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Missing (2,2): shape=(2+2)%3=1=hexagon, fill=(4+2)%3=0=#fff, size=(2+4)%3=0=16
+        return [
+          svgShape('hexagon', COLORS.blue, 16), // fill off
+          svgShape('hexagon', '#fff', 16),      // CORRECT
+          svgShape('star', '#fff', 16),         // shape off
+          svgShape('hexagon', '#fff', 22),      // size off
+        ];
+      },
+      correctAnswer: 1
+    },
+  ],
+
+  // ---- Sample question for instructions ----
+  sampleQuestion: {
+    renderGrid: function() {
+      const shapes = ['circle', 'square', 'circle'];
+      const colors = [COLORS.blue, COLORS.blue, COLORS.red];
+      const cells = [];
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          if (r === 2 && c === 2) continue;
+          cells.push(svgShape(shapes[c], colors[r], 24));
+        }
+      }
+      return cells;
+    },
+    renderAnswers: function() {
+      return [
+        svgShape('circle', COLORS.blue, 24),
+        svgShape('circle', COLORS.red, 24),
+        svgShape('square', COLORS.red, 24),
+        svgShape('circle', COLORS.green, 24),
+      ];
+    },
+    correctAnswer: 1
+  },
+
+  // ---- Instruction text ----
+  // You can edit all participant-facing text below.
+  texts: {
+
+    welcome: `Welcome to our study! As a reminder, you must complete this survey on a <strong>desktop computer</strong>. No mobile devices are allowed. Please click next to continue.`,
+
+    consent: {
+      title: 'Consent Form',
+      pi: 'Yesim Orhun (University of Michigan)',
+      coPi: 'Christoph Drobner (Central European University)',
+      body: `You are invited to participate in a research study about decision-making. If you agree to be part of the research study, you will be asked to make decisions on your computer. Data collected during the experiment will be linked only to your Prolific ID, and in no way will it be linked to your name. Therefore, your behavior during this study is completely anonymous.`,
+      benefits: `You may not receive any personal benefits from being in this study. However, others may benefit from the knowledge gained from this study.`,
+      risks: `This study involves behavioral tasks and does not pose more than minimal risks to you physically, psychologically, and legally.`,
+      compensation: () => {
+        const maxBonus = CONFIG.beliefBonusInitial
+                       + STATE.bsrStakeRound
+                       + (CONFIG.outcomesPerRound * CONFIG.payPerH);
+        return `You will receive a completion fee of $${CONFIG.showUpFee.toFixed(2)}. In addition, you can earn additional payments of up to $${maxBonus.toFixed(2)} based on your decisions during the study. Further details will be given in the instructions when the study begins.`;
+      },
+      voluntary: `Participating in this study is completely voluntary. Even if you decide to participate now, you may change your mind and stop at any time. If you have questions about this research study, please contact Christoph Drobner (drobnerc@ceu.edu).`,
+      irb: `As part of their review, the University of Michigan Institutional Review Board Health Sciences and Behavioral Sciences has determined that this study is no more than minimal risk and exempt from on-going IRB oversight.`,
+      agreement: `Please check the box below if you attest to being at least 18 years old and agree to take part in the study.`,
+    },
+
+    studyRules: `<p>All instructions and information you receive in this study are <strong>true and accurate</strong>.</p>
+      <p><strong>No AI tools:</strong> The use of AI tools (such as ChatGPT, Copilot, or similar) is strictly prohibited during this study. We trust you to complete this study using only your own reasoning. Please treat this as a commitment to honest participation — your integrity is essential to the quality of our research.</p>`,
+
+    quizInstructions: `<p>You will begin by completing a short logic quiz with <strong>12&nbsp;questions</strong>. You will have <strong>10&nbsp;seconds</strong> to solve each question.</p>
+      <p><strong>The higher your score, the more you can earn.</strong> So please do your best.</p>
+      <p>Each question shows a 3×3 grid of shapes following a pattern. The bottom-right cell is missing (marked with ?). Select the answer that best completes the pattern.</p>`,
+
+    sampleQuestionPrompt: `Below is a sample question. The 3×3 grid follows a pattern, and the bottom-right cell is missing. <strong>Click on the answer that you think completes the pattern.</strong>`,
+
+    sampleQuestionFeedbackCorrect: `<strong style="color:#059669;">Correct!</strong> You will see questions of varying difficulty. If a question feels hard to solve, it is probably a difficult question for everyone. Do your best at all times — the better you perform, the more you can earn.`,
+
+    sampleQuestionFeedbackWrong: `<strong style="color:#dc2626;">Not quite.</strong> The correct answer is now highlighted in green. You will see questions of varying difficulty. If a question feels hard to solve, it is probably a difficult question for everyone. Do your best at all times — the better you perform, the more you can earn.`,
+
+    scoreAnnouncement: (score, total) =>
+      `You have solved <strong>${score}/${total}</strong> questions of the logic quiz correctly.`,
+
+    beliefElicitationPrompt: `<p>Suppose we randomly pick another participant who also took this quiz.</p>
+      <p>We will ask you to give us your best guess about your chance of beating them (ties decided by a coin flip), and then to tell us how confident you are about that guess.</p>
+      <p>The more accurate your guess, the higher your chance of winning a <strong>$1 prize</strong>. <strong>The way we calculate this prize is designed so that reporting your true beliefs maximizes your chance of winning.</strong></p>`,
+
+    confidencePrompt: `How certain or uncertain are you about this guess?`,
+
+    transition: `<p>Your quiz performance will now be used to determine some of your earnings in the next part of the study.</p>
+      <p>Please read the following instructions carefully. After each instruction page, short questions will help make sure everything is clear. You can only continue once all questions are answered correctly, and you can always go back to re-read the instructions.</p>`,
+
+    comprehensionCheck0: {
+      prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
+      backScreen: 'quizInstructions',
+      items: [
+        { text: 'Scoring higher on the quiz increases my payoff.', correct: true },
+        { text: 'The quiz has no effect on my earnings.', correct: false },
+      ],
+    },
+
+    managerInstructions1: (randomProb) => ({
+      intro: `<p>Imagine you have started a new job in which you can <strong>decide</strong> to work with one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-random">Random Manager</strong>.</p>
+        <p>Whichever manager you decide to work with gives you bonuses. Each bonus is either <strong>H</strong> (pays $0.20) or <strong>L</strong> (pays $0). The two managers decide bonuses differently:</p>`,
+      performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> For each bonus, a different random participant from a reference sample of participants who took this same quiz is picked, and your score on the quiz you just took is compared to theirs. You receive <strong>H</strong> if you would beat that participant; if you would tie, the winner is decided by a coin flip; and you receive <strong>L</strong> if you would lose. So the Performance Manager's chance of paying H on a single draw depends on how well you actually scored on the quiz you just took.</li></ul>`,
+      random: `<ul style="margin:0;"><li><strong class="eval-random">Random Manager:</strong> Each bonus is decided independently by a random draw. The Random Manager does <strong>not</strong> compare you to anyone — you receive <strong>H</strong> with a probability of <strong>${randomProb}%</strong> and <strong>L</strong> with probability <strong>${100 - randomProb}%</strong>. This probability is the same for every bonus and every round.</li></ul>`,
+    }),
+
+    hProbElicitationIntro: `<p>Before we continue, let's make sure you understand how likely each manager is to give you an <strong>H</strong> bonus.</p>
+      <p>Think about your quiz score and what each manager does, then answer the two questions below.</p>`,
+
+    managerInstructions2a: `<p>There are <strong>10 rounds</strong>. Each round proceeds as follows:</p>
+      <ol>
+        <li><strong>Choose your manager.</strong> You decide whether to work with the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-random">Random Manager</strong> for this round.</li>
+        <li><strong>Receive bonuses.</strong> The manager you chose gives you 5 bonuses (each H or L).</li>
+        <li><strong>Performance guess.</strong> After seeing the bonuses, you report your best guess of the percent chance you would beat a randomly picked participant on the quiz, where ties are decided by a coin flip.</li>
+      </ol>
+      <p>After reporting your guess, you choose which manager to work with in the next round. You may stay with your current manager or switch.</p>`,
+
+    managerInstructions2b: (randomProb, roundBsr) => `<p><strong>Payment.</strong> In addition to your earlier earnings, this part of the study determines two further payments:</p>
+      <ul>
+        <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 10 rounds and pays you for the bonuses earned in that round ($0.20 per H, $0 per L).</li>
+        <li><strong>Round belief payment.</strong> The computer randomly selects <strong>one</strong> of your 10 guesses (one from each round) and scores it: the more accurate your guess, the higher your chance of winning a <strong>$${roundBsr.toFixed(0)} prize</strong>.</li>
+      </ul>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin:18px 0;">
+        <p style="margin:0 0 10px;font-weight:600;color:#1e40af;">Why does your manager choice matter for your guess?</p>
+        <p style="margin:0;">Because the Performance Manager's bonuses are determined by comparing your score to other participants, observing those bonuses may help you form a better guess about how you compare. The <strong class="eval-random">Random Manager's</strong> bonuses are determined by random draws at a known probability, so observing those bonuses does not give you new information about your quiz performance.</p>
+      </div>
+
+      <p><strong>The way we calculate belief bonuses is designed so that reporting your true beliefs maximizes your chance of winning.</strong> Because any single round could be the one that counts, treat every round seriously.</p>`,
+
+    comprehensionCheck1: (randomProb) => ({
+      prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
+      backScreen: 'managerInstructions1',
+      items: [
+        { text: "The Performance Manager decides each bonus by comparing my quiz score to a randomly picked participant's score, paying H if I beat them (coin flip on ties).", correct: true },
+        { text: "For the Performance Manager, the same random participant is used for every bonus I receive.", correct: false },
+        { text: `The Random Manager pays H with a probability of ${randomProb}% on every draw, and this probability is the same in every round.`, correct: true },
+        { text: "The Random Manager compares my quiz score to other participants to decide each bonus.", correct: false },
+        { text: 'Each H bonus pays $0.20 and each L bonus pays $0.', correct: true },
+      ],
+    }),
+
+    comprehensionCheck2: (randomProb, roundBsr) => ({
+      prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
+      backScreen: 'managerInstructions2b',
+      items: [
+        { text: 'In every round I get to choose whether to work with the Performance Manager or the Random Manager.', correct: true },
+        { text: 'I will be paid for the bonuses from all rounds.', correct: false },
+        { text: 'I should always report my true best guess, regardless of which manager I chose.', correct: true },
+        { text: 'My total payment depends only on the bonuses; my guesses do not affect my payment.', correct: false },
+      ],
+    }),
+
+    readyToBegin: `<p>You're about to begin 10 rounds. Here's a quick recap of each round:</p>
+      <ol>
+        <li><strong>Choose</strong> the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-random">Random Manager</strong></li>
+        <li><strong>Receive</strong> 5 bonuses (H or L) from your chosen manager</li>
+        <li><strong>Report</strong> your best guess about your chance of beating a randomly picked participant</li>
+      </ol>
+      <p>One random round determines your manager payment, and one random guess is scored for the belief payment. Ready?</p>`,
+
+    beliefQ2: `What is the percent chance you would beat a randomly picked participant on the quiz, where ties are decided by a coin flip?`,
+
+    riskPreferences: `<p>How do you see yourself: are you a person who is generally willing to take risks, or do you try to avoid taking risks?</p>
+      <p>Please use a scale from 0 to 10, where 0 means you are "completely unwilling to take risks" and 10 means you are "very willing to take risks." You can also use the values in-between to indicate where you fall on the scale.</p>`,
+
+    ambiguityPreferencesIntro: `Please imagine the following <strong>hypothetical</strong> situation (no actual payment is involved):`,
+    ambiguityPreferencesBold: `You can choose between drawing a ball from two different urns, urn&nbsp;A and urn&nbsp;B.`,
+    urnADescription: `<strong>Urn&nbsp;A</strong> contains 100&nbsp;balls, some are white and some are black. However, you don't know how many balls are white and how many balls are black. Any combination is possible. There might be from 0 to 100 white balls, with the remaining balls being black.`,
+    urnBDescription: `<strong>Urn&nbsp;B</strong> contains 100&nbsp;balls as well, but you know that it contains exactly 50&nbsp;white balls and 50&nbsp;black balls.`,
+    ambiguityColorPrompt: `Now choose a color, either <strong>White</strong> or <strong>Black</strong>.`,
+    ambiguityPayoff: `Suppose you win <strong>$100</strong> if you draw a ball of the color you have selected. If the ball is of the other color, you win nothing.`,
+    ambiguityQuestion: `From which urn would you prefer drawing a ball?`,
+
+    resultsReveal: (payRoundNum, payRoundMgrId) => {
+      const mgrLabel = payRoundMgrId === 'performance'
+        ? '<span class="eval-performance">Performance Manager</span>'
+        : '<span class="eval-random">Random Manager</span>';
+      return `<p>Thank you for completing the study! Here are your results.</p>
+      <p><strong>Selected round:</strong> Round ${payRoundNum} was randomly selected for payment. Your manager in that round was the ${mgrLabel}.</p>
+`;
+    },
+
+    prolificRedirect: `<strong>Please click the button below to be redirected back to Prolific and register your submission.</strong>`,
+  },
+};
+
+
+/* ==============================================================
+   EXPERIMENT STATE — do NOT edit below unless you know JS
+   ============================================================== */
+
+const STATE = {
+  // Prolific params
+  prolificPid: null,
+  studyId: null,
+  sessionId: null,
+
+  // Condition assignment
+  quizCondition: null,    // 'easy' or 'hard'
+  bsrStakeRound: 2.00,    // $ BSR stake for round-level beliefs (fixed)
+
+  // Quiz
+  quizAnswers: [],     // [{questionId, selected, correct, timeSpent}]
+  quizScore: 0,
+  gammaStar: null,     // true ability (percentile from Study 1)
+  randomProbShown: null, // the [XX]% shown to participant
+
+  // Initial beliefs (post-quiz, μ + 7-level confidence elicitation)
+  initialMu: null,             // Best guess μ (0–100 integer)
+  initialConfidence: null,     // Confidence level (1–7 integer)
+  initialGamma: null,          // alias for initialMu (kept for legacy code paths)
+  initialBeliefEdits: [],      // [{ timestamp, field: 'mu'|'confidence', oldValue, newValue, trigger }]
+  initialAlpha: null,          // Beta α fitted to (P10, P50, P90)
+  initialBeta: null,           // Beta β fitted to (P10, P50, P90)
+
+  // Post-managerInstructions1 H-likelihood elicitation
+  elicitedPerfHProb: null,
+  elicitedRandHProb: null,
+  elicitedBetterManager: null,   // 'performance' | 'random' | 'same'
+
+  // Rounds data: array of round objects
+  rounds: [],
+  // Each round: { roundNum (1-10), manager ('performance'|'random'),
+  //   transferred (bool, null for round 1), outcomes: ['H'|'L',...],
+  //   opponentScores: [int,...], earnings: float,
+  //   beliefGamma: int (0-100) }
+
+  currentManager: null, // 'performance' or 'random'
+  currentRound: 1,        // 1-10
+
+  // Post-experiment
+  riskPreference: null,
+  ambiguityAnswers: {},
+  demographicAge: null,
+  demographicGender: null,
+  feedbackClarity: '',
+  feedbackComplaints: '',
+
+  // Payment resolution
+  selectedPaymentRound: null,
+  // Initial belief bonus (initial gamma, $2 BSR)
+  beliefBonusInitial_won: false,
+  beliefBonusInitial_amount: 0,
+  // Round belief bonus (one random round γ belief, BSR stake = bsrStakeRound)
+  selectedBeliefRound: null,
+  beliefBonusRound_won: false,
+  beliefBonusRound_amount: 0,
+  outcomeEarnings: 0,
+  totalBonus: 0,
+
+  // Comprehension check failure tracking
+  comprehensionAttempts: {},  // { checkId: numberOfFailedAttempts }
+
+  // Timestamps
+  startTime: null,
+  screenTimestamps: [],
+  screenDurations: {},
+
+  // Focus tracking (AI detection)
+  tabSwitches: [],
+  totalFocusLostMs: 0,
+  copyAttempts: 0,
+};
+
+
+/* ==============================================================
+   UTILITY FUNCTIONS
+   ============================================================== */
+
+// Get URL parameters (for Prolific)
+function getUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  STATE.prolificPid = params.get('PROLIFIC_PID') || 'test_' + Math.random().toString(36).slice(2,8);
+  STATE.studyId = params.get('STUDY_ID') || 'test_study';
+  STATE.sessionId = params.get('SESSION_ID') || 'test_session';
+}
+
+// Compute γ* from Study 1 scores (condition-specific)
+function computeGammaStar(participantScore) {
+  const scores = STATE.quizCondition === 'easy' ? CONFIG.study1ScoresEasy : CONFIG.study1ScoresHard;
+  const n = scores.length;
+  let below = 0, equal = 0;
+  for (const s of scores) {
+    if (s < participantScore) below++;
+    else if (s === participantScore) equal++;
+  }
+  // γ* = P(beat) + 0.5 * P(tie), expressed as percentage
+  return Math.round(((below + 0.5 * equal) / n) * 100);
+}
+
+// Generate outcomes for a round
+function generateOutcomes(participantScore, count) {
+  const n = count || CONFIG.outcomesPerRound;
+  const outcomes = [];
+  const opponents = [];
+  const scores = STATE.quizCondition === 'easy' ? CONFIG.study1ScoresEasy : CONFIG.study1ScoresHard;
+  for (let i = 0; i < n; i++) {
+    const oppIdx = Math.floor(Math.random() * scores.length);
+    const oppScore = scores[oppIdx];
+    opponents.push(oppScore);
+    // H if participant strictly beats opponent; tie broken randomly (50/50)
+    if (participantScore > oppScore) outcomes.push('H');
+    else if (participantScore === oppScore) outcomes.push(Math.random() < 0.5 ? 'H' : 'L');
+    else outcomes.push('L');
+  }
+  return { outcomes, opponents };
+}
+
+// BSR: Binarized Scoring Rule
+// Given reported belief p (0-1) and realized event (true/false),
+// returns probability of winning the $1 prize.
+function bsrWinProbability(p, eventOccurred) {
+  // BSR: draw random r ~ Uniform[0,1]
+  // If event occurred: win if r ≤ 2p - p²
+  // If event did not occur: win if r ≤ 1 - p²
+  // Simplification: win prob = 1 - (1-p)² if event, 1 - p² if not
+  if (eventOccurred) {
+    return 1 - (1 - p) * (1 - p);
+  } else {
+    return 1 - p * p;
+  }
+}
+
+// Resolve BSR for a given belief
+function resolveBSR(beliefPercent, eventOccurred, maxPrize) {
+  const p = beliefPercent / 100;
+  const winProb = bsrWinProbability(p, eventOccurred);
+  const won = Math.random() < winProb;
+  return { winProb, won, amount: won ? maxPrize : 0 };
+}
+
+// Container reference
+const container = document.getElementById('experiment-container');
+const progressBar = document.getElementById('progress-bar');
+
+function updateProgress(fraction) {
+  progressBar.style.width = (fraction * 100) + '%';
+}
+
+function logTimestamp(screenName) {
+  const now = Date.now();
+  const stamps = STATE.screenTimestamps;
+  // Compute duration for the previous screen
+  if (stamps.length > 0) {
+    const prev = stamps[stamps.length - 1];
+    const dur = now - prev.time;
+    prev.durationMs = dur;
+    // Accumulate in screenDurations (some screens may appear multiple times, e.g. choice rounds)
+    const key = prev.screen;
+    if (!STATE.screenDurations[key]) STATE.screenDurations[key] = [];
+    STATE.screenDurations[key].push(dur);
+  }
+  stamps.push({ screen: screenName, time: now });
+}
+
+// Manager display helpers (disclosed-types design)
+function managerName(mgr_id) {
+  return mgr_id === 'performance' ? 'Performance Manager' : 'Random Manager';
+}
+function managerClass(mgr_id) {
+  return mgr_id === 'performance' ? 'eval-performance' : 'eval-random';
+}
+function managerLabel(mgr_id) {
+  return `<span class="${managerClass(mgr_id)}">${managerName(mgr_id)}</span>`;
+}
+function otherManager(mgr_id) {
+  return mgr_id === 'performance' ? 'random' : 'performance';
+}
+
+// Unified manager-choice screen used for ALL rounds (including round 1).
+// `belief` is the participant's current γ estimate; `round` is the upcoming round number.
+// `onChoose` is the JS function name to call: 'roundInitialChoice' (round 1) or 'roundMakeChoiceByMgr' (rounds 2+).
+function buildManagerChoiceHTML(round, belief, onChoose) {
+  const rp   = STATE.randomProbShown;
+  const payH = CONFIG.payPerH.toFixed(2);
+
+  function cardHTML(mgr) {
+    const isPerf = mgr === 'performance';
+    const colorClass = isPerf ? 'eval-performance' : 'eval-random';
+    const pH = isPerf ? belief : rp;       // probability of H
+    const pL = 100 - pH;                   // probability of L
+
+    // Main statement combining probability and payoff.
+    const mainText = isPerf
+      ? `Based on your latest guess about beating a randomly picked participant, each of the 5 bonuses pays <strong>H</strong> ($${payH}) with probability <strong>${pH}%</strong> and <strong>L</strong> ($0.00) with probability <strong>${pL}%</strong>.`
+      : `Each of the 5 bonuses pays <strong>H</strong> ($${payH}) with a fixed probability of <strong>${pH}%</strong> and <strong>L</strong> ($0.00) with probability <strong>${pL}%</strong>.`;
+
+    return `
+      <div style="flex:1;border:2px solid #e2e8f0;border-radius:12px;padding:18px 16px 14px;display:flex;flex-direction:column;gap:12px;">
+        <h3 style="margin:0;text-align:center;" class="${colorClass}">${managerName(mgr)}</h3>
+        <div style="background:#f8fafc;border-radius:8px;padding:12px 14px;">
+          <p style="margin:0;font-size:0.92rem;line-height:1.45;">${mainText}</p>
+        </div>
+        <button class="btn btn-choice" style="margin-top:auto;width:100%;" onclick="${onChoose}('${mgr}')">
+          Choose<br>${managerLabel(mgr)}
+        </button>
+      </div>`;
+  }
+
+  return `
+    <div class="screen-header">
+      <h2>Which manager would you like for Round ${round}?</h2>
+      <span class="round-info">Round ${round} of ${CONFIG.numChoiceRounds}</span>
+    </div>
+
+    <div style="display:flex;gap:16px;margin:18px 0;">
+      ${cardHTML('performance')}
+      ${cardHTML('random')}
+    </div>`;
+}
+
+
+/* ==============================================================
+   BETA DISTRIBUTION WIDGET (Bosch-Rosa et al. "Direct method")
+   ============================================================== */
+
+function logGamma(z) {
+  // Lanczos approximation
+  const g = 7;
+  const c = [0.99999999999980993,676.5203681218851,-1259.1392167224028,
+    771.32342877765313,-176.61502916214059,12.507343278686905,
+    -0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - logGamma(1 - z);
+  z -= 1;
+  let x = c[0];
+  for (let i = 1; i < g + 2; i++) x += c[i] / (z + i);
+  const t = z + g + 0.5;
+  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+}
+
+function logBetaFn(a, b) {
+  return logGamma(a) + logGamma(b) - logGamma(a + b);
+}
+
+function betaPDF(x, alpha, beta) {
+  if (x <= 0 || x >= 1) return 0;
+  return Math.exp((alpha - 1) * Math.log(x) + (beta - 1) * Math.log(1 - x) - logBetaFn(alpha, beta));
+}
+
+// ---- Regularized incomplete beta (CDF) via Lentz continued fraction ----
+function betaCF(x, a, b) {
+  const MAXIT = 200, EPS = 3e-7, FPMIN = 1e-30;
+  const qab = a + b, qap = a + 1, qam = a - 1;
+  let c = 1, d = 1 - qab * x / qap;
+  if (Math.abs(d) < FPMIN) d = FPMIN;
+  d = 1 / d;
+  let h = d;
+  for (let m = 1; m <= MAXIT; m++) {
+    const m2 = 2 * m;
+    let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d; h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d;
+    const del = d * c;
+    h *= del;
+    if (Math.abs(del - 1) < EPS) break;
+  }
+  return h;
+}
+
+function betaCDF(x, a, b) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const lbeta = logGamma(a) + logGamma(b) - logGamma(a + b);
+  if (x < (a + 1) / (a + b + 2)) {
+    return Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lbeta) / a * betaCF(x, a, b);
+  }
+  return 1 - Math.exp(b * Math.log(1 - x) + a * Math.log(x) - lbeta) / b * betaCF(1 - x, b, a);
+}
+
+// Invert the Beta CDF via binary search (used by the μ+confidence widget).
+function betaCDFInverse(p, a, b) {
+  if (p <= 0) return 0;
+  if (p >= 1) return 1;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    betaCDF(mid, a, b) < p ? (lo = mid) : (hi = mid);
+  }
+  return (lo + hi) / 2;
+}
+
+function markSliderTouched(slider) {
+  slider.classList.remove('slider-untouched');
+  slider.dataset.touched = '1';
+  const warn = slider.closest('.beta-widget, .screen-content, .card')?.querySelector('.slider-warning');
+  if (warn) {
+    const allSliders = slider.closest('.beta-widget, .screen-content, .card')?.querySelectorAll('input[type="range"]');
+    if (allSliders && [...allSliders].every(s => s.dataset.touched)) warn.style.display = 'none';
+  }
+}
+
+function requireSliders(sliderIds, warningId) {
+  const untouched = sliderIds.filter(id => {
+    const s = document.getElementById(id);
+    return s && !s.dataset.touched;
+  });
+  if (untouched.length > 0) {
+    const warn = document.getElementById(warningId);
+    if (warn) { warn.style.display = 'block'; warn.textContent = 'Please move each slider to your chosen value before continuing.'; }
+    return false;
+  }
+  return true;
+}
+
+/* ==============================================================
+   PHASE 1 WIDGET — μ + 7-level confidence (from experiment_new.html)
+   ============================================================== */
+
+const CONF_LEVELS = [
+  { label: 'Not sure\nat all', kappa: 3   },
+  { label: 'Very\nunsure',     kappa: 6   },
+  { label: 'A little\nsure',   kappa: 12  },
+  { label: 'Moderately\nsure', kappa: 20  },
+  { label: 'Fairly\nsure',     kappa: 35  },
+  { label: 'Quite\nsure',      kappa: 60  },
+  { label: 'Very\nsure',       kappa: 120 },
+];
+
+let _initMuTouched = false;
+let _initConfidence = null;   // 0–6 index, null until chosen
+let _initReviewShown = false;
+
+function renderMuConfidenceWidget(defaultMu) {
+  const mu0 = defaultMu == null ? 50 : defaultMu;
+  return `
+    <div id="mu-conf-widget">
+
+      <!-- Step 1: μ slider -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 22px;margin:16px 0;">
+        <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;font-weight:700;margin-bottom:8px;">Step 1 — Your best guess</div>
+        <p style="margin:0 0 12px;font-size:0.97rem;">What is the percent chance you would beat a randomly picked participant on the quiz, where ties are decided by a coin flip?</p>
+        <div class="slider-row">
+          <input type="range" id="init-mu-slider" min="0" max="100" value="${mu0}" data-touched="1"
+                 oninput="onInitMuChange(this.value)">
+          <div class="slider-value" id="init-mu-val">${mu0}%</div>
+        </div>
+        <div class="slider-labels">
+          <span>0% — Definitely would not beat them</span>
+          <span>100% — Definitely would beat them</span>
+        </div>
+        <div id="init-mu-confirm-row" style="display:none;margin-top:14px;text-align:right;">
+          <button class="btn btn-primary" onclick="confirmInitMu()">Confirm best guess →</button>
+        </div>
+      </div>
+
+      <!-- Step 2: confidence (hidden until μ confirmed) -->
+      <div id="init-conf-wrap" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 22px;margin:16px 0;">
+        <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;font-weight:700;margin-bottom:8px;">Step 2 — How confident are you?</div>
+        <p style="margin:0 0 12px;font-size:0.97rem;">How sure are you about your best guess?</p>
+        <div id="init-conf-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;"></div>
+      </div>
+
+      <!-- Review panel (hidden until confidence chosen) -->
+      <div id="init-review-wrap" style="display:none;margin:16px 0;">
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:22px 24px;">
+          <h3 style="font-size:0.97rem;font-weight:700;color:#1e293b;margin:0 0 16px;">Review your answer</h3>
+          <canvas id="init-beta-canvas" style="display:block;width:100%;height:180px;"></canvas>
+          <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:0.77rem;color:#64748b;margin:8px 0 14px;">
+            <span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:3px;background:#2563eb;border-radius:2px;"></span>Best guess (μ)</span>
+            <span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;border-top:2.5px dashed #94a3b8;"></span>P₁₀ / P₉₀</span>
+            <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:2px;"></span>80% credible region</span>
+          </div>
+          <div id="init-stats-block" style="font-size:0.93rem;line-height:1.85;color:#334155;border-top:1px solid #e2e8f0;padding-top:14px;"></div>
+          <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;" id="init-confirm-row">
+            <button class="btn btn-primary" onclick="submitInitialBeliefs()">Yes, this matches what I think — submit</button>
+            <button class="btn btn-secondary" onclick="reviseInitialBeliefs()">No, let me revise</button>
+          </div>
+        </div>
+      </div>
+
+    </div>`;
+}
+
+function initMuConfidenceWidget(defaultMu) {
+  _initMuTouched = false;
+  _initConfidence = null;
+  _initReviewShown = false;
+  STATE.initialBeliefEdits = [];
+  const grid = document.getElementById('init-conf-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  CONF_LEVELS.forEach((lv, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'init-conf-' + i;
+    btn.style.cssText = 'padding:10px 4px 8px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:0.76rem;text-align:center;line-height:1.35;transition:all 0.15s;color:#475569;font-family:inherit;';
+    btn.innerHTML = `<span style="display:block;font-size:1.05rem;font-weight:700;margin-bottom:3px;">${i + 1}</span>${lv.label.replace('\n', '<br>')}`;
+    btn.onclick = () => selectInitConf(i);
+    grid.appendChild(btn);
+  });
+}
+
+function onInitMuChange(val) {
+  const prev = parseInt(document.getElementById('init-mu-val').textContent);
+  const now = parseInt(val);
+  document.getElementById('init-mu-val').textContent = now + '%';
+
+  if (_initReviewShown) {
+    STATE.initialBeliefEdits.push({
+      timestamp: Date.now(), field: 'mu',
+      oldValue: prev, newValue: now, trigger: 'live',
+    });
+    updateInitReview();
+  }
+
+  if (!_initMuTouched) {
+    _initMuTouched = true;
+    document.getElementById('init-mu-confirm-row').style.display = '';
+  }
+}
+
+function confirmInitMu() {
+  // Hide confirm button, reveal Step 2
+  document.getElementById('init-mu-confirm-row').style.display = 'none';
+  document.getElementById('init-conf-wrap').style.display = '';
+  document.getElementById('init-conf-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function selectInitConf(idx) {
+  const prev = _initConfidence;
+  _initConfidence = idx;
+
+  for (let i = 0; i < 7; i++) {
+    const btn = document.getElementById('init-conf-' + i);
+    if (!btn) continue;
+    const sel = (i === idx);
+    btn.style.borderColor = sel ? '#2563eb' : '#e2e8f0';
+    btn.style.background  = sel ? '#eff6ff' : '#fff';
+    btn.style.color       = sel ? '#1d4ed8' : '#475569';
+    btn.style.fontWeight  = sel ? '600' : '';
+  }
+
+  if (_initReviewShown && prev !== null) {
+    STATE.initialBeliefEdits.push({
+      timestamp: Date.now(), field: 'confidence',
+      oldValue: prev, newValue: idx, trigger: 'live',
+    });
+  }
+
+  if (!_initReviewShown) {
+    _initReviewShown = true;
+    document.getElementById('init-review-wrap').style.display = '';
+    requestAnimationFrame(() => requestAnimationFrame(updateInitReview));
+  } else {
+    updateInitReview();
+  }
+}
+
+function getInitParams() {
+  const muRaw = parseInt(document.getElementById('init-mu-slider').value);
+  const muClamped = Math.max(0.005, Math.min(0.995, muRaw / 100));
+  const kappa = CONF_LEVELS[_initConfidence].kappa;
+  return { muRaw, mu: muClamped, alpha: muClamped * kappa, beta: (1 - muClamped) * kappa, kappa };
+}
+
+function updateInitReview() {
+  if (_initConfidence === null) return;
+  const { mu, alpha, beta } = getInitParams();
+  const p10 = betaCDFInverse(0.1, alpha, beta);
+  const p90 = betaCDFInverse(0.9, alpha, beta);
+  const pAbove50 = 1 - betaCDF(0.5, alpha, beta);
+  drawInitCurve(alpha, beta, mu, p10, p90);
+  updateInitStats(mu, p10, p90, pAbove50);
+}
+
+function updateInitStats(mu, p10, p90, pAbove50) {
+  const pct = x => Math.round(x * 100);
+  const el = document.getElementById('init-stats-block');
+  if (!el) return;
+  el.innerHTML = `
+    <p>Your best guess: there's a <strong>${pct(mu)}%</strong> chance you would beat a randomly picked participant.</p>
+    <p style="margin-top:8px;">Given your confidence, you think:</p>
+    <ul style="margin:4px 0 0 20px;line-height:2;">
+      <li>There's about a <strong>${pct(pAbove50)}%</strong> chance you would beat at least half of participants.</li>
+      <li>You're <strong>80%</strong> sure your true chance is between <strong>${pct(p10)}%</strong> and <strong>${pct(p90)}%</strong>: there's only a 10% chance your true chance is below <strong>${pct(p10)}%</strong>, and only a 10% chance it's above <strong>${pct(p90)}%</strong>.</li>
+    </ul>`;
+}
+
+function drawInitCurve(alpha, beta, mu, p10, p90) {
+  const canvas = document.getElementById('init-beta-canvas');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth || 620;
+  const H = canvas.offsetHeight || 180;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const PAD = { top: 20, right: 24, bottom: 28, left: 20 };
+  const pw = W - PAD.left - PAD.right;
+  const ph = H - PAD.top  - PAD.bottom;
+
+  const N = 400;
+  const pts = [];
+  let maxY = 0;
+  for (let i = 0; i <= N; i++) {
+    const x  = i / N;
+    const xc = Math.max(0.002, Math.min(0.998, x));
+    const y  = betaPDF(xc, alpha, beta);
+    const yv = isFinite(y) && y < 1e6 ? y : 0;
+    pts.push([x, yv]);
+    if (yv > maxY) maxY = yv;
+  }
+  if (maxY === 0) maxY = 1;
+  const sorted = pts.map(p => p[1]).sort((a, b) => a - b);
+  const q90y    = sorted[Math.floor(sorted.length * 0.9)];
+  const dispMax = Math.min(maxY, Math.max(q90y * 8, 0.01));
+
+  const toX = x => PAD.left + x * pw;
+  const toY = y => PAD.top  + ph - Math.min(y / dispMax, 1) * ph;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // 80% region shade
+  ctx.fillStyle = '#eff6ff';
+  ctx.beginPath();
+  ctx.moveTo(toX(p10), toY(0));
+  for (let i = 0; i <= N; i++) {
+    const [x, y] = pts[i];
+    if (x < p10 - 1 / N || x > p90 + 1 / N) continue;
+    ctx.lineTo(toX(x), toY(y));
+  }
+  ctx.lineTo(toX(p90), toY(0));
+  ctx.closePath();
+  ctx.fill();
+
+  // baseline
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(toX(0), toY(0));
+  ctx.lineTo(toX(1), toY(0));
+  ctx.stroke();
+
+  // PDF curve
+  ctx.strokeStyle = '#2563eb';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  let started = false;
+  for (let i = 0; i <= N; i++) {
+    const [x, y] = pts[i];
+    const sx = toX(x), sy = toY(y);
+    if (!started) { ctx.moveTo(sx, sy); started = true; }
+    else ctx.lineTo(sx, sy);
+  }
+  ctx.stroke();
+
+  function vline(x, color, dashed) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash(dashed ? [5, 4] : []);
+    ctx.beginPath();
+    ctx.moveTo(toX(x), toY(0));
+    ctx.lineTo(toX(x), PAD.top + 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  vline(p10, '#94a3b8', true);
+  vline(p90, '#94a3b8', true);
+  vline(mu,  '#2563eb', false);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '11px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  [0, 25, 50, 75, 100].forEach(v => {
+    ctx.fillText(v + '%', toX(v / 100), H - PAD.bottom + 14);
+  });
+
+  ctx.fillStyle = '#2563eb';
+  ctx.font = 'bold 10px -apple-system, sans-serif';
+  const muLX = Math.max(PAD.left + 24, Math.min(toX(mu), W - PAD.right - 24));
+  ctx.fillText('μ = ' + Math.round(mu * 100) + '%', muLX, PAD.top - 4);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '10px -apple-system, sans-serif';
+  const p10x = Math.max(toX(p10), PAD.left + 18);
+  const p90x = Math.min(toX(p90), W - PAD.right - 18);
+  ctx.fillText('P₁₀=' + Math.round(p10 * 100) + '%', p10x, PAD.top + 12);
+  ctx.fillText('P₉₀=' + Math.round(p90 * 100) + '%', p90x, PAD.top + 12);
+}
+
+function reviseInitialBeliefs() {
+  const s = document.getElementById('init-mu-slider');
+  if (s) s.focus();
+}
+
+/* ==============================================================
+   SCREEN RENDERERS
+   ============================================================== */
+
+function showScreen(name, options = {}) {
+  logTimestamp(name);
+  container.innerHTML = '';
+  const fn = SCREENS[name];
+  if (fn) fn(options);
+}
+
+const SCREENS = {};
+
+// ---- 0. Welcome (device check + study rules) ----
+SCREENS.welcome = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Welcome</h2></div>
+    <p>Welcome to our study! Before we begin, please note the following:</p>
+    <p><strong>This study must be completed on a desktop computer.</strong> If you are using a mobile device or tablet, you will be excluded and will not receive payment. Please close this page and reopen it on a desktop computer.</p>
+    ${CONFIG.texts.studyRules}
+    <div class="consent-row">
+      <input type="checkbox" id="device-check" onchange="document.getElementById('device-btn').disabled = !this.checked">
+      <label for="device-check">I confirm that I am using a desktop computer and agree to follow the rules above.</label>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="device-btn" disabled onclick="showScreen('consent')">Next →</button>
+    </div>`;
+  updateProgress(0.01);
+};
+
+// ---- 1.1 Consent ----
+SCREENS.consent = () => {
+  const c = CONFIG.texts.consent;
+  container.innerHTML = `
+    <div class="screen-header"><h2>${c.title}</h2></div>
+    <p><strong>Principal Investigator:</strong> ${c.pi}<br>
+       <strong>Co-investigator:</strong> ${c.coPi}</p>
+    <p>${c.body}</p>
+    <p><u>Benefits of the research:</u><br>${c.benefits}</p>
+    <p><u>Risks and discomforts:</u><br>${c.risks}</p>
+    <p><u>Compensation:</u><br>${c.compensation()}</p>
+    <p>${c.voluntary}</p>
+    <p><em>${c.irb}</em></p>
+    <div class="consent-row">
+      <input type="checkbox" id="consent-check" onchange="document.getElementById('consent-btn').disabled = !this.checked">
+      <label for="consent-check">${c.agreement}</label>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="consent-btn" disabled onclick="showScreen('quizInstructions')">I Agree — Next →</button>
+    </div>`;
+  updateProgress(0.03);
+};
+
+// ---- 1.3 Quiz Instructions ----
+SCREENS.quizInstructions = () => {
+  armTabSwitchDetection();
+  container.innerHTML = `
+    <div class="screen-header"><h2>Getting Started</h2></div>
+    ${CONFIG.texts.quizInstructions}
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="showScreen('quizComprehension')">Next →</button>
+    </div>`;
+  updateProgress(0.08);
+};
+
+// ---- 1.4 Quiz Comprehension Check ----
+SCREENS.quizComprehension = () => {
+  renderComprehensionCheck(CONFIG.texts.comprehensionCheck0, () => {
+    showScreen('sampleQuestion');
+  }, 'comprehensionCheck0');
+  updateProgress(0.09);
+};
+
+// ---- 1.5 Sample Question (interactive: participants must answer it) ----
+SCREENS.sampleQuestion = () => {
+  const gridCells = CONFIG.sampleQuestion.renderGrid();
+  const answers = CONFIG.sampleQuestion.renderAnswers();
+
+  let gridHTML = '';
+  for (let i = 0; i < 9; i++) {
+    if (i === 8) {
+      gridHTML += `<div class="grid-cell mystery"></div>`;
+    } else {
+      gridHTML += `<div class="grid-cell">${gridCells[i]}</div>`;
+    }
+  }
+
+  let ansHTML = '';
+  answers.forEach((ans, i) => {
+    ansHTML += `
+      <div class="answer-option" id="sample-ans-${i}" data-idx="${i}" onclick="answerSampleQuestion(${i})">
+        ${ans}
+      </div>`;
+  });
+
+  container.innerHTML = `
+    <div class="screen-header"><h2>Sample Question</h2></div>
+    <p>${CONFIG.texts.sampleQuestionPrompt}</p>
+    <div class="pattern-grid-wrapper">
+      <div class="pattern-grid">
+        ${gridHTML}
+      </div>
+    </div>
+    <div class="answer-grid">
+      ${ansHTML}
+    </div>
+    <div id="sample-feedback" style="margin-top:12px;"></div>
+    <div class="nav-row" id="sample-submit-nav" style="display:none;">
+      <button class="btn btn-primary" id="sample-submit-btn" onclick="submitSampleQuestion()">Submit answer</button>
+    </div>
+    <div class="nav-row" id="sample-nav" style="display:none;">
+      <button class="btn btn-primary" onclick="startQuiz()">Start Quiz →</button>
+    </div>`;
+  window._sampleSelected = null;
+  updateProgress(0.10);
+};
+
+function answerSampleQuestion(selectedIdx) {
+  // If already submitted, ignore
+  if (window._sampleSubmitted) return;
+  window._sampleSelected = selectedIdx;
+  // Clear all selected styling, then mark just this one
+  document.querySelectorAll('.answer-option[id^="sample-ans-"]').forEach(el => {
+    el.classList.remove('selected');
+  });
+  const sel = document.getElementById('sample-ans-' + selectedIdx);
+  if (sel) sel.classList.add('selected');
+  // Reveal the Submit button
+  const submitNav = document.getElementById('sample-submit-nav');
+  if (submitNav) submitNav.style.display = '';
+}
+
+function submitSampleQuestion() {
+  if (window._sampleSelected === null || window._sampleSelected === undefined) return;
+  window._sampleSubmitted = true;
+  const selectedIdx = window._sampleSelected;
+  const correctIdx = CONFIG.sampleQuestion.correctAnswer;
+  // Disable further clicks
+  document.querySelectorAll('.answer-option[id^="sample-ans-"]').forEach(el => {
+    el.onclick = null;
+    el.style.cursor = 'default';
+    el.classList.remove('selected');
+  });
+  // Highlight the chosen option (green if correct, red if wrong)
+  const sel = document.getElementById('sample-ans-' + selectedIdx);
+  if (sel) {
+    if (selectedIdx === correctIdx) {
+      sel.style.borderColor = '#059669';
+      sel.style.background = '#ecfdf5';
+      sel.style.boxShadow = '0 4px 12px rgba(5,150,105,0.2)';
+    } else {
+      sel.style.borderColor = '#dc2626';
+      sel.style.background = '#fef2f2';
+      sel.style.boxShadow = '0 4px 12px rgba(220,38,38,0.2)';
+    }
+  }
+  // If wrong, also reveal the correct answer in green
+  if (selectedIdx !== correctIdx) {
+    const correctEl = document.getElementById('sample-ans-' + correctIdx);
+    if (correctEl) {
+      correctEl.style.borderColor = '#059669';
+      correctEl.style.background = '#ecfdf5';
+      correctEl.style.boxShadow = '0 4px 12px rgba(5,150,105,0.2)';
+    }
+  }
+  // Show feedback text
+  const fb = document.getElementById('sample-feedback');
+  if (fb) {
+    fb.innerHTML = `<p>${selectedIdx === correctIdx
+      ? CONFIG.texts.sampleQuestionFeedbackCorrect
+      : CONFIG.texts.sampleQuestionFeedbackWrong}</p>`;
+  }
+  // Hide Submit button, reveal Start Quiz button
+  const submitNav = document.getElementById('sample-submit-nav');
+  if (submitNav) submitNav.style.display = 'none';
+  const nav = document.getElementById('sample-nav');
+  if (nav) nav.style.display = '';
+}
+
+// ---- 1.6–1.17 Quiz ----
+let quizTimer = null;
+let quizTimeLeft = 0;
+let currentQuizQ = 0;
+let quizQuestions = [];
+
+function startQuiz() {
+  // Assign condition
+  STATE.quizCondition = Math.random() < 0.5 ? 'easy' : 'hard';
+  const conditionQs = STATE.quizCondition === 'easy'
+    ? CONFIG.quizQuestionsEasyOnly
+    : CONFIG.quizQuestionsHardOnly;
+  quizQuestions = CONFIG.quizQuestionsShared.concat(conditionQs);
+  currentQuizQ = 0;
+  STATE.quizAnswers = [];
+  showQuizQuestion();
+}
+
+function showQuizQuestion() {
+  if (currentQuizQ >= quizQuestions.length) {
+    finishQuiz();
+    return;
+  }
+  const q = quizQuestions[currentQuizQ];
+  const qNum = currentQuizQ + 1;
+  quizTimeLeft = CONFIG.quizTimePerQuestion;
+  const startTime = Date.now();
+
+  const gridCells = q.renderGrid();
+  const answers = q.renderAnswers();
+
+  let gridHTML = '';
+  for (let i = 0; i < 9; i++) {
+    if (i === 8) {
+      gridHTML += `<div class="grid-cell mystery"></div>`;
+    } else {
+      gridHTML += `<div class="grid-cell">${gridCells[i]}</div>`;
+    }
+  }
+
+  let ansHTML = '';
+  answers.forEach((ans, i) => {
+    ansHTML += `
+      <div class="answer-option" data-idx="${i}" onclick="selectQuizOption(${i})">
+        ${ans}
+      </div>`;
+  });
+  
+  container.innerHTML = `
+    <div class="screen-header">
+      <h2>Question ${qNum}/${quizQuestions.length}</h2>
+      <div class="quiz-timer" id="quiz-timer">${quizTimeLeft}s</div>
+    </div>
+    <div class="pattern-grid-wrapper">
+      <div class="pattern-grid">
+        ${gridHTML}
+      </div>
+    </div>
+    <div class="answer-grid">
+      ${ansHTML}
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="quiz-next-btn" disabled onclick="submitQuizAnswer()">Next →</button>
+    </div>`;
+
+  updateProgress(0.10 + (qNum / quizQuestions.length) * 0.20);
+
+  // Timer
+  clearInterval(quizTimer);
+  quizTimer = setInterval(() => {
+    quizTimeLeft--;
+    const timerEl = document.getElementById('quiz-timer');
+    if (timerEl) {
+      timerEl.textContent = quizTimeLeft + 's';
+      if (quizTimeLeft <= 5) timerEl.classList.add('warning');
+    }
+    if (quizTimeLeft <= 0) {
+      clearInterval(quizTimer);
+      // Auto-submit with no selection
+      const timeSpent = (Date.now() - startTime) / 1000;
+      STATE.quizAnswers.push({
+        questionId: q.id,
+        selected: null,
+        correct: false,
+        timeSpent: timeSpent,
+        timedOut: true,
+      });
+      currentQuizQ++;
+      showQuizQuestion();
+    }
+  }, 1000);
+
+  // Store start time for this question
+  window._quizQStart = startTime;
+}
+
+let _selectedQuizOption = null;
+
+function selectQuizOption(idx) {
+  _selectedQuizOption = idx;
+  document.querySelectorAll('.answer-option').forEach((el, i) => {
+    el.classList.toggle('selected', i === idx);
+  });
+  document.getElementById('quiz-next-btn').disabled = false;
+}
+
+function submitQuizAnswer() {
+  clearInterval(quizTimer);
+  const q = quizQuestions[currentQuizQ];
+  const timeSpent = (Date.now() - window._quizQStart) / 1000;
+  const correct = _selectedQuizOption === q.correctAnswer;
+  STATE.quizAnswers.push({
+    questionId: q.id,
+    selected: _selectedQuizOption,
+    correct: correct,
+    timeSpent: timeSpent,
+    timedOut: false,
+  });
+  _selectedQuizOption = null;
+  currentQuizQ++;
+  showQuizQuestion();
+}
+
+function finishQuiz() {
+  STATE.quizScore = STATE.quizAnswers.filter(a => a.correct).length;
+  STATE.gammaStar = computeGammaStar(STATE.quizScore);
+
+  // Determine the Random Manager probability to show
+  if (CONFIG.randomProbDisplay !== null) {
+    STATE.randomProbShown = CONFIG.randomProbDisplay;
+  } else {
+    STATE.randomProbShown = STATE.gammaStar;
+  }
+
+  showScreen('scoreAndBelief');
+}
+
+// ---- 1.18 Score and Belief Elicitation (μ + 7-level confidence) ----
+SCREENS.scoreAndBelief = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Your Score</h2></div>
+    <p>${CONFIG.texts.scoreAnnouncement(STATE.quizScore, CONFIG.numQuizQuestions)}</p>
+    ${CONFIG.texts.beliefElicitationPrompt}
+
+    ${renderMuConfidenceWidget(50)}`;
+
+  // Initialize the widget after the DOM is ready
+  requestAnimationFrame(() => initMuConfidenceWidget(50));
+
+  updateProgress(0.32);
+};
+
+function submitInitialBeliefs() {
+  if (_initConfidence === null) return; // guard: can only be called from review panel
+  const mu = parseInt(document.getElementById('init-mu-slider').value);
+  const kappa = CONF_LEVELS[_initConfidence].kappa;
+  const muC = Math.max(0.005, Math.min(0.995, mu / 100));
+  STATE.initialMu         = mu;
+  STATE.initialConfidence = _initConfidence + 1;   // store as 1–7
+  STATE.initialAlpha      = muC * kappa;
+  STATE.initialBeta       = (1 - muC) * kappa;
+  STATE.initialGamma      = mu;                    // legacy alias
+  showScreen('transition');
+}
+
+// ---- 1.19 Transition ----
+SCREENS.transition = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Instructions</h2></div>
+    ${CONFIG.texts.transition}
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="showScreen('managerInstructions1')">Next →</button>
+    </div>`;
+  updateProgress(0.34);
+};
+
+// ---- Instructions Page 1: Your New Job ----
+SCREENS.managerInstructions1 = () => {
+  const t = CONFIG.texts.managerInstructions1(STATE.randomProbShown);
+  container.innerHTML = `
+    <div class="screen-header"><h2>Instructions — Your New Job</h2></div>
+    ${t.intro}
+    ${t.performance}
+
+    <div class="info-panel" style="margin:14px 0;">
+      <p style="margin:0;"><strong>Reminder:</strong> Earlier, you guessed a <strong>${STATE.initialGamma}%</strong> chance that you would beat a randomly picked participant on the quiz, where ties are decided by a coin flip. Since the Performance Manager pays H whenever you beat a randomly picked participant, this means you would expect the Performance Manager to give you H about <strong>${STATE.initialGamma}%</strong> of the time.</p>
+    </div>
+
+    ${t.random}
+
+    <div class="nav-row" style="justify-content:space-between;margin-top:18px;">
+      <button class="btn" onclick="showScreen('transition')">← Back</button>
+      <button class="btn btn-primary" onclick="showScreen('hProbElicitation')">Next →</button>
+    </div>`;
+  updateProgress(0.36);
+};
+
+// ---- H-Probability Elicitation ----
+SCREENS.hProbElicitation = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Understanding the Probabilities</h2></div>
+    ${CONFIG.texts.hProbElicitationIntro}
+
+    <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
+      <p style="margin:0 0 12px;"><strong>1.</strong> According to your guess about how you compare to a randomly picked participant on the quiz, what is the likelihood that the <strong class="eval-performance">Performance Manager</strong> gives you an <strong>H</strong> bonus on a single draw?</p>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="number" id="perf-h-input" min="0" max="100" step="1" placeholder="0–100" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
+        <span style="font-size:1rem;color:#333;">%</span>
+      </div>
+    </div>
+
+    <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
+      <p style="margin:0 0 12px;"><strong>2.</strong> What is the likelihood that the <strong class="eval-random">Random Manager</strong> gives you an <strong>H</strong> bonus on a single draw?</p>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="number" id="rand-h-input" min="0" max="100" step="1" placeholder="0–100" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
+        <span style="font-size:1rem;color:#333;">%</span>
+      </div>
+    </div>
+
+    <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
+      <p style="margin:0 0 12px;"><strong>3.</strong> Based on your answers above, which manager do you expect to give you <strong>more H bonuses</strong>?</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-choice" id="better-perf-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
+                onclick="selectBetterManager('performance')"><span class="eval-performance">Performance Manager</span></button>
+        <button class="btn btn-choice" id="better-rand-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
+                onclick="selectBetterManager('random')"><span class="eval-random">Random Manager</span></button>
+        <button class="btn btn-choice" id="better-same-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
+                onclick="selectBetterManager('same')">About the same</button>
+      </div>
+    </div>
+
+    <div class="error-msg" id="mgr-prob-error">One or more answers are incorrect. Please review the instructions and try again.</div>
+
+    <div class="nav-row" style="justify-content:space-between;">
+      <button class="btn" onclick="showScreen('managerInstructions1')">← Back</button>
+      <button class="btn btn-primary" id="mgr-prob-next-btn" disabled onclick="submitHProbElicitation()">Next →</button>
+    </div>`;
+
+  const perfIn = document.getElementById('perf-h-input');
+  const randIn = document.getElementById('rand-h-input');
+  const nextBtn = document.getElementById('mgr-prob-next-btn');
+  const errBox = document.getElementById('mgr-prob-error');
+
+  // Track which "better manager" button is selected
+  window._selectedBetterManager = null;
+
+  function checkComplete() {
+    const p = parseInt(perfIn.value, 10);
+    const r = parseInt(randIn.value, 10);
+    const numsOk = !isNaN(p) && p >= 0 && p <= 100 && !isNaN(r) && r >= 0 && r <= 100;
+    const betterOk = window._selectedBetterManager != null;
+    nextBtn.disabled = !(numsOk && betterOk);
+    errBox.style.display = 'none';
+  }
+  perfIn.addEventListener('input', checkComplete);
+  randIn.addEventListener('input', checkComplete);
+
+  updateProgress(0.38);
+};
+
+function selectBetterManager(choice) {
+  window._selectedBetterManager = choice;
+  // Update button styling
+  ['better-perf-btn', 'better-rand-btn', 'better-same-btn'].forEach(id => {
+    document.getElementById(id).classList.remove('selected');
+  });
+  const btnId = choice === 'performance' ? 'better-perf-btn'
+              : choice === 'random' ? 'better-rand-btn'
+              : 'better-same-btn';
+  document.getElementById(btnId).classList.add('selected');
+
+  // Re-check if form is complete
+  const perfIn = document.getElementById('perf-h-input');
+  const randIn = document.getElementById('rand-h-input');
+  const p = parseInt(perfIn.value, 10);
+  const r = parseInt(randIn.value, 10);
+  const numsOk = !isNaN(p) && p >= 0 && p <= 100 && !isNaN(r) && r >= 0 && r <= 100;
+  document.getElementById('mgr-prob-next-btn').disabled = !numsOk;
+  document.getElementById('mgr-prob-error').style.display = 'none';
+}
+
+function submitHProbElicitation() {
+  const perfVal = parseInt(document.getElementById('perf-h-input').value, 10);
+  const randVal = parseInt(document.getElementById('rand-h-input').value, 10);
+  STATE.elicitedPerfHProb = perfVal;
+  STATE.elicitedRandHProb = randVal;
+  STATE.elicitedBetterManager = window._selectedBetterManager;
+
+  const correctPerf = STATE.initialGamma;
+  const correctRand = STATE.randomProbShown;
+  if (perfVal !== correctPerf || randVal !== correctRand) {
+    document.getElementById('mgr-prob-error').style.display = 'block';
+    return;
+  }
+  showScreen('comprehensionCheck1');
+}
+
+// ---- Comprehension Check 1: Manager Structure ----
+SCREENS.comprehensionCheck1 = () => {
+  renderComprehensionCheck(CONFIG.texts.comprehensionCheck1(STATE.randomProbShown), () => {
+    showScreen('managerInstructions2a');
+  }, 'check1');
+  updateProgress(0.42);
+};
+
+// ---- Instructions Page 2a: The Rounds ----
+SCREENS.managerInstructions2a = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Instructions — The Rounds</h2></div>
+    ${CONFIG.texts.managerInstructions2a}
+    <div class="nav-row" style="justify-content:space-between;">
+      <button class="btn" onclick="showScreen('comprehensionCheck1')">← Back</button>
+      <button class="btn btn-primary" onclick="showScreen('managerInstructions2b')">Next →</button>
+    </div>`;
+  updateProgress(0.44);
+};
+
+// ---- Instructions Page 2b: Payment & Informativeness ----
+SCREENS.managerInstructions2b = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Instructions — Payment &amp; Informativeness</h2></div>
+    ${CONFIG.texts.managerInstructions2b(STATE.randomProbShown, STATE.bsrStakeRound)}
+    <div class="nav-row" style="justify-content:space-between;">
+      <button class="btn" onclick="showScreen('managerInstructions2a')">← Back</button>
+      <button class="btn btn-primary" onclick="showScreen('comprehensionCheck2')">Next →</button>
+    </div>`;
+  updateProgress(0.48);
+};
+
+// ---- Comprehension Check 2: Payment & Beliefs ----
+SCREENS.comprehensionCheck2 = () => {
+  renderComprehensionCheck(CONFIG.texts.comprehensionCheck2(STATE.randomProbShown, STATE.bsrStakeRound), () => {
+    showScreen('readyToBegin');
+  }, 'check2');
+  updateProgress(0.50);
+};
+
+// ---- Ready to Begin ----
+SCREENS.readyToBegin = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Ready to Begin</h2></div>
+    ${CONFIG.texts.readyToBegin}
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="STATE.currentRound = 1; showRoundScreen();">Begin Round 1 →</button>
+    </div>`;
+  updateProgress(0.56);
+};
+
+function renderComprehensionCheck(checkConfig, onPass, checkId) {
+  const { prompt, items, backScreen } = checkConfig;
+  const attempts = STATE.comprehensionAttempts[checkId] || 0;
+
+  container.innerHTML = `
+    <div class="screen-header"><h2>Comprehension Check</h2></div>
+    <p>${prompt}</p>
+    <div id="check-items">
+      ${items.map((item, i) => `
+        <label class="check-item" id="check-item-${i}">
+          <input type="checkbox" id="check-${i}" data-correct="${item.correct}">
+          <span>${item.text}</span>
+        </label>
+      `).join('')}
+    </div>
+    <div class="error-msg" id="check-error">Some answers are incorrect.${attempts === 0 ? ' Please review and try again. You may go back to re-read the instructions.' : ''}</div>
+    <div class="nav-row" style="justify-content:space-between;">
+      <button class="btn" style="background:#e2e8f0;color:#334155;" onclick="showScreen('${backScreen}')">← Back to instructions</button>
+      <button class="btn btn-primary" onclick="validateComprehension()" id="check-submit-btn">Submit</button>
+    </div>`;
+
+  // Store callback and checkId
+  window._comprehensionCallback = onPass;
+  window._comprehensionCheckId = checkId;
+}
+
+function showComprehensionExcluded(checkId) {
+  if (_excluded) return;
+  _excluded = true;
+  const currentScreen = STATE.screenTimestamps.length > 0
+    ? STATE.screenTimestamps[STATE.screenTimestamps.length - 1].screen : 'unknown';
+
+  container.innerHTML = `
+    <div class="screen-header"><h2>Study Terminated</h2></div>
+    <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:24px;margin:20px 0;">
+      <p style="font-size:1.1rem;"><strong>You will not receive any payment beyond the show-up fee.</strong></p>
+      <p>You have failed the same comprehension check more than twice. As stated in the instructions, this means you will not receive any payment beyond the show-up fee.</p>
+      <p>If you believe this is an error, please contact the researchers at <strong>drobnerc@ceu.edu</strong> and include your Prolific ID: <strong>${STATE.prolificPid || 'N/A'}</strong>.</p>
+    </div>
+    <div class="nav-row">
+      <a href="https://app.prolific.com" class="btn btn-primary" style="text-decoration:none;">Return to Prolific</a>
+    </div>`;
+
+  // Log exclusion to Google Sheets
+  if (CONFIG.googleSheetsURL) {
+    fetch(CONFIG.googleSheetsURL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prolificPid: STATE.prolificPid || 'unknown',
+        sessionId: STATE.sessionId || '',
+        studyId: STATE.studyId || '',
+        quizCondition: 'COMPREHENSION_EXCLUDED',
+        excludedOnScreen: currentScreen,
+        failedCheckId: checkId,
+        comprehensionAttempts: JSON.stringify(STATE.comprehensionAttempts),
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }
+}
+
+function validateComprehension() {
+  const items = document.querySelectorAll('#check-items input[type="checkbox"]');
+  const checkId = window._comprehensionCheckId;
+  let allCorrect = true;
+
+  items.forEach((input, i) => {
+    const isCorrect = input.dataset.correct === 'true';
+    const isChecked = input.checked;
+    if (isChecked !== isCorrect) {
+      allCorrect = false;
+    }
+  });
+
+  if (allCorrect) {
+    window._comprehensionCallback();
+  } else {
+    // Track failed attempts
+    STATE.comprehensionAttempts[checkId] = (STATE.comprehensionAttempts[checkId] || 0) + 1;
+    if (STATE.comprehensionAttempts[checkId] >= 3) {
+      showComprehensionExcluded(checkId);
+    } else {
+      document.getElementById('check-error').classList.add('visible');
+    }
+  }
+}
+
+// ---- 2.10 Single-Screen Round Flow (disclosed-types design) ----
+// Each round flow:
+//   Round 1: Manager choice → Bonuses → γ guess → Next-round choice (or finish)
+//   Rounds 2–N: Bonuses → γ guess → Next-round choice (or finish)
+// Manager type is disclosed throughout — no θ̂ inference step.
+
+function showRoundScreen() {
+  const r = STATE.currentRound;
+  const isFirstRound = (r === 1);
+  const mgr = STATE.currentManager; // null in Round 1 before choice
+  const progressFrac = 0.58 + (r / CONFIG.numChoiceRounds) * 0.30;
+
+  // Initialize round data
+  const didTransfer = STATE._pendingTransfer != null ? STATE._pendingTransfer : null;
+  STATE._pendingTransfer = undefined;
+  const roundData = {
+    roundNum: r,
+    manager: mgr,
+    transferred: didTransfer,
+    outcomes: null,
+    opponentScores: null,
+    hCount: null,
+    earnings: null,
+    beliefGamma: null,
+    beliefSliderTouched: false,
+    tsRoundStart: Date.now(),
+    tsBonusesShown: null,
+    tsGammaShown: null,
+    tsGammaSubmit: null,
+    tsChoiceMade: null,
+  };
+  window._pendingRound = roundData;
+
+  if (isFirstRound) {
+    // Round 1: show manager choice using the same unified layout as later rounds.
+    // Use the initial belief (γ₀) elicited before Phase 2 started.
+    const initialBelief = STATE.initialGamma;
+    container.innerHTML = `
+      <div id="round-step-choice">
+        ${buildManagerChoiceHTML(r, initialBelief, 'roundInitialChoice')}
+      </div>
+
+      <div id="round-step-outcomes" style="display:none;"></div>
+      <div id="round-step-gamma" style="display:none;"></div>
+      <div id="round-step-next-choice" style="display:none;"></div>`;
+  } else {
+    // Rounds 2–N: manager already known; show bonuses immediately
+    container.innerHTML = `
+      <div class="screen-header">
+        <h2>Round ${r} of ${CONFIG.numChoiceRounds}</h2>
+        <div class="round-info">Manager: ${managerLabel(mgr)}</div>
+      </div>
+
+      <div id="round-step-outcomes"></div>
+      <div id="round-step-gamma" style="display:none;"></div>
+      <div id="round-step-next-choice" style="display:none;"></div>`;
+
+    roundShowBonuses();
+  }
+
+  updateProgress(progressFrac);
+}
+
+// Round 1: handle initial manager choice, then show bonuses
+function roundInitialChoice(chosenManager) {
+  STATE.currentManager = chosenManager;
+  const roundData = window._pendingRound;
+  roundData.manager = chosenManager;
+  roundData.transferred = false;
+
+  // Hide choice, update header
+  document.getElementById('round-step-choice').style.display = 'none';
+  const header = container.querySelector('.screen-header');
+  header.innerHTML = `<h2>Round 1 of ${CONFIG.numChoiceRounds}</h2>
+    <div class="round-info">Manager: ${managerLabel(chosenManager)}</div>`;
+
+  // Show bonuses
+  document.getElementById('round-step-outcomes').style.display = '';
+  roundShowBonuses();
+}
+
+// Generate & show bonuses (sequential reveal: click each box to reveal)
+function roundShowBonuses() {
+  const roundData = window._pendingRound;
+  roundData.tsBonusesShown = Date.now();
+
+  // Generate outcomes depending on manager type
+  let outcomes, opponents;
+  const mgr = roundData.manager;
+  if (mgr === 'performance') {
+    // Performance Manager: compare against random opponents
+    const result = generateOutcomes(STATE.quizScore);
+    outcomes = result.outcomes;
+    opponents = result.opponents;
+  } else {
+    // Random Manager: i.i.d. Bernoulli draws at the stated probability
+    const prob = STATE.randomProbShown / 100;
+    outcomes = [];
+    opponents = [];
+    for (let i = 0; i < CONFIG.outcomesPerRound; i++) {
+      outcomes.push(Math.random() < prob ? 'H' : 'L');
+      opponents.push(null); // no opponent for random draws
+    }
+  }
+  const hCount = outcomes.filter(o => o === 'H').length;
+  const earnings = hCount * CONFIG.payPerH;
+  roundData.outcomes = outcomes;
+  roundData.opponentScores = opponents;
+  roundData.hCount = hCount;
+  roundData.earnings = earnings;
+  roundData.bonusRevealTimestamps = [];  // track when each bonus is revealed
+
+  const outcomesDiv = document.getElementById('round-step-outcomes');
+  outcomesDiv.style.display = '';
+  const mgrName = mgr === 'performance' ? 'Performance Manager' : 'Random Manager';
+  const mgrClass = mgr === 'performance' ? 'eval-performance' : 'eval-random';
+  const payH = CONFIG.payPerH.toFixed(2);
+  // Latest belief: previous round's belief if available, else initial γ₀.
+  const latestBelief = STATE.rounds.length > 0
+    ? STATE.rounds[STATE.rounds.length - 1].beliefGamma
+    : STATE.initialGamma;
+  const pH = (mgr === 'performance') ? latestBelief : STATE.randomProbShown;
+  const pL = 100 - pH;
+  const mechanismLine = (mgr === 'performance')
+    ? `Based on your latest guess about beating a randomly picked participant, each bonus pays <strong>H</strong> ($${payH}) with probability <strong>${pH}%</strong> and <strong>L</strong> ($0.00) with probability <strong>${pL}%</strong>.`
+    : `Each bonus pays <strong>H</strong> ($${payH}) with a fixed probability of <strong>${pH}%</strong> and <strong>L</strong> ($0.00) with probability <strong>${pL}%</strong>.`;
+  outcomesDiv.innerHTML = `
+    <p style="margin:14px 0 18px;">You decided to receive bonuses from the <strong class="${mgrClass}">${mgrName}</strong> in this round. ${mechanismLine}</p>
+
+    <h3 class="step-heading">Bonuses from your manager</h3>
+    <p>Click each box to reveal your bonuses from ${managerLabel(mgr)}:</p>
+
+    <div class="outcomes-row">
+      ${outcomes.map((o, i) => `
+        <div class="outcome-box" id="bonus-box-${i}" style="cursor:pointer;background:#f8fafc;border:2px solid #cbd5e1;" onclick="revealBonus(${i})">
+          <span class="outcome-label">Bonus ${i+1}</span>
+          <span style="font-size:1.5rem;color:#94a3b8;">?</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <div id="outcomes-summary" style="display:none;">
+      <p style="text-align:center;margin:8px 0 4px;font-size:0.95rem;color:#475569;"><strong>${hCount} out of 5</strong> bonuses were H. If this round is randomly selected for payment, you earn <strong>$${earnings.toFixed(2)}</strong>.</p>
+    </div>
+
+    <div class="nav-row" id="outcomes-nav" style="display:none;">
+      <button class="btn btn-primary" onclick="roundShowGamma()">Continue →</button>
+    </div>`;
+
+  // Store outcomes on window for the reveal function
+  window._pendingOutcomes = outcomes;
+  window._revealedCount = 0;
+
+  outcomesDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Reveal a single bonus box
+function revealBonus(idx) {
+  const box = document.getElementById('bonus-box-' + idx);
+  if (!box || box.dataset.revealed) return;  // already revealed
+
+  const outcome = window._pendingOutcomes[idx];
+  const roundData = window._pendingRound;
+  roundData.bonusRevealTimestamps.push({ index: idx, timestamp: Date.now() });
+
+  // Reveal the outcome with appropriate styling
+  box.dataset.revealed = '1';
+  box.style.cursor = 'default';
+  box.classList.add('outcome-' + outcome);
+  box.innerHTML = `<span class="outcome-label">Bonus ${idx + 1}</span>${outcome}`;
+
+  window._revealedCount++;
+
+  // Once all 5 are revealed, show summary and Continue button
+  if (window._revealedCount >= 5) {
+    document.getElementById('outcomes-summary').style.display = '';
+    document.getElementById('outcomes-nav').style.display = '';
+  }
+}
+
+// Bonuses → γ slider
+function roundShowGamma() {
+  document.getElementById('outcomes-nav').style.display = 'none';
+
+  const roundData = window._pendingRound;
+  roundData.tsGammaShown = Date.now();
+  const isFirstGammaUpdate = STATE.rounds.length === 0;
+  const prevGamma = isFirstGammaUpdate
+    ? STATE.initialGamma
+    : STATE.rounds[STATE.rounds.length - 1].beliefGamma;
+  const stake = STATE.bsrStakeRound.toFixed(0);
+
+  const gammaDiv = document.getElementById('round-step-gamma');
+  gammaDiv.style.display = '';
+  gammaDiv.innerHTML = `
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
+
+    <h3 class="step-heading">Performance guess</h3>
+
+    <p>What is the percent chance you would beat a randomly picked participant on the quiz, where ties are decided by a coin flip? <em>(${isFirstGammaUpdate ? 'Earlier' : 'In the previous round'}, you guessed <strong>${prevGamma}%</strong>.)</em></p>
+
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
+      <div class="slider-container" style="margin:0;">
+        <label>Your best guess:</label>
+        <div class="slider-row">
+          <input type="range" id="gamma-round-slider" min="0" max="100" value="${prevGamma}" data-touched=""
+                 onpointerdown="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'"
+                 oninput="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'">
+          <div class="slider-value" id="gamma-round-val">${prevGamma}%</div>
+        </div>
+        <div class="slider-labels"><span>0% — Definitely would not beat them</span><span>100% — Definitely would beat them</span></div>
+      </div>
+    </div>
+
+    <p style="font-size:0.88rem; color:#666;">(Remember: if this round is the one randomly selected for the round-belief payment, your most accurate guess gives you the highest chance of winning the <strong>$${stake}</strong> prize.)</p>
+
+    <div id="gamma-slider-warning" class="slider-warning"></div>
+    <div class="nav-row" id="gamma-nav">
+      <button class="btn btn-primary" onclick="roundSubmitGamma()">Next →</button>
+    </div>`;
+
+  gammaDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Step 3 → Step 4: lock γ, show evaluator choice (or finish)
+function roundSubmitGamma() {
+  const roundData = window._pendingRound;
+  const slider = document.getElementById('gamma-round-slider');
+  roundData.beliefGamma = parseInt(slider.value);
+  roundData.beliefSliderTouched = slider.dataset.touched === '1';
+  roundData.tsGammaSubmit = Date.now();
+  STATE.rounds.push(roundData);
+
+  // Lock the γ slider
+  const gammaSlider = document.getElementById('gamma-round-slider');
+  gammaSlider.disabled = true;
+  gammaSlider.style.opacity = '0.6';
+  document.getElementById('gamma-nav').style.display = 'none';
+
+  STATE.currentRound++;
+
+  if (STATE.currentRound > CONFIG.numChoiceRounds) {
+    // After Round 10: done
+    showScreen('roundsComplete');
+    return;
+  }
+
+  // Show manager choice on a separate screen
+  showManagerChoiceScreen();
+}
+
+function showManagerChoiceScreen() {
+  // Get the participant's latest belief (just submitted)
+  const latestBelief = STATE.rounds[STATE.rounds.length - 1].beliefGamma;
+
+  container.innerHTML = buildManagerChoiceHTML(
+    STATE.currentRound, latestBelief, 'roundMakeChoiceByMgr'
+  );
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Step 4: evaluator choice → next round (called with the chosen manager id)
+function roundMakeChoiceByMgr(chosenMgr) {
+  // Record choice timestamp on the round that just finished
+  const lastRound = STATE.rounds[STATE.rounds.length - 1];
+  if (lastRound) lastRound.tsChoiceMade = Date.now();
+
+  const transferred = (chosenMgr !== STATE.currentManager);
+  STATE.currentManager = chosenMgr;
+  // Store transfer decision so the next round's data captures it
+  STATE._pendingTransfer = transferred;
+  showRoundScreen();
+}
+
+// ---- 2.11 Rounds Complete Transition ----
+SCREENS.roundsComplete = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Rounds Complete</h2></div>
+    <p>You have completed all 10 rounds. Thank you!</p>
+    <p>Next, we have a few short additional questions. Please answer them carefully.</p>
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="showScreen('riskPreferences')">Continue →</button>
+    </div>`;
+  updateProgress(0.88);
+};
+
+// ---- 3.1 Risk Preferences ----
+SCREENS.riskPreferences = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Additional Questions</h2></div>
+    ${CONFIG.texts.riskPreferences}
+
+    <div class="risk-scale">
+      ${Array.from({length: 11}, (_, i) => `
+        <button class="risk-btn" onclick="selectRisk(${i})">${i}</button>
+      `).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#888;max-width:530px;margin:0 auto">
+      <span>completely unwilling</span><span>very willing</span>
+    </div>
+
+    <div class="error-msg" id="risk-error">Please select a value.</div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="risk-next" disabled onclick="submitRisk()">Next →</button>
+    </div>`;
+  updateProgress(0.90);
+};
+
+function selectRisk(val) {
+  STATE.riskPreference = val;
+  document.querySelectorAll('.risk-btn').forEach((btn, i) => {
+    btn.classList.toggle('selected', i === val);
+  });
+  document.getElementById('risk-next').disabled = false;
+}
+
+function submitRisk() {
+  if (STATE.riskPreference === null) {
+    document.getElementById('risk-error').classList.add('visible');
+    return;
+  }
+  showScreen('ambiguityPreferences');
+}
+
+// ---- 3.2 Ambiguity Preferences (Cavatorta & Schröder) ----
+SCREENS.ambiguityPreferences = () => {
+  // SVG helper: draw an urn with balls
+  function urnSVG(type) {
+    const w = 220, h = 260;
+    const urnTop = 40, urnBottom = h - 10, urnLeft = 20, urnRight = w - 20, radius = 20;
+    let svg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">`;
+    svg += `<rect x="${urnLeft}" y="${urnTop}" width="${urnRight - urnLeft}" height="${urnBottom - urnTop}" rx="${radius}" ry="${radius}" fill="#e0f2fe" stroke="#666" stroke-width="2"/>`;
+    svg += `<rect x="${urnLeft - 4}" y="${urnTop - 2}" width="${urnRight - urnLeft + 8}" height="18" rx="4" fill="#888" stroke="#555" stroke-width="1.5"/>`;
+
+    const cols = 10, rows = 10;
+    const ballR = 7.5;
+    const startX = urnLeft + 12, startY = urnTop + 28;
+    const spacingX = (urnRight - urnLeft - 24) / (cols - 1);
+    const spacingY = (urnBottom - urnTop - 50) / (rows - 1);
+
+    if (type === 'ambiguous') {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cx = startX + c * spacingX;
+          const cy = startY + r * spacingY;
+          svg += `<circle cx="${cx}" cy="${cy}" r="${ballR}" fill="#f0f0f0" stroke="#999" stroke-width="1"/>`;
+          svg += `<text x="${cx}" y="${cy + 3.5}" text-anchor="middle" font-size="9" fill="#888" font-weight="600">?</text>`;
+        }
+      }
+    } else {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cx = startX + c * spacingX;
+          const cy = startY + r * spacingY;
+          const isBlack = r >= 5;
+          svg += `<circle cx="${cx}" cy="${cy}" r="${ballR}" fill="${isBlack ? '#1a1a1a' : '#fff'}" stroke="${isBlack ? '#000' : '#999'}" stroke-width="1"/>`;
+        }
+      }
+    }
+    svg += `</svg>`;
+    return svg;
+  }
+
+  container.innerHTML = `
+    <div class="screen-header"><h2>Additional Questions</h2></div>
+    <p>${CONFIG.texts.ambiguityPreferencesIntro}</p>
+    <p><strong>${CONFIG.texts.ambiguityPreferencesBold}</strong></p>
+
+    <div style="display:flex;gap:32px;justify-content:center;margin:24px 0 12px;align-items:stretch;">
+      <div style="text-align:center;flex:1;max-width:300px;display:flex;flex-direction:column;align-items:center;">
+        <p style="font-size:0.9rem;line-height:1.5;margin-bottom:8px;">${CONFIG.texts.urnADescription}</p>
+      </div>
+      <div style="text-align:center;flex:1;max-width:300px;display:flex;flex-direction:column;align-items:center;">
+        <p style="font-size:0.9rem;line-height:1.5;margin-bottom:8px;">${CONFIG.texts.urnBDescription}</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:32px;justify-content:center;margin:0 0 12px;align-items:flex-start;">
+      <div style="text-align:center;flex:1;max-width:300px;display:flex;flex-direction:column;align-items:center;">
+        ${urnSVG('ambiguous')}
+        <div style="font-weight:700;font-size:1rem;margin-top:8px;">Urn A</div>
+      </div>
+      <div style="text-align:center;flex:1;max-width:300px;display:flex;flex-direction:column;align-items:center;">
+        ${urnSVG('known')}
+        <div style="font-weight:700;font-size:1rem;margin-top:8px;">Urn B</div>
+      </div>
+    </div>
+
+    <p>${CONFIG.texts.ambiguityColorPrompt}</p>
+    <div style="display:flex;gap:16px;justify-content:center;margin:12px 0 20px;">
+      <button class="btn" style="min-width:120px;background:#fff;border:2px solid #999;color:#333;" onclick="selectAmbiguityColor('white',this)">White</button>
+      <button class="btn" style="min-width:120px;background:#1a1a1a;border:2px solid #000;color:#fff;" onclick="selectAmbiguityColor('black',this)">Black</button>
+    </div>
+
+    <div id="urn-preference-section" style="display:none;">
+    <p>${CONFIG.texts.ambiguityPayoff}</p>
+    <p><strong>${CONFIG.texts.ambiguityQuestion}</strong></p>
+    <div style="display:flex;justify-content:center;gap:0;margin:16px 0;">
+      <div class="likert-option" onclick="selectAmbiguityUrn(-2)" style="flex:1;text-align:center;padding:12px 8px;border:1px solid #ddd;cursor:pointer;">
+        <div class="radio-circle" style="width:18px;height:18px;border:2px solid #999;border-radius:50%;margin:0 auto 6px;"></div>
+        I have a <strong>strong</strong> preference to draw a ball from urn&nbsp;<strong>A</strong>.
+      </div>
+      <div class="likert-option" onclick="selectAmbiguityUrn(-1)" style="flex:1;text-align:center;padding:12px 8px;border:1px solid #ddd;cursor:pointer;">
+        <div class="radio-circle" style="width:18px;height:18px;border:2px solid #999;border-radius:50%;margin:0 auto 6px;"></div>
+        I have a <strong>slight</strong> preference to draw a ball from urn&nbsp;<strong>A</strong>.
+      </div>
+      <div class="likert-option" onclick="selectAmbiguityUrn(0)" style="flex:1;text-align:center;padding:12px 8px;border:1px solid #ddd;cursor:pointer;">
+        <div class="radio-circle" style="width:18px;height:18px;border:2px solid #999;border-radius:50%;margin:0 auto 6px;"></div>
+        I am <strong>indifferent</strong> between drawing a ball from urn&nbsp;A or from urn&nbsp;B.
+      </div>
+      <div class="likert-option" onclick="selectAmbiguityUrn(1)" style="flex:1;text-align:center;padding:12px 8px;border:1px solid #ddd;cursor:pointer;">
+        <div class="radio-circle" style="width:18px;height:18px;border:2px solid #999;border-radius:50%;margin:0 auto 6px;"></div>
+        I have a <strong>slight</strong> preference to draw a ball from urn&nbsp;<strong>B</strong>.
+      </div>
+      <div class="likert-option" onclick="selectAmbiguityUrn(2)" style="flex:1;text-align:center;padding:12px 8px;border:1px solid #ddd;cursor:pointer;">
+        <div class="radio-circle" style="width:18px;height:18px;border:2px solid #999;border-radius:50%;margin:0 auto 6px;"></div>
+        I have a <strong>strong</strong> preference to draw a ball from urn&nbsp;<strong>B</strong>.
+      </div>
+    </div>
+    </div>
+
+    <div class="error-msg" id="amb-error">Please choose a color and an urn preference.</div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="amb-next" disabled onclick="submitAmbiguity()">Next →</button>
+    </div>`;
+  updateProgress(0.93);
+};
+
+function selectAmbiguityColor(color, btn) {
+  STATE.ambiguityAnswers.color = color;
+  document.querySelectorAll('[onclick^="selectAmbiguityColor"]').forEach(b => {
+    b.style.outline = 'none'; b.style.boxShadow = 'none';
+  });
+  btn.style.outline = '3px solid #2563eb';
+  btn.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.3)';
+  const urnSection = document.getElementById('urn-preference-section');
+  if (urnSection) urnSection.style.display = '';
+  checkAmbiguityComplete();
+}
+
+function selectAmbiguityUrn(val) {
+  STATE.ambiguityAnswers.urnPreference = val;
+  document.querySelectorAll('.likert-option').forEach((el, i) => {
+    const circle = el.querySelector('.radio-circle');
+    const isSelected = ([-2,-1,0,1,2][i] === val);
+    el.style.background = isSelected ? '#eff6ff' : '#fff';
+    circle.style.background = isSelected ? '#2563eb' : '#fff';
+    circle.style.borderColor = isSelected ? '#2563eb' : '#999';
+  });
+  checkAmbiguityComplete();
+}
+
+function checkAmbiguityComplete() {
+  const colorOk = STATE.ambiguityAnswers.color != null;
+  const urnOk = STATE.ambiguityAnswers.urnPreference != null;
+  document.getElementById('amb-next').disabled = !(colorOk && urnOk);
+  if (colorOk && urnOk) document.getElementById('amb-error').style.display = 'none';
+}
+
+function submitAmbiguity() {
+  showScreen('demographics');
+}
+
+// ---- 3.3 Demographics ----
+SCREENS.demographics = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Additional Questions</h2></div>
+
+    <div style="margin-bottom:20px;">
+      <label><strong>What is your age?</strong></label>
+      <div style="margin-top:8px;">
+        <input type="number" id="demo-age" min="18" max="120" placeholder="e.g. 25"
+               style="width:120px;padding:8px 12px;font-size:1rem;border:1px solid #ccc;border-radius:6px;"
+               oninput="checkDemographicsComplete()">
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label><strong>What is your gender?</strong></label>
+      <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn gender-btn" style="min-width:100px;background:#fff;border:2px solid #ccc;color:#333;" onclick="selectGender('male',this)">Male</button>
+        <button class="btn gender-btn" style="min-width:100px;background:#fff;border:2px solid #ccc;color:#333;" onclick="selectGender('female',this)">Female</button>
+        <button class="btn gender-btn" style="min-width:100px;background:#fff;border:2px solid #ccc;color:#333;" onclick="selectGender('non-binary',this)">Non-binary</button>
+        <button class="btn gender-btn" style="min-width:140px;background:#fff;border:2px solid #ccc;color:#333;" onclick="selectGender('prefer not to say',this)">Prefer not to say</button>
+      </div>
+    </div>
+
+    <div class="error-msg" id="demo-error">Please provide both your age and gender.</div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="demo-next" disabled onclick="submitDemographics()">Next →</button>
+    </div>`;
+  updateProgress(0.95);
+};
+
+function selectGender(val, btn) {
+  STATE.demographicGender = val;
+  document.querySelectorAll('.gender-btn').forEach(b => {
+    b.style.background = '#fff';
+    b.style.color = '#333';
+    b.style.borderColor = '#ccc';
+  });
+  btn.style.background = '#2563eb';
+  btn.style.color = '#fff';
+  btn.style.borderColor = '#2563eb';
+  checkDemographicsComplete();
+}
+
+function checkDemographicsComplete() {
+  const age = parseInt(document.getElementById('demo-age').value);
+  const ageOk = age >= 18 && age <= 120;
+  const genderOk = STATE.demographicGender !== null;
+  document.getElementById('demo-next').disabled = !(ageOk && genderOk);
+}
+
+function submitDemographics() {
+  STATE.demographicAge = parseInt(document.getElementById('demo-age').value);
+  showScreen('feedback');
+}
+
+// ---- Feedback ----
+SCREENS.feedback = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Feedback</h2></div>
+    <p>We would appreciate your honest feedback about the study.</p>
+
+    <div style="margin-bottom:20px;">
+      <label><strong>Was anything unclear in the instructions? If so, please describe what was confusing.</strong></label>
+      <textarea id="feedback-clarity" rows="4" placeholder="e.g. I didn't understand how the managers work..."
+        style="width:100%;margin-top:8px;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"></textarea>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label><strong>Do you have any other complaints or suggestions about the study?</strong></label>
+      <textarea id="feedback-complaints" rows="4" placeholder="e.g. The study was too long, the quiz was too difficult..."
+        style="width:100%;margin-top:8px;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"></textarea>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="submitFeedback()">Continue →</button>
+    </div>`;
+  updateProgress(0.97);
+};
+
+function submitFeedback() {
+  STATE.feedbackClarity = document.getElementById('feedback-clarity').value.trim();
+  STATE.feedbackComplaints = document.getElementById('feedback-complaints').value.trim();
+  computePayment();
+}
+
+// ---- Payment computation ----
+function computePayment() {
+  const totalRounds = STATE.rounds.length; // 10 rounds
+
+  // 1) Select random round for outcome payment
+  STATE.selectedPaymentRound = Math.floor(Math.random() * totalRounds);
+  const payRound = STATE.rounds[STATE.selectedPaymentRound];
+  STATE.outcomeEarnings = payRound.earnings;
+
+  // 2) Initial belief bonus: BSR on initial γ ($2 fixed stake)
+  {
+    const s1scores = STATE.quizCondition === 'easy' ? CONFIG.study1ScoresEasy : CONFIG.study1ScoresHard;
+    const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
+    const beat = STATE.quizScore > oppScore || (STATE.quizScore === oppScore && Math.random() < 0.5);
+    const bsr = resolveBSR(STATE.initialGamma, beat, CONFIG.beliefBonusInitial);
+    STATE.beliefBonusInitial_won = bsr.won;
+    STATE.beliefBonusInitial_amount = bsr.amount;
+  }
+
+  // 3) Round belief bonus: BSR on one randomly selected round γ belief
+  // (stake = STATE.bsrStakeRound, set by between-subject cell assignment)
+  STATE.selectedBeliefRound = Math.floor(Math.random() * totalRounds);
+  {
+    const beliefRound = STATE.rounds[STATE.selectedBeliefRound];
+    const s1scores = STATE.quizCondition === 'easy' ? CONFIG.study1ScoresEasy : CONFIG.study1ScoresHard;
+    const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
+    const beat = STATE.quizScore > oppScore || (STATE.quizScore === oppScore && Math.random() < 0.5);
+    const bsr = resolveBSR(beliefRound.beliefGamma, beat, STATE.bsrStakeRound);
+    STATE.beliefBonusRound_won = bsr.won;
+    STATE.beliefBonusRound_amount = bsr.amount;
+  }
+
+  STATE.totalBonus = CONFIG.showUpFee
+    + STATE.outcomeEarnings
+    + STATE.beliefBonusInitial_amount
+    + STATE.beliefBonusRound_amount;
+
+  // Submit data then show results
+  submitData().then(() => showScreen('results'));
+}
+
+// ---- 3.3 Results ----
+SCREENS.results = () => {
+  const payRound = STATE.rounds[STATE.selectedPaymentRound];
+  const roundLabel = `Round ${payRound.roundNum}`;
+
+  // Round belief details
+  const beliefRoundB = STATE.rounds[STATE.selectedBeliefRound];
+  const beliefValueB = beliefRoundB.beliefGamma;
+  const beliefRoundLabelB = `Round ${beliefRoundB.roundNum}`;
+  const stake = STATE.bsrStakeRound.toFixed(0);
+
+  container.innerHTML = `
+    <div class="screen-header"><h2>Results</h2></div>
+
+    ${CONFIG.texts.resultsReveal(payRound.roundNum, payRound.manager)}
+
+    <div class="results-section">
+      <h3>Payment Breakdown</h3>
+      <div class="payment-line"><span>Show-up fee</span><span>$${CONFIG.showUpFee.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Manager payment (${roundLabel}: ${payRound.hCount} H × $0.20)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Initial belief payment ($${CONFIG.beliefBonusInitial} BSR, your guess: ${STATE.initialGamma}%)</span><span>$${STATE.beliefBonusInitial_amount.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Round belief payment ($${stake} BSR, ${beliefRoundLabelB} guess: ${beliefValueB}%)</span><span>$${STATE.beliefBonusRound_amount.toFixed(2)}</span></div>
+      <div class="payment-total"><span>Total payment</span><span>$${STATE.totalBonus.toFixed(2)}</span></div>
+    </div>
+
+    <p>The program will calculate your payment and credit it to your Prolific account within five business days.</p>
+
+    <p>${CONFIG.texts.prolificRedirect}</p>
+
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="redirectToProlific()">Complete Study →</button>
+    </div>`;
+
+  updateProgress(1.0);
+};
+
+function redirectToProlific() {
+  window.location.href = CONFIG.prolificCompletionURL;
+}
+
+
+/* ==============================================================
+   DATA SUBMISSION (Google Sheets)
+   ============================================================== */
+
+async function submitData() {
+  const data = {
+    // Identifiers
+    prolificPid: STATE.prolificPid,
+    studyId: STATE.studyId,
+    sessionId: STATE.sessionId,
+    timestamp: new Date().toISOString(),
+
+    // Condition
+    quizCondition: STATE.quizCondition,
+    bsrStakeRound: STATE.bsrStakeRound,
+
+    // Quiz
+    quizScore: STATE.quizScore,
+    gammaStar: STATE.gammaStar,
+    randomProbShown: STATE.randomProbShown,
+    quizAnswers: JSON.stringify(STATE.quizAnswers),
+
+    // Initial beliefs (μ + 7-level confidence elicitation; Beta from μ + κ)
+    initialMu: STATE.initialMu,
+    initialConfidence: STATE.initialConfidence,
+    initialGamma: STATE.initialGamma,  // alias = initialMu (kept for legacy consumers)
+    initialAlpha: STATE.initialAlpha,
+    initialBeta: STATE.initialBeta,
+    initialBeliefEdits: JSON.stringify(STATE.initialBeliefEdits || []),
+
+    // Comprehension: elicited H-probabilities and expected better manager
+    elicitedPerfHProb: STATE.elicitedPerfHProb,
+    elicitedRandHProb: STATE.elicitedRandHProb,
+    elicitedBetterManager: STATE.elicitedBetterManager,
+
+    // Rounds — one column per variable per round (flat structure for Google Sheets)
+    ...Object.fromEntries(STATE.rounds.flatMap(r => {
+      const i = r.roundNum;
+      return [
+        [`manager_${i}`,       r.manager],
+        [`transferred_${i}`,   r.transferred],
+        [`hCount_${i}`,        r.hCount],
+        [`earnings_${i}`,      r.earnings],
+        [`beliefGamma_${i}`,   r.beliefGamma],
+        [`beliefSliderTouched_${i}`, r.beliefSliderTouched ? 1 : 0],
+        [`outcomes_${i}`,      (r.outcomes || []).join('')],          // e.g. "HHLHH"
+        [`opponentScores_${i}`, (r.opponentScores || []).join(',')],  // e.g. "7,4,9,3,6"
+      ];
+    })),
+
+    // Post-experiment
+    riskPreference: STATE.riskPreference,
+    demographicAge: STATE.demographicAge,
+    demographicGender: STATE.demographicGender,
+    ambiguityColor: STATE.ambiguityAnswers.color,
+    ambiguityUrnPreference: STATE.ambiguityAnswers.urnPreference,
+    feedbackClarity: STATE.feedbackClarity,
+    feedbackComplaints: STATE.feedbackComplaints,
+
+    // Payment
+    selectedPaymentRound: STATE.selectedPaymentRound,
+    outcomeEarnings: STATE.outcomeEarnings,
+    beliefBonusInitial_amount: STATE.beliefBonusInitial_amount,
+    beliefBonusInitial_won: STATE.beliefBonusInitial_won,
+    selectedBeliefRound: STATE.selectedBeliefRound,
+    beliefBonusRound_amount: STATE.beliefBonusRound_amount,
+    beliefBonusRound_won: STATE.beliefBonusRound_won,
+    totalBonus: STATE.totalBonus,
+
+    // Timing
+    totalDurationMs: Date.now() - STATE.startTime,
+    screenTimestamps: JSON.stringify(STATE.screenTimestamps),
+    screenDurations: JSON.stringify(STATE.screenDurations),
+
+    // Focus tracking
+    tabSwitchCount: STATE.tabSwitches.length,
+    totalFocusLostMs: STATE.totalFocusLostMs,
+    tabSwitches: JSON.stringify(STATE.tabSwitches),
+    copyAttempts: STATE.copyAttempts,
+  };
+
+  // Store as backup
+  window._experimentData = data;
+
+  // Send to Google Sheets with retry
+  if (CONFIG.googleSheetsURL) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await fetch(CONFIG.googleSheetsURL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        break; // success
+      } catch (e) {
+        console.error(`Submit attempt ${attempt} failed:`, e);
+        if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
+    }
+  } else {
+    console.log('DATA (no endpoint configured):', JSON.stringify(data, null, 2));
+  }
+}
+
+
+/* ==============================================================
+   INITIALIZATION
+   ============================================================== */
+
+// ---- Mobile detection ----
+function isMobileDevice() {
+  const ua = navigator.userAgent || '';
+  if (/Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) return true;
+  if (window.innerWidth < 768) return true;
+  return false;
+}
+
+function showMobileBlocked() {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Desktop Required</h2></div>
+    <p>This study can only be completed on a <strong>desktop or laptop computer</strong>. Mobile devices, tablets, and small screens are not supported.</p>
+    <p>Please reopen this link on a desktop computer to participate.</p>
+    <p>If you believe this is an error, please contact the researchers.</p>`;
+
+  // Log rejection to Google Sheets
+  if (CONFIG.googleSheetsURL) {
+    fetch(CONFIG.googleSheetsURL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prolificPid: new URLSearchParams(window.location.search).get('PROLIFIC_PID') || 'unknown',
+        quizCondition: 'MOBILE_BLOCKED',
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }
+}
+
+// ---- Focus tracking & tab-switch exclusion ----
+let _tabSwitchArmed = false;
+let _excluded = false;
+
+function armTabSwitchDetection() {
+  _tabSwitchArmed = true;
+}
+
+function showExcluded() {
+  if (_excluded) return;
+  _excluded = true;
+  const currentScreen = STATE.screenTimestamps.length > 0
+    ? STATE.screenTimestamps[STATE.screenTimestamps.length - 1].screen : 'unknown';
+
+  container.innerHTML = `
+    <div class="screen-header"><h2>Study Terminated</h2></div>
+    <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:24px;margin:20px 0;">
+      <p style="font-size:1.1rem;"><strong>You have been excluded from this study.</strong></p>
+      <p>As stated in the consent form, leaving this browser tab at any point during the study results in immediate exclusion. We detected that you switched away from this tab.</p>
+      <p>You will <strong>not</strong> receive payment for this study.</p>
+      <p>If you believe this is an error (e.g., an accidental system notification), please contact the researchers at <strong>drobnerc@ceu.edu</strong> and include your Prolific ID: <strong>${STATE.prolificPid || 'N/A'}</strong>.</p>
+    </div>
+    <div class="nav-row">
+      <a href="https://app.prolific.com" class="btn btn-primary" style="text-decoration:none;">Return to Prolific</a>
+    </div>`;
+
+  // Log exclusion to Google Sheets
+  if (CONFIG.googleSheetsURL) {
+    fetch(CONFIG.googleSheetsURL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prolificPid: STATE.prolificPid || 'unknown',
+        sessionId: STATE.sessionId || '',
+        studyId: STATE.studyId || '',
+        quizCondition: 'TAB_SWITCH_EXCLUDED',
+        excludedOnScreen: currentScreen,
+        timestamp: new Date().toISOString(),
+        tabSwitches: JSON.stringify(STATE.tabSwitches),
+        totalFocusLostMs: STATE.totalFocusLostMs,
+      }),
+    }).catch(() => {});
+  }
+}
+
+(function() {
+  let lastHiddenTime = null;
+  let blurExclusionTimer = null;
+  const GRACE_PERIOD_MS = 2000;
+
+  // Track when page becomes hidden (tab switch)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      lastHiddenTime = Date.now();
+    } else if (lastHiddenTime) {
+      const duration = Date.now() - lastHiddenTime;
+      STATE.tabSwitches.push({
+        time: new Date().toISOString(),
+        durationMs: duration,
+        type: 'visibility',
+        screen: STATE.screenTimestamps.length > 0 ? STATE.screenTimestamps[STATE.screenTimestamps.length - 1].screen : 'unknown',
+      });
+      STATE.totalFocusLostMs += duration;
+      lastHiddenTime = null;
+      if (CONFIG.tabSwitchExclusionEnabled && _tabSwitchArmed && !_excluded && duration >= GRACE_PERIOD_MS) {
+        showExcluded();
+      }
+    }
+  });
+
+  // Track when window loses focus (app switch — catches Alt-Tab, clicking other apps)
+  window.addEventListener('blur', () => {
+    if (!CONFIG.tabSwitchExclusionEnabled || !_tabSwitchArmed || _excluded) return;
+    const blurStart = Date.now();
+    blurExclusionTimer = setTimeout(() => {
+      if (!document.hasFocus()) {
+        STATE.tabSwitches.push({
+          time: new Date().toISOString(),
+          durationMs: GRACE_PERIOD_MS,
+          type: 'blur',
+          screen: STATE.screenTimestamps.length > 0 ? STATE.screenTimestamps[STATE.screenTimestamps.length - 1].screen : 'unknown',
+        });
+        showExcluded();
+      }
+    }, GRACE_PERIOD_MS);
+  });
+
+  window.addEventListener('focus', () => {
+    if (blurExclusionTimer) {
+      clearTimeout(blurExclusionTimer);
+      blurExclusionTimer = null;
+    }
+  });
+
+  // Block copy/cut/right-click
+  document.addEventListener('copy', (e) => { e.preventDefault(); STATE.copyAttempts++; });
+  document.addEventListener('cut', (e) => { e.preventDefault(); STATE.copyAttempts++; });
+  document.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+})();
+
+function init() {
+  getUrlParams();
+  STATE.startTime = Date.now();
+  STATE.bsrStakeRound = CONFIG.beliefBonusRound;
+  if (isMobileDevice()) {
+    showMobileBlocked();
+    return;
+  }
+  showScreen('welcome');
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
