@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbziaMZuf63diJa7vT7ojMhC5sZfQJkR60KSw3e3pgJtaAV0Y2We3LarTThtS4wYp9qX/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzRRP98M6Negfh6Hl7snrXVq0Mi0IzJJoV9HU57phOfLuMf7u9RbFAo3s0bQhmY9jPqpg/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -429,27 +429,25 @@ const CONFIG = {
   quizTimePerQuestion: 10, // seconds
   numQuizQuestions: 12,
 
-  // ---- Random Manager probability display ----
+  // ---- Lottery Manager probability display ----
   // Set to null to use participant's γ* (computed from Study 1 data).
   // Set to a number (e.g. 40) to show a fixed value to all participants.
   randomProbDisplay: null,
 
   // ---- Prior score distribution (for computing γ* and drawing opponents) ----
-  // Synthetic distributions (n=100 each) for a plausible Prolific US sample on the
-  // Study 2 quiz (12 questions: 4 shared + 8 condition-specific).
-  // Each entry is a score (number of correct answers out of 12).
+  // Benchmark distributions (N=20 each), smoothed from combined pilots 2 + 3.
+  // Pilot means/medians preserved; gaps filled and Prolific-like tails added
+  // (occasional low-attention lapsers in Easy, a few high scorers in Hard).
+  // Each entry is a score (number of correct answers out of 12) on the Study 2
+  // quiz (12 questions: 4 shared + 8 condition-specific).
   // γ* = fraction of same-condition scores strictly lower + 0.5 × fraction equal.
-  // Recalibrated after pilot 2 (N=11), benchmark means pinned to pilot sample means
-  // while retaining wider Prolific-like tails (lapses on easy, ceiling-breakers on hard).
-  //   pilot easy (N=4): mean 10.50, sd 1.29 → benchmark mean 10.46, sd 1.73, range [5,12]
-  //   pilot hard (N=7): mean 4.71,  sd 2.14 → benchmark mean 4.70,  sd 2.59, range [0,12]
-  // EASY synthetic: mean ≈ 10.46, SD ≈ 1.73
-  // HARD synthetic: mean ≈ 4.70, SD ≈ 2.59
+  //   EASY pilot (N=13): mean 9.54, median 10  →  smoothed mean 9.55, median 10
+  //   HARD pilot (N=18): mean 4.44, median 4.5 →  smoothed mean 4.45, median 4.5
   study1ScoresEasy: [
-    5,5,6,6,6,6,6,6,7,8,9,9,9,9,9,9,9,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12
+    2,5,7,8,9,9,10,10,10,10,10,10,11,11,11,11,11,12,12,12
   ],
   study1ScoresHard: [
-    0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,9,10,11,12,12
+    0,1,2,2,3,3,4,4,4,5,5,5,5,5,5,5,6,6,8,11
   ],
 
   // ---- Quiz questions ----
@@ -1125,10 +1123,10 @@ const CONFIG = {
     },
 
     managerInstructions1: (randomProb) => ({
-      intro: `<p>Imagine you have started a new job in which you can <strong>decide</strong> to work with one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-random">Random Manager</strong>.</p>
+      intro: `<p>Imagine you have started a new job in which you can <strong>decide</strong> to work with one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-random">Lottery Manager</strong>.</p>
         <p>Whichever manager you decide to work with gives you bonuses. Each bonus is either <strong>H</strong> (pays $0.20) or <strong>L</strong> (pays $0). The two managers decide bonuses differently:</p>`,
       performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> For each bonus, a different random participant from a reference sample of participants who took this same quiz is picked, and your score on the quiz you just took is compared to theirs. You receive <strong>H</strong> if you would beat that participant; if you would tie, the winner is decided by a coin flip; and you receive <strong>L</strong> if you would lose. So the Performance Manager's chance of paying H on a single draw depends on how well you actually scored on the quiz you just took.</li></ul>`,
-      random: `<ul style="margin:0;"><li><strong class="eval-random">Random Manager:</strong> Each bonus is decided independently by a random draw. The Random Manager does <strong>not</strong> compare you to anyone — you receive <strong>H</strong> with a probability of <strong>${randomProb}%</strong> and <strong>L</strong> with probability <strong>${100 - randomProb}%</strong>. This probability is the same for every bonus and every round.</li></ul>`,
+      random: `<ul style="margin:0;"><li><strong class="eval-random">Lottery Manager:</strong> Does <strong>not</strong> compare you to anyone — you receive <strong>H</strong> with a fixed probability of <strong>${randomProb}%</strong> and <strong>L</strong> with probability <strong>${100 - randomProb}%</strong>. This probability is the same for every bonus and every round.</li></ul>`,
     }),
 
     hProbElicitationIntro: `<p>Before we continue, let's make sure you understand how likely each manager is to give you an <strong>H</strong> bonus.</p>
@@ -1136,9 +1134,9 @@ const CONFIG = {
 
     managerInstructions2a: `<p>There are <strong>10 rounds</strong>. Each round proceeds as follows:</p>
       <ol>
-        <li><strong>Choose your manager.</strong> You decide whether to work with the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-random">Random Manager</strong> for this round.</li>
+        <li><strong>Choose your manager.</strong> You decide whether to work with the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-random">Lottery Manager</strong> for this round.</li>
         <li><strong>Receive bonuses.</strong> The manager you chose gives you 5 bonuses (each H or L).</li>
-        <li><strong>Performance guess.</strong> After seeing the bonuses, you report your best guess of the percent chance you would beat a randomly picked participant on the quiz, where ties are decided by a coin flip.</li>
+        <li><strong>Performance guess.</strong> Report your best guess of beating a randomly picked participant.</li>
       </ol>
       <p>After reporting your guess, you choose which manager to work with in the next round. You may stay with your current manager or switch.</p>`,
 
@@ -1150,7 +1148,7 @@ const CONFIG = {
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin:18px 0;">
         <p style="margin:0 0 10px;font-weight:600;color:#1e40af;">Why does your manager choice matter for your guess?</p>
         <p style="margin:0 0 10px;">The <strong class="eval-performance">Performance Manager's</strong> bonuses are based on 5 comparisons of your quiz performance with randomly picked participants. Observing these bonuses may help you form a better guess about how you compare.</p>
-        <p style="margin:0;">The <strong class="eval-random">Random Manager's</strong> bonuses are <strong>NOT</strong> based on 5 comparisons of your quiz performance with randomly picked participants &mdash; they come from a fixed, known probability. Observing these bonuses does not give you new information about your quiz performance.</p>
+        <p style="margin:0;">The <strong class="eval-random">Lottery Manager's</strong> bonuses are <strong>NOT</strong> based on 5 comparisons of your quiz performance with randomly picked participants &mdash; they come from a fixed, known probability. Observing these bonuses does not give you new information about your quiz performance.</p>
       </div>
 
       <p><strong>The way we calculate belief bonuses is designed so that reporting your true beliefs maximizes your chance of winning.</strong> Because any single round could be the one that counts, treat every round seriously.</p>`,
@@ -1161,8 +1159,8 @@ const CONFIG = {
       items: [
         { text: "The Performance Manager decides each bonus by comparing my quiz score to a randomly picked participant's score, paying H if I beat them (coin flip on ties).", correct: true },
         { text: "For the Performance Manager, the same random participant is used for every bonus I receive.", correct: false },
-        { text: `The Random Manager pays H with a probability of ${randomProb}% on every draw, and this probability is the same in every round.`, correct: true },
-        { text: "The Random Manager compares my quiz score to other participants to decide each bonus.", correct: false },
+        { text: `The Lottery Manager pays H with a fixed probability of ${randomProb}% on every draw, and this probability is the same in every round.`, correct: true },
+        { text: "The Lottery Manager compares my quiz score to other participants to decide each bonus.", correct: false },
         { text: 'Each H bonus pays $0.20 and each L bonus pays $0.', correct: true },
       ],
     }),
@@ -1171,7 +1169,7 @@ const CONFIG = {
       prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
       backScreen: 'managerInstructions2b',
       items: [
-        { text: 'In every round I get to choose whether to work with the Performance Manager or the Random Manager.', correct: true },
+        { text: 'In every round I get to choose whether to work with the Performance Manager or the Lottery Manager.', correct: true },
         { text: 'I will be paid for the bonuses from all rounds.', correct: false },
         { text: 'I should always report my true best guess, regardless of which manager I chose.', correct: true },
         { text: 'My total payment depends only on the bonuses; my guesses do not affect my payment.', correct: false },
@@ -1180,7 +1178,7 @@ const CONFIG = {
 
     readyToBegin: `<p>You're about to begin 10 rounds. Here's a quick recap of each round:</p>
       <ol>
-        <li><strong>Choose</strong> the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-random">Random Manager</strong></li>
+        <li><strong>Choose</strong> the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-random">Lottery Manager</strong></li>
         <li><strong>Receive</strong> 5 bonuses (H or L) from your chosen manager</li>
         <li><strong>Report</strong> your best guess about your chance of beating a randomly picked participant</li>
       </ol>
@@ -1210,7 +1208,7 @@ const CONFIG = {
     resultsReveal: (payRoundNum, payRoundMgrId) => {
       const mgrLabel = payRoundMgrId === 'performance'
         ? '<span class="eval-performance">Performance Manager</span>'
-        : '<span class="eval-random">Random Manager</span>';
+        : '<span class="eval-random">Lottery Manager</span>';
       return `<p>Thank you for completing the study! Here are your results.</p>
       <p><strong>Selected round:</strong> Round ${payRoundNum} was randomly selected for payment. Your manager in that round was the ${mgrLabel}.</p>
 `;
@@ -1327,7 +1325,10 @@ function getUrlParams() {
   STATE.sessionId = params.get('SESSION_ID') || 'test_session';
 }
 
-// Compute γ* from Study 1 scores (condition-specific)
+// Compute γ* from Study 1 scores (condition-specific).
+// Returns the EXACT (unrounded) percentage so the Lottery Manager's
+// Bernoulli probability exactly matches the Performance Manager's
+// expected H-rate. Rounding is applied at display sites.
 function computeGammaStar(participantScore) {
   const scores = STATE.quizCondition === 'easy' ? CONFIG.study1ScoresEasy : CONFIG.study1ScoresHard;
   const n = scores.length;
@@ -1336,8 +1337,8 @@ function computeGammaStar(participantScore) {
     if (s < participantScore) below++;
     else if (s === participantScore) equal++;
   }
-  // γ* = P(beat) + 0.5 * P(tie), expressed as percentage
-  return Math.round(((below + 0.5 * equal) / n) * 100);
+  // γ* = P(beat) + 0.5 * P(tie), expressed as a percentage (0–100 float).
+  return ((below + 0.5 * equal) / n) * 100;
 }
 
 // Generate outcomes for a round
@@ -1407,7 +1408,7 @@ function logTimestamp(screenName) {
 
 // Manager display helpers (disclosed-types design)
 function managerName(mgr_id) {
-  return mgr_id === 'performance' ? 'Performance Manager' : 'Random Manager';
+  return mgr_id === 'performance' ? 'Performance Manager' : 'Lottery Manager';
 }
 function managerClass(mgr_id) {
   return mgr_id === 'performance' ? 'eval-performance' : 'eval-random';
@@ -1419,7 +1420,7 @@ function managerLabel(mgr_id) {
 // `belief` is the participant's current γ estimate; `round` is the upcoming round number.
 // `onChoose` is the JS function name to call: 'roundInitialChoice' (round 1) or 'roundMakeChoiceByMgr' (rounds 2+).
 function buildManagerChoiceHTML(round, belief, onChoose) {
-  const rp   = STATE.randomProbShown;
+  const rp   = Math.round(STATE.randomProbShown);  // displayed (integer) version
   const payH = CONFIG.payPerH.toFixed(2);
 
   function cardHTML(mgr) {
@@ -1601,7 +1602,7 @@ function renderMuConfidenceWidget(defaultMu) {
       <!-- Step 1: μ slider -->
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 22px;margin:16px 0;">
         <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;font-weight:700;margin-bottom:8px;">Step 1 — Your best guess</div>
-        <p style="margin:0 0 12px;font-size:0.97rem;">What is the percent chance you would beat a randomly picked participant on the quiz, where ties are decided by a coin flip?</p>
+        <p style="margin:0 0 12px;font-size:0.97rem;">What is the percent chance you would beat a randomly picked participant on the quiz?</p>
         <div class="slider-row">
           <input type="range" id="init-mu-slider" min="0" max="100" value="${mu0}" data-touched="1"
                  oninput="onInitMuChange(this.value)">
@@ -2180,7 +2181,7 @@ function finishQuiz() {
   STATE.quizScore = STATE.quizAnswers.filter(a => a.correct).length;
   STATE.gammaStar = computeGammaStar(STATE.quizScore);
 
-  // Determine the Random Manager probability to show
+  // Determine the Lottery Manager probability to show
   if (CONFIG.randomProbDisplay !== null) {
     STATE.randomProbShown = CONFIG.randomProbDisplay;
   } else {
@@ -2230,7 +2231,7 @@ SCREENS.transition = () => {
 
 // ---- Instructions Page 1: Your New Job ----
 SCREENS.managerInstructions1 = () => {
-  const t = CONFIG.texts.managerInstructions1(STATE.randomProbShown);
+  const t = CONFIG.texts.managerInstructions1(Math.round(STATE.randomProbShown));
   container.innerHTML = `
     <div class="screen-header"><h2>Instructions — Your New Job</h2></div>
     ${t.intro}
@@ -2264,7 +2265,7 @@ SCREENS.hProbElicitation = () => {
     </div>
 
     <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
-      <p style="margin:0 0 12px;"><strong>2.</strong> What is the likelihood that the <strong class="eval-random">Random Manager</strong> gives you an <strong>H</strong> bonus on a single draw?</p>
+      <p style="margin:0 0 12px;"><strong>2.</strong> What is the likelihood that the <strong class="eval-random">Lottery Manager</strong> gives you an <strong>H</strong> bonus on a single draw?</p>
       <div style="display:flex;align-items:center;gap:8px;">
         <input type="number" id="rand-h-input" min="0" max="100" step="1" placeholder="0–100" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
         <span style="font-size:1rem;color:#333;">%</span>
@@ -2277,7 +2278,7 @@ SCREENS.hProbElicitation = () => {
         <button class="btn btn-choice" id="better-perf-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
                 onclick="selectBetterManager('performance')"><span class="eval-performance">Performance Manager</span></button>
         <button class="btn btn-choice" id="better-rand-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
-                onclick="selectBetterManager('random')"><span class="eval-random">Random Manager</span></button>
+                onclick="selectBetterManager('random')"><span class="eval-random">Lottery Manager</span></button>
       </div>
     </div>
 
@@ -2337,7 +2338,7 @@ function submitHProbElicitation() {
   STATE.elicitedBetterManager = window._selectedBetterManager;
 
   const correctPerf = STATE.belief_0;
-  const correctRand = STATE.randomProbShown;
+  const correctRand = Math.round(STATE.randomProbShown);
   // Correct "better manager" choice: whichever has the higher H-probability.
   // On a tie we accept either answer since "About the same" is not offered.
   let betterOk;
@@ -2354,7 +2355,7 @@ function submitHProbElicitation() {
 
 // ---- Comprehension Check 1: Manager Structure ----
 SCREENS.comprehensionCheck1 = () => {
-  renderComprehensionCheck(CONFIG.texts.comprehensionCheck1(STATE.randomProbShown), () => {
+  renderComprehensionCheck(CONFIG.texts.comprehensionCheck1(Math.round(STATE.randomProbShown)), () => {
     showScreen('managerInstructions2a');
   }, 'check1');
   updateProgress(0.42);
@@ -2376,7 +2377,7 @@ SCREENS.managerInstructions2a = () => {
 SCREENS.managerInstructions2b = () => {
   container.innerHTML = `
     <div class="screen-header"><h2>Instructions — Payment &amp; Informativeness</h2></div>
-    ${CONFIG.texts.managerInstructions2b(STATE.randomProbShown, STATE.bsrStakeRound)}
+    ${CONFIG.texts.managerInstructions2b(Math.round(STATE.randomProbShown), STATE.bsrStakeRound)}
     <div class="nav-row" style="justify-content:space-between;">
       <button class="btn" onclick="showScreen('managerInstructions2a')">← Back</button>
       <button class="btn btn-primary" onclick="showScreen('comprehensionCheck2')">Next →</button>
@@ -2386,7 +2387,7 @@ SCREENS.managerInstructions2b = () => {
 
 // ---- Comprehension Check 2: Payment & Beliefs ----
 SCREENS.comprehensionCheck2 = () => {
-  renderComprehensionCheck(CONFIG.texts.comprehensionCheck2(STATE.randomProbShown, STATE.bsrStakeRound), () => {
+  renderComprehensionCheck(CONFIG.texts.comprehensionCheck2(Math.round(STATE.randomProbShown), STATE.bsrStakeRound), () => {
     showScreen('readyToBegin');
   }, 'check2');
   updateProgress(0.50);
@@ -2546,7 +2547,7 @@ function roundShowBonuses() {
     outcomes = result.outcomes;
     opponents = result.opponents;
   } else {
-    // Random Manager: i.i.d. Bernoulli draws at the stated probability
+    // Lottery Manager: i.i.d. Bernoulli draws at the stated probability
     const prob = STATE.randomProbShown / 100;
     outcomes = [];
     opponents = [];
@@ -2565,7 +2566,7 @@ function roundShowBonuses() {
 
   const outcomesDiv = document.getElementById('round-step-outcomes');
   outcomesDiv.style.display = '';
-  const mgrName = mgr === 'performance' ? 'Performance Manager' : 'Random Manager';
+  const mgrName = mgr === 'performance' ? 'Performance Manager' : 'Lottery Manager';
   const mgrClass = mgr === 'performance' ? 'eval-performance' : 'eval-random';
   const mechanismLine = (mgr === 'performance')
     ? `these bonuses are based on 5 comparisons of your quiz performance with randomly picked participants.`
@@ -2634,6 +2635,11 @@ function roundShowGamma() {
     : STATE.rounds[STATE.rounds.length - 1].belief;
   const stake = STATE.bsrStakeRound.toFixed(0);
 
+  const chosenMgr = roundData.manager;
+  const mgrNameHTML = chosenMgr === 'performance'
+    ? '<strong class="eval-performance">Performance Manager</strong>'
+    : '<strong class="eval-random">Lottery Manager</strong>';
+
   const gammaDiv = document.getElementById('round-step-gamma');
   gammaDiv.style.display = '';
   gammaDiv.innerHTML = `
@@ -2641,7 +2647,7 @@ function roundShowGamma() {
 
     <h3 class="step-heading">Performance guess</h3>
 
-    <p>What is the percent chance you would beat a randomly picked participant on the quiz, where ties are decided by a coin flip? <em>(${isFirstGammaUpdate ? 'Earlier' : 'In the previous round'}, you guessed <strong>${prevGamma}%</strong>.)</em></p>
+    <p>You just saw 5 bonuses from the ${mgrNameHTML}. What is the percent chance you would beat a randomly picked participant on the quiz? <em>(${isFirstGammaUpdate ? 'Earlier' : 'In the previous round'}, you guessed <strong>${prevGamma}%</strong>.)</em> You can keep your current guess or adjust it.</p>
 
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
       <div class="slider-container" style="margin:0;">
@@ -2656,22 +2662,35 @@ function roundShowGamma() {
       </div>
     </div>
 
-    <p style="font-size:0.88rem; color:#666;">(Remember: if this round is the one randomly selected for the round-belief payment, your most accurate guess gives you the highest chance of winning the <strong>$${stake}</strong> prize.)</p>
+    <p style="font-size:0.88rem; color:#666;">(Remember: this payment rewards you for accurately guessing how you compare on the quiz. The closer your guess to the truth, the higher your chance of winning the <strong>$${stake}</strong> prize.)</p>
 
     <div id="gamma-slider-warning" class="slider-warning"></div>
-    <div class="nav-row" id="gamma-nav">
-      <button class="btn btn-primary" onclick="roundSubmitGamma()">Next →</button>
+    <div class="nav-row" id="gamma-nav" style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;">
+      <button class="btn btn-primary" style="background:#64748b;min-width:200px;" onclick="roundKeepGuess(${prevGamma})">Keep my guess at ${prevGamma}%</button>
+      <button class="btn btn-primary" style="min-width:200px;" onclick="roundSubmitGamma()">Submit new guess →</button>
     </div>`;
 
   gammaDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Step 3 → Step 4: lock γ, show evaluator choice (or finish)
+function roundKeepGuess(prev) {
+  const slider = document.getElementById('gamma-round-slider');
+  if (slider) {
+    slider.value = prev;
+    const valEl = document.getElementById('gamma-round-val');
+    if (valEl) valEl.textContent = prev + '%';
+  }
+  window._pendingRound.beliefKeptButton = true;
+  roundSubmitGamma();
+}
+
 function roundSubmitGamma() {
   const roundData = window._pendingRound;
   const slider = document.getElementById('gamma-round-slider');
   roundData.belief = parseInt(slider.value);
   roundData.beliefSliderTouched = slider.dataset.touched === '1';
+  if (roundData.beliefKeptButton === undefined) roundData.beliefKeptButton = false;
   roundData.tsGammaSubmit = Date.now();
   STATE.rounds.push(roundData);
 
@@ -3144,7 +3163,9 @@ function submitBoredom() {
 // Helper: returns { aRoundsRandomVsPerf, bRoundsPerfVsRandom } — 1-indexed
 // round lists split by direction of belief-inconsistent manager choice.
 function computeChoiceExplanationTriggers() {
-  const rp = Number(STATE.randomProbShown);
+  // Compare against the ROUNDED (displayed) probability so the criterion
+  // matches what the participant actually saw against their integer belief.
+  const rp = Math.round(Number(STATE.randomProbShown));
   const out = { aRoundsRandomVsPerf: [], bRoundsPerfVsRandom: [] };
   if (!Number.isFinite(rp)) return out;
   const rounds = STATE.rounds || [];
@@ -3184,11 +3205,11 @@ SCREENS.perfChoiceExplanation = () => {
   const blockA = aRounds.length === 0 ? '' : `
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin:16px 0;">
       <p style="margin:0 0 10px;">
-        In ${nStr(aRounds)} (${fmtRounds(aRounds)}) you chose the <strong class="eval-random">Random Manager</strong>
+        In ${nStr(aRounds)} (${fmtRounds(aRounds)}) you chose the <strong class="eval-random">Lottery Manager</strong>
         even though your latest guess suggested the <strong class="eval-performance">Performance Manager</strong> had
         a higher chance of paying&nbsp;H.
       </p>
-      <p style="margin:0 0 10px;"><strong>What made you pick the Random Manager in those rounds?</strong></p>
+      <p style="margin:0 0 10px;"><strong>What made you pick the Lottery Manager in those rounds?</strong></p>
       <textarea id="explain-chose-random" rows="4"
         placeholder="Please write at least a sentence or two..."
         style="width:100%;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"
@@ -3199,7 +3220,7 @@ SCREENS.perfChoiceExplanation = () => {
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin:16px 0;">
       <p style="margin:0 0 10px;">
         In ${nStr(bRounds)} (${fmtRounds(bRounds)}) you chose the <strong class="eval-performance">Performance Manager</strong>
-        even though your latest guess suggested the <strong class="eval-random">Random Manager</strong> had
+        even though your latest guess suggested the <strong class="eval-random">Lottery Manager</strong> had
         a higher chance of paying&nbsp;H.
       </p>
       <p style="margin:0 0 10px;"><strong>What made you pick the Performance Manager in those rounds?</strong></p>
@@ -3486,6 +3507,7 @@ async function submitData() {
         [`earnings_${i}`,      r.earnings],
         [`belief_${i}`,   r.belief],
         [`beliefSliderTouched_${i}`, r.beliefSliderTouched ? 1 : 0],
+        [`beliefKeptButton_${i}`, r.beliefKeptButton ? 1 : 0],
         [`outcomes_${i}`,      (r.outcomes || []).join('')],          // e.g. "HHLHH"
         [`opponentScores_${i}`, (r.opponentScores || []).join(',')],  // e.g. "7,4,9,3,6"
       ];
@@ -3735,4 +3757,4 @@ init();
 </script>
 </body>
 </html>
- 
+   
