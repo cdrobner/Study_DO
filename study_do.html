@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxxcG0R4RM4ss-B7gbexlHuDMvgQSxeKGt9XrJp_TKAcpSs1ZFhMILVXj6Ykk-Bf1Q4Yw/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbx6h9IH7-JJLqDBFqIfBHzeu0zcid6dwJjPreN712TVLm5c_MYLo6lvYey0VOp8WL0s/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -441,14 +441,14 @@ const CONFIG = {
   // Each entry is a score (number of correct answers out of 12) on the Study 2
   // quiz (12 questions: 4 shared + 8 condition-specific).
   // γ* = fraction of same-condition scores strictly lower + 0.5 × fraction equal.
-  //   Pooled empirical from pilots 2, 3, 4(4), 5(2) — pure distribution, no smoothing.
-  //   EASY (N=41): mean 9.17, median 9.0.  γ* reaches 100% only at ceiling (12) ties < 100%.
-  //   HARD (N=42): mean 3.95, median 4.0.  γ*=100% from score 9 onward (empirical max = 8).
+  //   Pooled empirical from pilots 2, 3, 4(4), 5(2), 6 — pilots 5(2) and 6 double-weighted.
+  //   EASY (N=70 weighted): mean 8.69, median 9.0.  γ*=95.71% at ceiling (12).
+  //   HARD (N=84 weighted): mean 3.50, median 3.0.  γ*=100% from score 9 onward.
   study1ScoresEasy: [
-    1,1,7,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10,10,10,10,10,10,10,10,10,11,11,11,11,11,12,12,12,12
+    1,1,1,1,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,12,12,12,12,12,12
   ],
   study1ScoresHard: [
-    0,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,5,5,5,5,5,5,6,6,6,6,6,7,7,7,7,7,8
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,8
   ],
 
   // ---- Quiz questions ----
@@ -3749,4 +3749,4 @@ init();
 </script>
 </body>
 </html>
-   
+   
