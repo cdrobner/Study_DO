@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxbTYn5fWBoOgj3ps1BUIk5aqmP6ebxFkDxsV3lAabraDyLF123NzgyQzqsvV79Gt3MSw/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbyiMlaTydDdb0amuKJl1ZiGEMYs9GjQ1eTqKc9X39Kv3cKR90Mmt9yKGLYlr7lggSg5uA/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -422,7 +422,7 @@ const CONFIG = {
   // ---- Study parameters ----
   numChoiceRounds: 5,
   outcomesPerRound: 10,
-  payPerH: 0.20,           // $ per H outcome
+  payPerH: 0.10,           // $ per H outcome
   showUpFee: 2.00,         // $ flat fee
   beliefBonusInitial: 1.00,   // $ BSR stake on initial belief
   beliefBonusRound: 1.00,     // $ BSR stake on round-level belief
@@ -1125,7 +1125,7 @@ const CONFIG = {
 
     managerInstructions1: (randomProb) => ({
       intro: `<p>Imagine you have started a new job in which you can <strong>decide</strong> to work with one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-random">Lottery Manager</strong>.</p>
-        <p>Whichever manager you decide to work with gives you bonuses. Each bonus is either <strong>H</strong> (pays $0.20) or <strong>L</strong> (pays $0). The two managers decide bonuses differently:</p>`,
+        <p>Whichever manager you decide to work with gives you bonuses. Each bonus is either <strong>H</strong> (pays $0.10) or <strong>L</strong> (pays $0). The two managers decide bonuses differently:</p>`,
       performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> For each bonus, a different random participant from a reference sample of participants who took this same quiz is picked, and your score on the quiz you just took is compared to theirs. You receive <strong>H</strong> if you would beat that participant; if you would tie, the winner is decided by a coin flip; and you receive <strong>L</strong> if you would lose. So the Performance Manager's chance of paying H on a single draw depends on how well you actually scored on the quiz you just took.</li></ul>`,
       random: `<ul style="margin:0;"><li><strong class="eval-random">Lottery Manager:</strong> Does <strong>not</strong> compare you to anyone — you receive <strong>H</strong> with a fixed probability of <strong>${randomProb}%</strong> and <strong>L</strong> with probability <strong>${100 - randomProb}%</strong>. This probability is the same for every bonus and every round.</li></ul>`,
     }),
@@ -1143,7 +1143,7 @@ const CONFIG = {
 
     managerInstructions2b: (randomProb, roundBsr) => `<p><strong>Payment.</strong> In addition to your earlier earnings, this part of the study determines two further payments:</p>
       <ul>
-        <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 5 rounds and pays you for the bonuses earned in that round ($0.20 per H, $0 per L).</li>
+        <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 5 rounds and pays you for the bonuses earned in that round ($0.10 per H, $0 per L).</li>
         <li><strong>Round belief payment.</strong> The computer randomly selects <strong>one</strong> of your 5 guesses (one from each round) and scores it: the more accurate your guess, the higher your chance of winning a <strong>$${roundBsr.toFixed(0)} prize</strong>.</li>
       </ul>
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin:18px 0;">
@@ -1162,7 +1162,7 @@ const CONFIG = {
         { text: "For the Performance Manager, the same random participant is used for every bonus I receive.", correct: false },
         { text: `The Lottery Manager pays H with a fixed probability of ${randomProb}% on every draw, and this probability is the same in every round.`, correct: true },
         { text: "The Lottery Manager compares my quiz score to other participants to decide each bonus.", correct: false },
-        { text: 'Each H bonus pays $0.20 and each L bonus pays $0.', correct: true },
+        { text: 'Each H bonus pays $0.10 and each L bonus pays $0.', correct: true },
       ],
     }),
 
@@ -3411,7 +3411,7 @@ SCREENS.results = () => {
     <div class="results-section">
       <h3>Payment Breakdown</h3>
       <div class="payment-line"><span>Show-up fee</span><span>$${CONFIG.showUpFee.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Manager payment (${roundLabel}: ${payRound.hCount} H × $0.20)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Manager payment (${roundLabel}: ${payRound.hCount} H × $0.10)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
       <div class="payment-line"><span>Initial belief prize (your guess: ${STATE.belief_0}%)</span><span>$${STATE.beliefBonusInitial_amount.toFixed(2)}</span></div>
       <div class="payment-line"><span>Round belief prize (${beliefRoundLabelB} guess: ${beliefValueB}%)</span><span>$${STATE.beliefBonusRound_amount.toFixed(2)}</span></div>
       <div class="payment-total"><span>Total payment</span><span>$${STATE.totalBonus.toFixed(2)}</span></div>
