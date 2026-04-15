@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzsoVMh9qhOqpP7daO5iK3UTeo9rqKJw0-O24DMAc5pqZGnwrou90GTtwcEoPrPZcnW/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxxcG0R4RM4ss-B7gbexlHuDMvgQSxeKGt9XrJp_TKAcpSs1ZFhMILVXj6Ykk-Bf1Q4Yw/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -441,14 +441,14 @@ const CONFIG = {
   // Each entry is a score (number of correct answers out of 12) on the Study 2
   // quiz (12 questions: 4 shared + 8 condition-specific).
   // γ* = fraction of same-condition scores strictly lower + 0.5 × fraction equal.
-  //   EASY pilot2+3+4 (N=28): mean 9.14, median 9.5 →  smoothed mean 9.15, median 9.5
-  //   HARD pilot2+3+4 (N=24): mean 4.58, median 5.0 →  smoothed mean 4.60, median 5.0
-  //   Constraint: Hard γ* must not reach 100% before score 12 (max value < 12).
+  //   Pooled empirical from pilots 2, 3, 4(4), 5(2) — pure distribution, no smoothing.
+  //   EASY (N=41): mean 9.17, median 9.0.  γ* reaches 100% only at ceiling (12) ties < 100%.
+  //   HARD (N=42): mean 3.95, median 4.0.  γ*=100% from score 9 onward (empirical max = 8).
   study1ScoresEasy: [
-    1,5,7,8,9,9,9,9,9,9,10,10,10,10,11,11,11,11,12,12
+    1,1,7,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10,10,10,10,10,10,10,10,10,11,11,11,11,11,12,12,12,12
   ],
   study1ScoresHard: [
-    0,1,2,2,3,3,3,4,4,5,5,5,5,5,6,6,6,7,9,11
+    0,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,5,5,5,5,5,5,6,6,6,6,6,7,7,7,7,7,8
   ],
 
   // ---- Quiz questions ----
@@ -3749,4 +3749,4 @@ init();
 </script>
 </body>
 </html>
- 
+   
