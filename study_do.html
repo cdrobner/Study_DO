@@ -99,16 +99,16 @@ strong { font-weight: 600; }
 
 /* Outcome boxes */
 .outcomes-row {
-  display: flex; gap: 14px; justify-content: center; margin: 20px 0;
+  display: flex; gap: 6px; justify-content: center; margin: 20px 0; flex-wrap: nowrap;
 }
 .outcome-box {
-  width: 64px; height: 64px; border: 2px solid #d1d5db; border-radius: 8px;
+  width: 52px; height: 56px; border: 2px solid #d1d5db; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.5rem; font-weight: 700; background: #fff;
-  flex-direction: column;
+  font-size: 1.25rem; font-weight: 700; background: #fff;
+  flex-direction: column; flex: 0 0 auto;
 }
 .outcome-box .outcome-label {
-  font-size: 0.65rem; font-weight: 400; color: #666; margin-bottom: 2px;
+  font-size: 0.6rem; font-weight: 400; color: #666; margin-bottom: 2px;
 }
 .outcome-box.outcome-H { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
 .outcome-box.outcome-L { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
@@ -414,14 +414,14 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzRRP98M6Negfh6Hl7snrXVq0Mi0IzJJoV9HU57phOfLuMf7u9RbFAo3s0bQhmY9jPqpg/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxbTYn5fWBoOgj3ps1BUIk5aqmP6ebxFkDxsV3lAabraDyLF123NzgyQzqsvV79Gt3MSw/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
 
   // ---- Study parameters ----
-  numChoiceRounds: 10,
-  outcomesPerRound: 5,
+  numChoiceRounds: 5,
+  outcomesPerRound: 10,
   payPerH: 0.20,           // $ per H outcome
   showUpFee: 2.00,         // $ flat fee
   beliefBonusInitial: 1.00,   // $ BSR stake on initial belief
@@ -441,13 +441,14 @@ const CONFIG = {
   // Each entry is a score (number of correct answers out of 12) on the Study 2
   // quiz (12 questions: 4 shared + 8 condition-specific).
   // γ* = fraction of same-condition scores strictly lower + 0.5 × fraction equal.
-  //   EASY pilot (N=13): mean 9.54, median 10  →  smoothed mean 9.55, median 10
-  //   HARD pilot (N=18): mean 4.44, median 4.5 →  smoothed mean 4.45, median 4.5
+  //   EASY pilot2+3+4 (N=28): mean 9.14, median 9.5 →  smoothed mean 9.15, median 9.5
+  //   HARD pilot2+3+4 (N=24): mean 4.58, median 5.0 →  smoothed mean 4.60, median 5.0
+  //   Constraint: Hard γ* must not reach 100% before score 12 (max value < 12).
   study1ScoresEasy: [
-    2,5,7,8,9,9,10,10,10,10,10,10,11,11,11,11,11,12,12,12
+    1,5,7,8,9,9,9,9,9,9,10,10,10,10,11,11,11,11,12,12
   ],
   study1ScoresHard: [
-    0,1,2,2,3,3,4,4,4,5,5,5,5,5,5,5,6,6,8,11
+    0,1,2,2,3,3,3,4,4,5,5,5,5,5,6,6,6,7,9,11
   ],
 
   // ---- Quiz questions ----
@@ -1132,23 +1133,23 @@ const CONFIG = {
     hProbElicitationIntro: `<p>Before we continue, let's make sure you understand how likely each manager is to give you an <strong>H</strong> bonus.</p>
       <p>Think about your quiz score and what each manager does, then answer the two questions below.</p>`,
 
-    managerInstructions2a: `<p>There are <strong>10 rounds</strong>. Each round proceeds as follows:</p>
+    managerInstructions2a: `<p>There are <strong>5 rounds</strong>. Each round proceeds as follows:</p>
       <ol>
         <li><strong>Choose your manager.</strong> You decide whether to work with the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-random">Lottery Manager</strong> for this round.</li>
-        <li><strong>Receive bonuses.</strong> The manager you chose gives you 5 bonuses (each H or L).</li>
+        <li><strong>Receive bonuses.</strong> The manager you chose gives you 10 bonuses (each H or L).</li>
         <li><strong>Performance guess.</strong> Report your best guess of beating a randomly picked participant.</li>
       </ol>
       <p>After reporting your guess, you choose which manager to work with in the next round. You may stay with your current manager or switch.</p>`,
 
     managerInstructions2b: (randomProb, roundBsr) => `<p><strong>Payment.</strong> In addition to your earlier earnings, this part of the study determines two further payments:</p>
       <ul>
-        <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 10 rounds and pays you for the bonuses earned in that round ($0.20 per H, $0 per L).</li>
-        <li><strong>Round belief payment.</strong> The computer randomly selects <strong>one</strong> of your 10 guesses (one from each round) and scores it: the more accurate your guess, the higher your chance of winning a <strong>$${roundBsr.toFixed(0)} prize</strong>.</li>
+        <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 5 rounds and pays you for the bonuses earned in that round ($0.20 per H, $0 per L).</li>
+        <li><strong>Round belief payment.</strong> The computer randomly selects <strong>one</strong> of your 5 guesses (one from each round) and scores it: the more accurate your guess, the higher your chance of winning a <strong>$${roundBsr.toFixed(0)} prize</strong>.</li>
       </ul>
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin:18px 0;">
         <p style="margin:0 0 10px;font-weight:600;color:#1e40af;">Why does your manager choice matter for your guess?</p>
-        <p style="margin:0 0 10px;">The <strong class="eval-performance">Performance Manager's</strong> bonuses are based on 5 comparisons of your quiz performance with randomly picked participants. Observing these bonuses may help you form a better guess about how you compare.</p>
-        <p style="margin:0;">The <strong class="eval-random">Lottery Manager's</strong> bonuses are <strong>NOT</strong> based on 5 comparisons of your quiz performance with randomly picked participants &mdash; they come from a fixed, known probability. Observing these bonuses does not give you new information about your quiz performance.</p>
+        <p style="margin:0 0 10px;">The <strong class="eval-performance">Performance Manager's</strong> bonuses are based on 10 comparisons of your quiz performance with randomly picked participants. Observing these bonuses helps you form a better guess about how you compare.</p>
+        <p style="margin:0;">The <strong class="eval-random">Lottery Manager's</strong> bonuses are <strong>NOT</strong> based on 10 comparisons of your quiz performance &mdash; they come from a fixed, known probability. Observing these bonuses does not help you form a better guess about how you compare.</p>
       </div>
 
       <p><strong>The way we calculate belief bonuses is designed so that reporting your true beliefs maximizes your chance of winning.</strong> Because any single round could be the one that counts, treat every round seriously.</p>`,
@@ -1176,10 +1177,10 @@ const CONFIG = {
       ],
     }),
 
-    readyToBegin: `<p>You're about to begin 10 rounds. Here's a quick recap of each round:</p>
+    readyToBegin: `<p>You're about to begin 5 rounds. Here's a quick recap of each round:</p>
       <ol>
         <li><strong>Choose</strong> the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-random">Lottery Manager</strong></li>
-        <li><strong>Receive</strong> 5 bonuses (H or L) from your chosen manager</li>
+        <li><strong>Receive</strong> 10 bonuses (H or L) from your chosen manager</li>
         <li><strong>Report</strong> your best guess about your chance of beating a randomly picked participant</li>
       </ol>
       <p>One random round determines your manager payment, and one random guess is scored for the belief payment. Ready?</p>`,
@@ -1254,13 +1255,13 @@ const STATE = {
 
   // Rounds data: array of round objects
   rounds: [],
-  // Each round: { roundNum (1-10), manager ('performance'|'random'),
+  // Each round: { roundNum (1-5), manager ('performance'|'random'),
   //   transferred (bool, null for round 1), outcomes: ['H'|'L',...],
   //   opponentScores: [int,...], earnings: float,
   //   belief: int (0-100) }
 
   currentManager: null, // 'performance' or 'random'
-  currentRound: 1,        // 1-10
+  currentRound: 1,        // 1-5
 
   // Post-experiment
   riskPreference: null,
@@ -2569,11 +2570,11 @@ function roundShowBonuses() {
   const mgrName = mgr === 'performance' ? 'Performance Manager' : 'Lottery Manager';
   const mgrClass = mgr === 'performance' ? 'eval-performance' : 'eval-random';
   const mechanismLine = (mgr === 'performance')
-    ? `these bonuses are based on 5 comparisons of your quiz performance with randomly picked participants.`
-    : `these bonuses are <strong style="color:#b91c1c;font-weight:800;">NOT</strong> based on 5 comparisons of your quiz performance with randomly picked participants.`;
+    ? `these bonuses are based on 10 comparisons of your quiz performance with randomly picked participants.`
+    : `these bonuses are <strong style="color:#b91c1c;font-weight:800;">NOT</strong> based on 10 comparisons of your quiz performance with randomly picked participants.`;
   outcomesDiv.innerHTML = `
     <h3 class="step-heading ${mgrClass}">Bonuses from the ${mgrName} in this round</h3>
-    <p style="margin:14px 0 18px;">You chose the <strong class="${mgrClass}">${mgrName}</strong>. Click each box to reveal your 5 bonuses &mdash; ${mechanismLine}</p>
+    <p style="margin:14px 0 18px;">You chose the <strong class="${mgrClass}">${mgrName}</strong>. Click each box to reveal your 10 bonuses &mdash; ${mechanismLine}</p>
 
     <div class="outcomes-row">
       ${outcomes.map((o, i) => `
@@ -2585,7 +2586,10 @@ function roundShowBonuses() {
     </div>
 
     <div id="outcomes-summary" style="display:none;">
-      <p style="text-align:center;margin:8px 0 4px;font-size:0.95rem;color:#475569;"><strong>${hCount} out of 5</strong> bonuses were H. If this round is randomly selected for payment, you earn <strong>$${earnings.toFixed(2)}</strong>.</p>
+      ${mgr === 'performance'
+        ? `<p style="text-align:center;margin:8px 0 4px;font-size:0.95rem;color:#475569;">You beat the opponent in <strong>${hCount}/10</strong> comparisons. If this round is selected for payment, you earn <strong>$${earnings.toFixed(2)}</strong>.</p>`
+        : `<p style="text-align:center;margin:8px 0 4px;font-size:0.95rem;color:#475569;">The lottery paid H <strong>${hCount}/10</strong> times. If this round is selected for payment, you earn <strong>$${earnings.toFixed(2)}</strong>.</p>`
+      }
     </div>
 
     <div class="nav-row" id="outcomes-nav" style="display:none;">
@@ -2616,8 +2620,8 @@ function revealBonus(idx) {
 
   window._revealedCount++;
 
-  // Once all 5 are revealed, show summary and Continue button
-  if (window._revealedCount >= 5) {
+  // Once all are revealed, show summary and Continue button
+  if (window._revealedCount >= CONFIG.outcomesPerRound) {
     document.getElementById('outcomes-summary').style.display = '';
     document.getElementById('outcomes-nav').style.display = '';
   }
@@ -2647,7 +2651,7 @@ function roundShowGamma() {
 
     <h3 class="step-heading">Performance guess</h3>
 
-    <p>You just saw 5 bonuses from the ${mgrNameHTML}. What is the percent chance you would beat a randomly picked participant on the quiz? <em>(${isFirstGammaUpdate ? 'Earlier' : 'In the previous round'}, you guessed <strong>${prevGamma}%</strong>.)</em> You can keep your current guess or adjust it.</p>
+    <p>You just saw 10 bonuses from the ${mgrNameHTML}. What is the percent chance you would beat a randomly picked participant on the quiz? <em>(${isFirstGammaUpdate ? 'Earlier' : 'In the previous round'}, you guessed <strong>${prevGamma}%</strong>.)</em></p>
 
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
       <div class="slider-container" style="margin:0;">
@@ -2665,26 +2669,14 @@ function roundShowGamma() {
     <p style="font-size:0.88rem; color:#666;">(Remember: this payment rewards you for accurately guessing how you compare on the quiz. The closer your guess to the truth, the higher your chance of winning the <strong>$${stake}</strong> prize.)</p>
 
     <div id="gamma-slider-warning" class="slider-warning"></div>
-    <div class="nav-row" id="gamma-nav" style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;">
-      <button class="btn btn-primary" style="background:#64748b;min-width:200px;" onclick="roundKeepGuess(${prevGamma})">Keep my guess at ${prevGamma}%</button>
-      <button class="btn btn-primary" style="min-width:200px;" onclick="roundSubmitGamma()">Submit new guess →</button>
+    <div class="nav-row" id="gamma-nav">
+      <button class="btn btn-primary" onclick="roundSubmitGamma()">Submit guess →</button>
     </div>`;
 
   gammaDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Step 3 → Step 4: lock γ, show evaluator choice (or finish)
-function roundKeepGuess(prev) {
-  const slider = document.getElementById('gamma-round-slider');
-  if (slider) {
-    slider.value = prev;
-    const valEl = document.getElementById('gamma-round-val');
-    if (valEl) valEl.textContent = prev + '%';
-  }
-  window._pendingRound.beliefKeptButton = true;
-  roundSubmitGamma();
-}
-
 function roundSubmitGamma() {
   const roundData = window._pendingRound;
   const slider = document.getElementById('gamma-round-slider');
@@ -2740,7 +2732,7 @@ function roundMakeChoiceByMgr(chosenMgr) {
 SCREENS.roundsComplete = () => {
   container.innerHTML = `
     <div class="screen-header"><h2>Rounds Complete</h2></div>
-    <p>You have completed all 10 rounds. Thank you!</p>
+    <p>You have completed all 5 rounds. Thank you!</p>
     <p>Next, we have a few short additional questions. Please answer them carefully.</p>
     <div class="nav-row">
       <button class="btn btn-primary" onclick="showScreen('riskPreferences')">Continue →</button>
@@ -3361,7 +3353,7 @@ function submitFeedback() {
 
 // ---- Payment computation ----
 function computePayment() {
-  const totalRounds = STATE.rounds.length; // 10 rounds
+  const totalRounds = STATE.rounds.length; // 5 rounds
 
   // 1) Select random round for outcome payment
   STATE.selectedPaymentRound = Math.floor(Math.random() * totalRounds);
@@ -3757,4 +3749,4 @@ init();
 </script>
 </body>
 </html>
-   
+ 
