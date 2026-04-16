@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbx3tCWn0O07Fa17jNGkHTksQULH4ixVmV6WXpORsFSx8_wwR9lGsFLD1DoNYvPkCI2x9g/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwqRr1dnI0EbJhGR-RjKTWaUqlP7NF3uGpXiD3kFFUGe_R55b5Ls2VvRSCfEpVBU2oLQw/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -1103,7 +1103,7 @@ const CONFIG = {
       </ol>
       <p>After your guess, you choose which manager to work with in the next round. You may stay with your current manager or switch.</p>`,
 
-    managerInstructions2b: (randomProb, roundBsr) => `<p><strong>Payment.</strong> In addition to your earlier earnings, this part of the study determines two further payments:</p>
+    managerInstructions2b: (randomProb, roundBsr) => `<p><strong>Payment.</strong> This part of the study determines two further payments:</p>
       <ul>
         <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 5 rounds and pays you for the bonuses earned in that round ($0.10 per H, $0 per L).</li>
         <li><strong>Accuracy payment.</strong> The computer randomly selects <strong>one</strong> of your 5 guesses (one from each round) and scores it: the more accurate your guess, the higher your chance of winning a <strong>$${roundBsr.toFixed(0)} prize</strong>.</li>
@@ -1140,7 +1140,7 @@ const CONFIG = {
     }),
 
     comprehensionCheck3: (randomProb) => ({
-      prompt: 'After seeing the bonuses from your chosen manager, you will be asked whether you want to <strong>keep your guess</strong> or <strong>adjust your guess</strong> of beating a randomly picked participant. Which of the following statements are <strong>true</strong>? (Select all that are true.)',
+      prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
       backScreen: 'comprehensionCheck2',
       items: [
         { text: "After seeing the Performance Manager's bonuses, I should consider adjusting my best guess because the bonuses are based on 10 comparisons of my quiz score with randomly drawn participants and can therefore help me form a better guess.", correct: true },
@@ -1407,45 +1407,26 @@ function managerLabel(mgr_id) {
 // `onChoose` is the JS function name to call: 'roundInitialChoice' (round 1) or 'roundMakeChoiceByMgr' (rounds 2+).
 function buildManagerChoiceHTML(round, belief, onChoose) {
   const rp   = Math.round(STATE.randomProbShown);  // displayed (integer) version
-  const payH = CONFIG.payPerH.toFixed(2);
 
   function cardHTML(mgr) {
     const isPerf = mgr === 'performance';
     const colorClass = isPerf ? 'eval-performance' : 'eval-random';
     const pH = isPerf ? belief : rp;       // probability of H
-    const pL = 100 - pH;                   // probability of L
+    const expectedH = Math.round(pH / 10);  // roughly X out of 10
 
-    // Context + implication text (links guess → bonus probability for performance card).
+    // Neutral badge style for numbers (same on both cards)
+    const badge = (text) => `<span style="display:inline-block;background:#f1f5f9;color:#1e293b;border:1px solid #cbd5e1;border-radius:4px;padding:1px 6px;font-weight:700;">${text}</span>`;
+
+    // Context text: links guess → expected H frequency with highlighted badges
+    const expectedPay = (expectedH * CONFIG.payPerH).toFixed(2);
     const contextHTML = isPerf
-      ? `Your current best guess is that you would beat a randomly picked participant <strong>${pH}%</strong> of the time. This would imply that you receive:`
-      : `The H-probability is fixed and known. If you choose this manager, you receive:`;
-
-    // Two-row probability display: H (green) and L (red), with dollar amounts.
-    const probDisplay = `
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:1.25rem;font-weight:700;color:#065f46;">H</span>
-            <span style="font-size:0.95rem;color:#047857;">($${payH})</span>
-            <span style="font-size:0.95rem;color:#047857;">with probability</span>
-          </div>
-          <span style="font-size:1.45rem;font-weight:700;color:#065f46;">${pH}%</span>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:1.25rem;font-weight:700;color:#991b1b;">L</span>
-            <span style="font-size:0.95rem;color:#b91c1c;">($0.00)</span>
-            <span style="font-size:0.95rem;color:#b91c1c;">with probability</span>
-          </div>
-          <span style="font-size:1.45rem;font-weight:700;color:#991b1b;">${pL}%</span>
-        </div>
-      </div>`;
+      ? `Your current best guess is that you would beat a randomly picked participant ${badge(pH + '%')} of the time. This would imply that you roughly expect ${badge(expectedH + ' out of 10')} H bonuses (${badge('$' + expectedPay)}).`
+      : `The H-probability is fixed and known at ${badge(pH + '%')}. This means you would roughly expect ${badge(expectedH + ' out of 10')} H bonuses (${badge('$' + expectedPay)}).`;
 
     return `
       <div style="flex:1;border:2px solid #e2e8f0;border-radius:12px;padding:18px 16px 14px;display:flex;flex-direction:column;gap:12px;">
         <h3 style="margin:0;text-align:center;" class="${colorClass}">${managerName(mgr)}</h3>
-        <p style="margin:0;font-size:0.9rem;line-height:1.45;color:#475569;min-height:4.35em;">${contextHTML}</p>
-        ${probDisplay}
+        <p style="margin:0;font-size:0.9rem;line-height:1.45;color:#475569;">${contextHTML}</p>
         <button class="btn btn-choice" style="margin-top:auto;width:100%;" onclick="${onChoose}('${mgr}')">
           Choose<br>${managerLabel(mgr)}
         </button>
@@ -2648,79 +2629,46 @@ function roundShowGamma() {
     <p>You just saw 10 bonuses from the ${mgrNameHTML}${chosenMgr === 'performance'
       ? ', which can help you form a better guess of beating a randomly picked participant.'
       : ', which <strong>cannot</strong> help you form a better guess of beating a randomly picked participant.'
-    } ${isFirstGammaUpdate ? 'Earlier' : 'In the previous round'}, you guessed <strong>${prevGamma}%</strong>.</p>
+    } Your previous guess of <strong>${prevGamma}%</strong> is pre-selected, you can adjust it or leave as is.</p>
 
-    <p>Would you like to keep or adjust your best guess?</p>
+    <p>What is the percent chance you beat a randomly picked participant on the quiz?</p>
 
-    <div style="display:flex;gap:16px;margin:18px 0;" id="keep-adjust-buttons">
-      <button class="btn btn-choice" style="flex:1;" onclick="keepEstimate()">Keep my guess</button>
-      <button class="btn btn-choice" style="flex:1;" onclick="showAdjustSlider()">Adjust my guess</button>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
+      <div class="slider-container" style="margin:0;">
+        <label>Your best guess:</label>
+        <div class="slider-row">
+          <input type="range" id="gamma-round-slider" min="0" max="100" value="${prevGamma}" data-touched=""
+                 onpointerdown="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'"
+                 oninput="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'">
+          <div class="slider-value" id="gamma-round-val">${prevGamma}%</div>
+        </div>
+        <div class="slider-labels"><span>0% — Definitely would not beat them</span><span>100% — Definitely would beat them</span></div>
+      </div>
     </div>
 
-    <div id="adjust-slider-section" style="display:none;">
-      <p>What is the percent chance you would beat a randomly picked participant on the quiz?</p>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
-        <div class="slider-container" style="margin:0;">
-          <label>Your best guess:</label>
-          <div class="slider-row">
-            <input type="range" id="gamma-round-slider" min="0" max="100" value="${prevGamma}" data-touched=""
-                   onpointerdown="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'"
-                   oninput="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'">
-            <div class="slider-value" id="gamma-round-val">${prevGamma}%</div>
-          </div>
-          <div class="slider-labels"><span>0% — Definitely would not beat them</span><span>100% — Definitely would beat them</span></div>
-        </div>
-      </div>
+    <p style="font-size:0.88rem; color:#666;">Reporting your true best guess maximizes your chance of winning the <strong>$${stake}</strong> accuracy prize.</p>
 
-      <p style="font-size:0.88rem; color:#666;">(Remember: this payment rewards you for accurately guessing how you compare on the quiz. The closer your guess to the truth, the higher your chance of winning the <strong>$${stake}</strong> prize.)</p>
-
-      <div id="gamma-slider-warning" class="slider-warning"></div>
-      <div class="nav-row" id="gamma-nav">
-        <button class="btn btn-primary" onclick="roundSubmitGamma()">Submit guess →</button>
-      </div>
+    <div id="gamma-slider-warning" class="slider-warning"></div>
+    <div class="nav-row" id="gamma-nav">
+      <button class="btn btn-primary" onclick="roundSubmitGamma()">Next →</button>
     </div>`;
 
   gammaDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function keepEstimate() {
-  const roundData = window._pendingRound;
-  roundData.beliefKeptButton = true;
-  roundData.beliefSliderTouched = false;
-  // Submit with previous belief value unchanged
-  roundSubmitGamma();
-}
-
-function showAdjustSlider() {
-  document.getElementById('keep-adjust-buttons').style.display = 'none';
-  document.getElementById('adjust-slider-section').style.display = '';
-  window._pendingRound.beliefKeptButton = false;
 }
 
 // Step 3 → Step 4: lock γ, show evaluator choice (or finish)
 function roundSubmitGamma() {
   const roundData = window._pendingRound;
   const slider = document.getElementById('gamma-round-slider');
-  if (roundData.beliefKeptButton) {
-    // Keep was clicked — use previous belief, slider was never shown
-    const prevGamma = STATE.rounds.length > 0
-      ? STATE.rounds[STATE.rounds.length - 1].belief
-      : STATE.initialGamma;
-    roundData.belief = prevGamma;
-    roundData.beliefSliderTouched = false;
-  } else {
-    roundData.belief = parseInt(slider.value);
-    roundData.beliefSliderTouched = slider.dataset.touched === '1';
-  }
-  if (roundData.beliefKeptButton === undefined) roundData.beliefKeptButton = false;
+  roundData.belief = parseInt(slider.value);
+  roundData.beliefSliderTouched = slider.dataset.touched === '1';
+  roundData.beliefKeptButton = !roundData.beliefSliderTouched;
   roundData.tsGammaSubmit = Date.now();
   STATE.rounds.push(roundData);
 
-  // Lock the γ slider (if it was shown)
-  if (slider && !roundData.beliefKeptButton) {
-    slider.disabled = true;
-    slider.style.opacity = '0.6';
-  }
+  // Lock the γ slider
+  slider.disabled = true;
+  slider.style.opacity = '0.6';
   const gammNav = document.getElementById('gamma-nav');
   if (gammNav) gammNav.style.display = 'none';
 
