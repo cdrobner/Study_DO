@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycby8lJ1qS6Drz6B4IllNPP0IRfQ0Q5KSPXwC3M_yzLbZtJg4e-LYhr_jj-c1jaXwxAU3-A/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbx3tCWn0O07Fa17jNGkHTksQULH4ixVmV6WXpORsFSx8_wwR9lGsFLD1DoNYvPkCI2x9g/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -435,15 +435,19 @@ const CONFIG = {
   randomProbDisplay: null,
 
   // ---- Prior score distribution (for computing γ* and drawing opponents) ----
-  // Benchmark distributions (N=20 each), smoothed from combined pilots 2 + 3.
-  // Pilot means/medians preserved; gaps filled and Prolific-like tails added
-  // (occasional low-attention lapsers in Easy, a few high scorers in Hard).
-  // Each entry is a score (number of correct answers out of 12) on the Study 2
-  // quiz (12 questions: 4 shared + 8 condition-specific).
-  // γ* = fraction of same-condition scores strictly lower + 0.5 × fraction equal.
-  //   Pooled empirical from pilots 2, 3, 4(4), 5(2), 6, 7 — equal weight per participant.
-  //   EASY (N=56): mean 9.05, median 9.0.  γ*=96.43% at ceiling (12).
-  //   HARD (N=64): mean 4.11, median 4.0.  γ*=100% at ceiling (12).
+  // γ* is now based on the 6 SHARED questions only (SE1, SX1, SX2, SH2, H1, H2),
+  // using a SINGLE pooled reference distribution across both Easy and Hard conditions.
+  // This ensures γ* is independent of quiz-difficulty assignment.
+  // Each entry is a score (number correct out of 6 shared questions).
+  // γ* = fraction of pooled scores strictly lower + 0.5 × fraction equal.
+  //   Pooled empirical from pilots 2, 3, 4(4), 5(2), 6, 7 (Hard subjects only,
+  //   since Easy subjects did not answer H1/H2 in those pilots).
+  //   N=78, mean=2.42, SD=1.36.
+  study1ScoresShared: [
+    0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,6
+  ],
+
+  // Legacy condition-specific distributions (retained for reference / fallback).
   study1ScoresEasy: [
     1,1,7,7,7,7,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10,10,10,10,10,10,10,10,10,10,10,10,11,11,11,11,11,11,12,12,12,12
   ],
@@ -454,7 +458,8 @@ const CONFIG = {
   // ---- Quiz questions ----
   // Each question: { id, renderGrid(), renderAnswers(), correctAnswer: 0-3 }
   // SVG shapes rendered inline — no external image files needed.
-  // 4 shared (2 very easy + 2 very hard) + 8 condition-specific = 12 per participant.
+  // 6 shared (SE1, SX1, SX2, SH2, H1, H2) + 6 condition-specific = 12 per participant.
+  // γ* is computed from the 6 shared questions only, using a single pooled reference distribution.
 
   quizQuestionsShared: [
     {
@@ -588,54 +593,71 @@ const CONFIG = {
       },
       correctAnswer: 2
     },
-  ],
-  quizQuestionsEasyOnly: [
     {
-      id: 'E1',
+      // H1: Triple Latin square — shape, fill, size each cycle with a different linear offset.
+      // shape=(r+c)%3, fill=(r+2c)%3, size=(2r+c)%3
+      // (Moved from HardOnly to Shared so γ* is based on the same 6 questions for all participants.)
+      id: 'H1',
       renderGrid: function() {
-        const colors = [COLORS.blue, COLORS.red, COLORS.green];
+        const shapes = ['circle', 'square', 'triangle'];
+        const fills = [COLORS.blue, '#fff', 'striped'];
+        const sizes = [18, 24, 30];
         const cells = [];
         for (let r = 0; r < 3; r++) {
           for (let c = 0; c < 3; c++) {
             if (r === 2 && c === 2) continue;
-            cells.push(svgShape('circle', colors[c], 24));
+            const si = (r + c) % 3;
+            const fi = (r + 2 * c) % 3;
+            const zi = (2 * r + c) % 3;
+            cells.push(svgShape(shapes[si], fills[fi], sizes[zi]));
           }
         }
         return cells;
       },
       renderAnswers: function() {
+        // Missing (2,2): shape=(2+2)%3=1=square, fill=(2+4)%3=0=blue, size=(4+2)%3=0=18
         return [
-          svgShape('circle', COLORS.green, 24),
-          svgShape('circle', COLORS.blue, 24),
-          svgShape('circle', COLORS.red, 24),
-          svgShape('square', COLORS.green, 24),
+          svgShape('square', COLORS.blue, 24),  // size off
+          svgShape('square', '#fff', 18),       // fill off
+          svgShape('square', COLORS.blue, 18),  // CORRECT
+          svgShape('circle', COLORS.blue, 18),  // shape off
+        ];
+      },
+      correctAnswer: 2
+    },
+    {
+      // H2: Rotation + shape + fill with different offsets; uses rotatable shapes only.
+      // shape=(r+c)%3, rot=((c-r+3)%3)*120, fill=(2r+c)%3
+      // (Moved from HardOnly to Shared.)
+      id: 'H2',
+      renderGrid: function() {
+        const shapes = ['triangle', 'arrow', 'diamond'];
+        const fills = [COLORS.blue, COLORS.red, '#fff'];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const si = (r + c) % 3;
+            const rot = ((c - r + 3) % 3) * 120;
+            const fi = (2 * r + c) % 3;
+            cells.push(svgShape(shapes[si], fills[fi], 24, rot));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Missing (2,2): shape=arrow, rot=0°, fill=blue
+        return [
+          svgShape('arrow', COLORS.blue, 24, 0),   // CORRECT
+          svgShape('arrow', COLORS.blue, 24, 120), // rotation off
+          svgShape('arrow', COLORS.red, 24, 0),    // fill off
+          svgShape('triangle', COLORS.blue, 24, 0),// shape off
         ];
       },
       correctAnswer: 0
     },
-    {
-      id: 'E2',
-      renderGrid: function() {
-        const fills = [COLORS.red, '#fff', 'striped'];
-        const cells = [];
-        for (let r = 0; r < 3; r++) {
-          for (let c = 0; c < 3; c++) {
-            if (r === 2 && c === 2) continue;
-            cells.push(svgShape('square', fills[r], 24, 0, r === 1 ? COLORS.red : '#1e293b'));
-          }
-        }
-        return cells;
-      },
-      renderAnswers: function() {
-        return [
-          svgShape('square', COLORS.red, 24),
-          svgShape('square', 'striped', 24),
-          svgShape('square', '#fff', 24),
-          svgShape('circle', 'striped', 24),
-        ];
-      },
-      correctAnswer: 1
-    },
+  ],
+  quizQuestionsEasyOnly: [
     {
       id: 'E3',
       renderGrid: function() {
@@ -780,67 +802,6 @@ const CONFIG = {
     },
   ],
   quizQuestionsHardOnly: [
-    {
-      // H1: Triple Latin square — shape, fill, size each cycle with a different linear offset.
-      // shape=(r+c)%3, fill=(r+2c)%3, size=(2r+c)%3
-      id: 'H1',
-      renderGrid: function() {
-        const shapes = ['circle', 'square', 'triangle'];
-        const fills = [COLORS.blue, '#fff', 'striped'];
-        const sizes = [18, 24, 30];
-        const cells = [];
-        for (let r = 0; r < 3; r++) {
-          for (let c = 0; c < 3; c++) {
-            if (r === 2 && c === 2) continue;
-            const si = (r + c) % 3;
-            const fi = (r + 2 * c) % 3;
-            const zi = (2 * r + c) % 3;
-            cells.push(svgShape(shapes[si], fills[fi], sizes[zi]));
-          }
-        }
-        return cells;
-      },
-      renderAnswers: function() {
-        // Missing (2,2): shape=(2+2)%3=1=square, fill=(2+4)%3=0=blue, size=(4+2)%3=0=18
-        return [
-          svgShape('square', COLORS.blue, 24),  // size off
-          svgShape('square', '#fff', 18),       // fill off
-          svgShape('square', COLORS.blue, 18),  // CORRECT
-          svgShape('circle', COLORS.blue, 18),  // shape off
-        ];
-      },
-      correctAnswer: 2
-    },
-    {
-      // H2: Rotation + shape + fill with different offsets; uses rotatable shapes only.
-      // shape=(r+c)%3, rot=((c-r+3)%3)*120, fill=(2r+c)%3
-      id: 'H2',
-      renderGrid: function() {
-        const shapes = ['triangle', 'arrow', 'diamond'];
-        const fills = [COLORS.blue, COLORS.red, '#fff'];
-        const cells = [];
-        for (let r = 0; r < 3; r++) {
-          for (let c = 0; c < 3; c++) {
-            if (r === 2 && c === 2) continue;
-            const si = (r + c) % 3;
-            const rot = ((c - r + 3) % 3) * 120;
-            const fi = (2 * r + c) % 3;
-            cells.push(svgShape(shapes[si], fills[fi], 24, rot));
-          }
-        }
-        return cells;
-      },
-      renderAnswers: function() {
-        // Missing (2,2): shape=arrow, rot=0°, fill=blue
-        return [
-          svgShape('arrow', COLORS.blue, 24, 0),   // CORRECT
-          svgShape('arrow', COLORS.blue, 24, 120), // rotation off
-          svgShape('arrow', COLORS.red, 24, 0),    // fill off
-          svgShape('triangle', COLORS.blue, 24, 0),// shape off
-        ];
-      },
-      correctAnswer: 0
-    },
     {
       // H3: Count + shape + fill, each with different linear offsets. Uses svgMultiShape.
       // shape=(2r+c)%3, fill=(r+c)%3, count=((r+2c)%3)+1
@@ -1105,10 +1066,11 @@ const CONFIG = {
     sampleQuestionFeedbackWrong: `<strong style="color:#dc2626;">Not quite.</strong> The correct answer is now highlighted in green. You will see questions of varying difficulty. If a question feels hard to solve, it is probably a difficult question for everyone. Do your best at all times — the better you perform, the more you can earn.`,
 
     scoreAnnouncement: (score, total) =>
-      `You have solved <strong>${score}/${total}</strong> questions of the logic quiz correctly.`,
+      `You have solved <strong>${score}/${total}</strong> questions of the logic quiz correctly.
+       <p>In this study, your performance will be compared to other participants based on <strong>6 specific questions that were the same for all participants</strong>.</p>`,
 
-    beliefElicitationPrompt: `<p>Suppose we randomly pick another participant who also took this quiz.</p>
-      <p>We will ask you to give us your best guess about your chance of beating them (ties decided by a coin flip), and then to tell us how confident you are about that guess.</p>
+    beliefElicitationPrompt: `<p>Suppose we randomly pick another participant from this study. We compare your scores on the <strong>6 questions that were the same for all participants</strong>.</p>
+      <p>We will ask you to give us your best guess about your chance of beating them on these 6 questions (ties decided by a coin flip), and then to tell us how confident you are about that guess.</p>
       <p>The more accurate your guess, the higher your chance of winning a <strong>$1 prize</strong>. <strong>The way we calculate this prize is designed so that reporting your true beliefs maximizes your chance of winning.</strong></p>`,
 
     transition: `<p>Your quiz performance will now be used to determine some of your earnings in the next part of the study.</p>
@@ -1126,7 +1088,7 @@ const CONFIG = {
     managerInstructions1: (randomProb) => ({
       intro: `<p>Imagine you have started a new job in which you can <strong>decide</strong> to work with one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-random">Lottery Manager</strong>.</p>
         <p>Whichever manager you decide to work with gives you bonuses. Each bonus is either <strong>H</strong> (pays $0.10) or <strong>L</strong> (pays $0). The two managers decide bonuses differently:</p>`,
-      performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> For each bonus, a different random participant from a reference sample of participants who took this same quiz is picked, and your score on the quiz you just took is compared to theirs. You receive <strong>H</strong> if you would beat that participant; if you would tie, the winner is decided by a coin flip; and you receive <strong>L</strong> if you would lose. So the Performance Manager's chance of paying H on a single draw depends on how well you actually scored on the quiz you just took.</li></ul>`,
+      performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> For each bonus, a different participant is randomly picked from a group of real participants who previously completed this same quiz, and your score <strong>on the 6 shared questions</strong> is compared to theirs. You receive <strong>H</strong> if you would beat that participant; if you would tie, the winner is decided by a coin flip; and you receive <strong>L</strong> if you would lose. So the Performance Manager's chance of paying H on each bonus depends on how well you scored on the quiz.</li></ul>`,
       random: `<ul style="margin:0;"><li><strong class="eval-random">Lottery Manager:</strong> Does <strong>not</strong> compare you to anyone — you receive <strong>H</strong> with a fixed probability of <strong>${randomProb}%</strong> and <strong>L</strong> with probability <strong>${100 - randomProb}%</strong>. This probability is the same for every bonus and every round.</li></ul>`,
     }),
 
@@ -1137,31 +1099,32 @@ const CONFIG = {
       <ol>
         <li><strong>Choose your manager.</strong> You decide whether to work with the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-random">Lottery Manager</strong> for this round.</li>
         <li><strong>Receive bonuses.</strong> The manager you chose gives you 10 bonuses (each H or L).</li>
-        <li><strong>Performance guess.</strong> Report your best guess of beating a randomly picked participant.</li>
+        <li><strong>Performance guess.</strong> You can keep your best guess or adjust it based on the bonuses you received.</li>
       </ol>
-      <p>After reporting your guess, you choose which manager to work with in the next round. You may stay with your current manager or switch.</p>`,
+      <p>After your guess, you choose which manager to work with in the next round. You may stay with your current manager or switch.</p>`,
 
     managerInstructions2b: (randomProb, roundBsr) => `<p><strong>Payment.</strong> In addition to your earlier earnings, this part of the study determines two further payments:</p>
       <ul>
         <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 5 rounds and pays you for the bonuses earned in that round ($0.10 per H, $0 per L).</li>
-        <li><strong>Round belief payment.</strong> The computer randomly selects <strong>one</strong> of your 5 guesses (one from each round) and scores it: the more accurate your guess, the higher your chance of winning a <strong>$${roundBsr.toFixed(0)} prize</strong>.</li>
+        <li><strong>Accuracy payment.</strong> The computer randomly selects <strong>one</strong> of your 5 guesses (one from each round) and scores it: the more accurate your guess, the higher your chance of winning a <strong>$${roundBsr.toFixed(0)} prize</strong>.</li>
       </ul>
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin:18px 0;">
         <p style="margin:0 0 10px;font-weight:600;color:#1e40af;">Why does your manager choice matter for your guess?</p>
-        <p style="margin:0 0 10px;">The <strong class="eval-performance">Performance Manager's</strong> bonuses are based on 10 comparisons of your quiz performance with randomly picked participants. Observing these bonuses <strong>helps</strong> you form a better guess about how you compare.</p>
-        <p style="margin:0;">The <strong class="eval-random">Lottery Manager's</strong> bonuses are <strong>NOT</strong> based on 10 comparisons of your quiz performance &mdash; they come from a fixed, known probability. Observing these bonuses <strong>does not help</strong> you form a better guess about how you compare.</p>
+        <p style="margin:0 0 10px;">The <strong class="eval-performance">Performance Manager's</strong> bonuses are based on 10 comparisons of your quiz performance with randomly picked participants. Observing these bonuses <strong>helps</strong> you form a better guess about your chance of beating a randomly picked participant.</p>
+        <p style="margin:0;">The <strong class="eval-random">Lottery Manager's</strong> bonuses are <strong>NOT</strong> based on 10 comparisons of your quiz performance &mdash; they come from a fixed, known probability. Observing these bonuses <strong>does not help</strong> you form a better guess about your chance of beating a randomly picked participant.</p>
       </div>
 
-      <p><strong>The way we calculate belief bonuses is designed so that reporting your true beliefs maximizes your chance of winning.</strong> Because any single round could be the one that counts, treat every round seriously.</p>`,
+      <p><strong>The way we calculate the accuracy payment is designed so that reporting your true best guess maximizes your chance of winning.</strong> Because any single round could be the one that counts, treat every round seriously.</p>`,
 
     comprehensionCheck1: (randomProb) => ({
       prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
       backScreen: 'managerInstructions1',
       items: [
-        { text: "The Performance Manager decides each bonus by comparing my quiz score to a randomly picked participant's score, paying H if I beat them (coin flip on ties).", correct: true },
+        { text: "The Performance Manager decides each bonus by comparing my score on the 6 shared questions to a randomly picked participant's score, paying H if I beat them (coin flip on ties).", correct: true },
         { text: "For the Performance Manager, the same random participant is used for every bonus I receive.", correct: false },
         { text: `The Lottery Manager pays H with a fixed probability of ${randomProb}% on every draw, and this probability is the same in every round.`, correct: true },
         { text: "The Lottery Manager compares my quiz score to other participants to decide each bonus.", correct: false },
+        { text: "The comparison between me and a randomly picked participant is based on 6 questions that were the same for everyone.", correct: true },
         { text: 'Each H bonus pays $0.10 and each L bonus pays $0.', correct: true },
       ],
     }),
@@ -1172,8 +1135,17 @@ const CONFIG = {
       items: [
         { text: 'In every round I get to choose whether to work with the Performance Manager or the Lottery Manager.', correct: true },
         { text: 'I will be paid for the bonuses from all rounds.', correct: false },
-        { text: 'I should always report my true best guess, regardless of which manager I chose.', correct: true },
         { text: 'My total payment depends only on the bonuses; my guesses do not affect my payment.', correct: false },
+      ],
+    }),
+
+    comprehensionCheck3: (randomProb) => ({
+      prompt: 'After seeing the bonuses from your chosen manager, you will be asked whether you want to <strong>keep your guess</strong> or <strong>adjust your guess</strong> of beating a randomly picked participant. Which of the following statements are <strong>true</strong>? (Select all that are true.)',
+      backScreen: 'comprehensionCheck2',
+      items: [
+        { text: "After seeing the Performance Manager's bonuses, I should consider adjusting my best guess because the bonuses are based on 10 comparisons of my quiz score with randomly drawn participants and can therefore help me form a better guess.", correct: true },
+        { text: "After seeing the Lottery Manager's bonuses, I should keep my best guess because the bonuses cannot help me form a better guess.", correct: true },
+        { text: 'I should adjust my best guess after every round, regardless of which manager I worked with.', correct: false },
       ],
     }),
 
@@ -1181,9 +1153,9 @@ const CONFIG = {
       <ol>
         <li><strong>Choose</strong> the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-random">Lottery Manager</strong></li>
         <li><strong>Receive</strong> 10 bonuses (H or L) from your chosen manager</li>
-        <li><strong>Report</strong> your best guess about your chance of beating a randomly picked participant</li>
+        <li><strong>Keep or adjust</strong> your best guess about your chance of beating a randomly picked participant</li>
       </ol>
-      <p>One random round determines your manager payment, and one random guess is scored for the belief payment. Ready?</p>`,
+      <p>One random round determines your manager payment, and one random guess is scored for the accuracy payment. Ready?</p>`,
 
     riskPreferences: `<p>How do you see yourself: are you a person who is generally willing to take risks, or do you try to avoid taking risks?</p>
       <p>Please use a scale from 0 to 10, where 0 means you are "completely unwilling to take risks" and 10 means you are "very willing to take risks." You can also use the values in-between to indicate where you fall on the scale.</p>`,
@@ -1210,9 +1182,7 @@ const CONFIG = {
       const mgrLabel = payRoundMgrId === 'performance'
         ? '<span class="eval-performance">Performance Manager</span>'
         : '<span class="eval-random">Lottery Manager</span>';
-      return `<p>Thank you for completing the study! Here are your results.</p>
-      <p><strong>Selected round:</strong> Round ${payRoundNum} was randomly selected for payment. Your manager in that round was the ${mgrLabel}.</p>
-`;
+      return `<p>Thank you for completing the study! Here are your results.</p>`;
     },
 
     prolificRedirect: `<strong>Please click the button below to be redirected back to Prolific and register your submission.</strong>`,
@@ -1237,8 +1207,9 @@ const STATE = {
 
   // Quiz
   quizAnswers: [],     // [{questionId, selected, correct, timeSpent}]
-  quizScore: 0,
-  gammaStar: null,     // true ability (percentile from Study 1)
+  quizScore: 0,        // total score across all 12 questions
+  quizScoreShared: 0,  // score on the 6 shared questions (SE1, SX1, SX2, SH2, H1, H2) — used for γ*
+  gammaStar: null,     // true ability (percentile from Study 1, based on shared-6 score)
   randomProbShown: null, // the [XX]% shown to participant
 
   // Initial beliefs (post-quiz, μ + 7-level confidence elicitation)
@@ -1326,35 +1297,49 @@ function getUrlParams() {
   STATE.sessionId = params.get('SESSION_ID') || 'test_session';
 }
 
-// Compute γ* from Study 1 scores (condition-specific).
+// Compute the participant's score on the 6 shared questions (SE1, SX1, SX2, SH2, H1, H2).
+// Called after the quiz is finished and STATE.quizAnswers is populated.
+function computeSharedScore() {
+  const sharedIds = new Set(['SE1', 'SX1', 'SX2', 'SH2', 'H1', 'H2']);
+  let score = 0;
+  for (const a of STATE.quizAnswers) {
+    if (sharedIds.has(a.questionId) && a.correct) score++;
+  }
+  return score;
+}
+
+// Compute γ* from the POOLED shared-question reference distribution.
+// Uses study1ScoresShared (scores on the 6 shared questions, pooled across conditions).
 // Returns the EXACT (unrounded) percentage so the Lottery Manager's
 // Bernoulli probability exactly matches the Performance Manager's
 // expected H-rate. Rounding is applied at display sites.
-function computeGammaStar(participantScore) {
-  const scores = STATE.quizCondition === 'easy' ? CONFIG.study1ScoresEasy : CONFIG.study1ScoresHard;
+function computeGammaStar(sharedScore) {
+  const scores = CONFIG.study1ScoresShared;
   const n = scores.length;
   let below = 0, equal = 0;
   for (const s of scores) {
-    if (s < participantScore) below++;
-    else if (s === participantScore) equal++;
+    if (s < sharedScore) below++;
+    else if (s === sharedScore) equal++;
   }
   // γ* = P(beat) + 0.5 * P(tie), expressed as a percentage (0–100 float).
   return ((below + 0.5 * equal) / n) * 100;
 }
 
-// Generate outcomes for a round
-function generateOutcomes(participantScore, count) {
+// Generate outcomes for a round.
+// Compares the participant's SHARED-question score against randomly drawn
+// opponents from the pooled shared-question reference distribution.
+function generateOutcomes(sharedScore, count) {
   const n = count || CONFIG.outcomesPerRound;
   const outcomes = [];
   const opponents = [];
-  const scores = STATE.quizCondition === 'easy' ? CONFIG.study1ScoresEasy : CONFIG.study1ScoresHard;
+  const scores = CONFIG.study1ScoresShared;
   for (let i = 0; i < n; i++) {
     const oppIdx = Math.floor(Math.random() * scores.length);
     const oppScore = scores[oppIdx];
     opponents.push(oppScore);
     // H if participant strictly beats opponent; tie broken randomly (50/50)
-    if (participantScore > oppScore) outcomes.push('H');
-    else if (participantScore === oppScore) outcomes.push(Math.random() < 0.5 ? 'H' : 'L');
+    if (sharedScore > oppScore) outcomes.push('H');
+    else if (sharedScore === oppScore) outcomes.push(Math.random() < 0.5 ? 'H' : 'L');
     else outcomes.push('L');
   }
   return { outcomes, opponents };
@@ -2180,7 +2165,8 @@ function submitQuizAnswer() {
 
 function finishQuiz() {
   STATE.quizScore = STATE.quizAnswers.filter(a => a.correct).length;
-  STATE.gammaStar = computeGammaStar(STATE.quizScore);
+  STATE.quizScoreShared = computeSharedScore();
+  STATE.gammaStar = computeGammaStar(STATE.quizScoreShared);
 
   // Determine the Lottery Manager probability to show
   if (CONFIG.randomProbDisplay !== null) {
@@ -2389,9 +2375,17 @@ SCREENS.managerInstructions2b = () => {
 // ---- Comprehension Check 2: Payment & Beliefs ----
 SCREENS.comprehensionCheck2 = () => {
   renderComprehensionCheck(CONFIG.texts.comprehensionCheck2(Math.round(STATE.randomProbShown), STATE.bsrStakeRound), () => {
-    showScreen('readyToBegin');
+    showScreen('comprehensionCheck3');
   }, 'check2');
   updateProgress(0.50);
+};
+
+// ---- Comprehension Check 3: Updating Best Guess ----
+SCREENS.comprehensionCheck3 = () => {
+  renderComprehensionCheck(CONFIG.texts.comprehensionCheck3(Math.round(STATE.randomProbShown)), () => {
+    showScreen('readyToBegin');
+  }, 'check3');
+  updateProgress(0.53);
 };
 
 // ---- Ready to Begin ----
@@ -2544,7 +2538,7 @@ function roundShowBonuses() {
   const mgr = roundData.manager;
   if (mgr === 'performance') {
     // Performance Manager: compare against random opponents
-    const result = generateOutcomes(STATE.quizScore);
+    const result = generateOutcomes(STATE.quizScoreShared);
     outcomes = result.outcomes;
     opponents = result.opponents;
   } else {
@@ -2573,7 +2567,7 @@ function roundShowBonuses() {
     ? `these bonuses are based on 10 comparisons of your quiz performance with randomly picked participants.`
     : `these bonuses are <strong style="color:#b91c1c;font-weight:800;">NOT</strong> based on 10 comparisons of your quiz performance with randomly picked participants.`;
   outcomesDiv.innerHTML = `
-    <h3 class="step-heading ${mgrClass}">Bonuses from the ${mgrName} in this round</h3>
+    <h3 class="step-heading">Bonuses from the <span class="${mgrClass}">${mgrName}</span> in this round</h3>
     <p style="margin:14px 0 18px;">You chose the <strong class="${mgrClass}">${mgrName}</strong>. Click each box to reveal your 10 bonuses &mdash; ${mechanismLine}</p>
 
     <div class="outcomes-row">
@@ -2587,7 +2581,7 @@ function roundShowBonuses() {
 
     <div id="outcomes-summary" style="display:none;">
       ${mgr === 'performance'
-        ? `<p style="text-align:center;margin:8px 0 4px;font-size:0.95rem;color:#475569;">You beat the opponent in <strong>${hCount}/10</strong> comparisons. If this round is selected for payment, you earn <strong>$${earnings.toFixed(2)}</strong>.</p>`
+        ? `<p style="text-align:center;margin:8px 0 4px;font-size:0.95rem;color:#475569;">Your score was higher in <strong>${hCount} out of 10</strong> comparisons with randomly picked participants. If this round is selected for payment, you earn <strong>$${earnings.toFixed(2)}</strong>.</p>`
         : `<p style="text-align:center;margin:8px 0 4px;font-size:0.95rem;color:#475569;">The lottery paid H <strong>${hCount}/10</strong> times. If this round is selected for payment, you earn <strong>$${earnings.toFixed(2)}</strong>.</p>`
       }
     </div>
@@ -2651,46 +2645,84 @@ function roundShowGamma() {
 
     <h3 class="step-heading">Performance guess</h3>
 
-    <p>You just saw 10 bonuses from the ${mgrNameHTML}. What is the percent chance you would beat a randomly picked participant on the quiz? <em>(${isFirstGammaUpdate ? 'Earlier' : 'In the previous round'}, you guessed <strong>${prevGamma}%</strong>.)</em></p>
+    <p>You just saw 10 bonuses from the ${mgrNameHTML}${chosenMgr === 'performance'
+      ? ', which can help you form a better guess of beating a randomly picked participant.'
+      : ', which <strong>cannot</strong> help you form a better guess of beating a randomly picked participant.'
+    } ${isFirstGammaUpdate ? 'Earlier' : 'In the previous round'}, you guessed <strong>${prevGamma}%</strong>.</p>
 
-    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
-      <div class="slider-container" style="margin:0;">
-        <label>Your best guess:</label>
-        <div class="slider-row">
-          <input type="range" id="gamma-round-slider" min="0" max="100" value="${prevGamma}" data-touched=""
-                 onpointerdown="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'"
-                 oninput="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'">
-          <div class="slider-value" id="gamma-round-val">${prevGamma}%</div>
-        </div>
-        <div class="slider-labels"><span>0% — Definitely would not beat them</span><span>100% — Definitely would beat them</span></div>
-      </div>
+    <p>Would you like to keep or adjust your best guess?</p>
+
+    <div style="display:flex;gap:16px;margin:18px 0;" id="keep-adjust-buttons">
+      <button class="btn btn-choice" style="flex:1;" onclick="keepEstimate()">Keep my guess</button>
+      <button class="btn btn-choice" style="flex:1;" onclick="showAdjustSlider()">Adjust my guess</button>
     </div>
 
-    <p style="font-size:0.88rem; color:#666;">(Remember: this payment rewards you for accurately guessing how you compare on the quiz. The closer your guess to the truth, the higher your chance of winning the <strong>$${stake}</strong> prize.)</p>
+    <div id="adjust-slider-section" style="display:none;">
+      <p>What is the percent chance you would beat a randomly picked participant on the quiz?</p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
+        <div class="slider-container" style="margin:0;">
+          <label>Your best guess:</label>
+          <div class="slider-row">
+            <input type="range" id="gamma-round-slider" min="0" max="100" value="${prevGamma}" data-touched=""
+                   onpointerdown="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'"
+                   oninput="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'">
+            <div class="slider-value" id="gamma-round-val">${prevGamma}%</div>
+          </div>
+          <div class="slider-labels"><span>0% — Definitely would not beat them</span><span>100% — Definitely would beat them</span></div>
+        </div>
+      </div>
 
-    <div id="gamma-slider-warning" class="slider-warning"></div>
-    <div class="nav-row" id="gamma-nav">
-      <button class="btn btn-primary" onclick="roundSubmitGamma()">Submit guess →</button>
+      <p style="font-size:0.88rem; color:#666;">(Remember: this payment rewards you for accurately guessing how you compare on the quiz. The closer your guess to the truth, the higher your chance of winning the <strong>$${stake}</strong> prize.)</p>
+
+      <div id="gamma-slider-warning" class="slider-warning"></div>
+      <div class="nav-row" id="gamma-nav">
+        <button class="btn btn-primary" onclick="roundSubmitGamma()">Submit guess →</button>
+      </div>
     </div>`;
 
   gammaDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function keepEstimate() {
+  const roundData = window._pendingRound;
+  roundData.beliefKeptButton = true;
+  roundData.beliefSliderTouched = false;
+  // Submit with previous belief value unchanged
+  roundSubmitGamma();
+}
+
+function showAdjustSlider() {
+  document.getElementById('keep-adjust-buttons').style.display = 'none';
+  document.getElementById('adjust-slider-section').style.display = '';
+  window._pendingRound.beliefKeptButton = false;
 }
 
 // Step 3 → Step 4: lock γ, show evaluator choice (or finish)
 function roundSubmitGamma() {
   const roundData = window._pendingRound;
   const slider = document.getElementById('gamma-round-slider');
-  roundData.belief = parseInt(slider.value);
-  roundData.beliefSliderTouched = slider.dataset.touched === '1';
+  if (roundData.beliefKeptButton) {
+    // Keep was clicked — use previous belief, slider was never shown
+    const prevGamma = STATE.rounds.length > 0
+      ? STATE.rounds[STATE.rounds.length - 1].belief
+      : STATE.initialGamma;
+    roundData.belief = prevGamma;
+    roundData.beliefSliderTouched = false;
+  } else {
+    roundData.belief = parseInt(slider.value);
+    roundData.beliefSliderTouched = slider.dataset.touched === '1';
+  }
   if (roundData.beliefKeptButton === undefined) roundData.beliefKeptButton = false;
   roundData.tsGammaSubmit = Date.now();
   STATE.rounds.push(roundData);
 
-  // Lock the γ slider
-  const gammaSlider = document.getElementById('gamma-round-slider');
-  gammaSlider.disabled = true;
-  gammaSlider.style.opacity = '0.6';
-  document.getElementById('gamma-nav').style.display = 'none';
+  // Lock the γ slider (if it was shown)
+  if (slider && !roundData.beliefKeptButton) {
+    slider.disabled = true;
+    slider.style.opacity = '0.6';
+  }
+  const gammNav = document.getElementById('gamma-nav');
+  if (gammNav) gammNav.style.display = 'none';
 
   STATE.currentRound++;
 
@@ -3361,10 +3393,11 @@ function computePayment() {
   STATE.outcomeEarnings = payRound.earnings;
 
   // 2) Initial belief bonus: BSR on initial γ ($2 fixed stake)
+  //    Comparison is based on 6 shared questions using the pooled reference distribution
   {
-    const s1scores = STATE.quizCondition === 'easy' ? CONFIG.study1ScoresEasy : CONFIG.study1ScoresHard;
+    const s1scores = CONFIG.study1ScoresShared;
     const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
-    const beat = STATE.quizScore > oppScore || (STATE.quizScore === oppScore && Math.random() < 0.5);
+    const beat = STATE.quizScoreShared > oppScore || (STATE.quizScoreShared === oppScore && Math.random() < 0.5);
     const bsr = resolveBSR(STATE.belief_0, beat, CONFIG.beliefBonusInitial);
     STATE.beliefBonusInitial_won = bsr.won;
     STATE.beliefBonusInitial_amount = bsr.amount;
@@ -3375,9 +3408,9 @@ function computePayment() {
   STATE.selectedBeliefRound = Math.floor(Math.random() * totalRounds);
   {
     const beliefRound = STATE.rounds[STATE.selectedBeliefRound];
-    const s1scores = STATE.quizCondition === 'easy' ? CONFIG.study1ScoresEasy : CONFIG.study1ScoresHard;
+    const s1scores = CONFIG.study1ScoresShared;
     const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
-    const beat = STATE.quizScore > oppScore || (STATE.quizScore === oppScore && Math.random() < 0.5);
+    const beat = STATE.quizScoreShared > oppScore || (STATE.quizScoreShared === oppScore && Math.random() < 0.5);
     const bsr = resolveBSR(beliefRound.belief, beat, STATE.bsrStakeRound);
     STATE.beliefBonusRound_won = bsr.won;
     STATE.beliefBonusRound_amount = bsr.amount;
@@ -3411,9 +3444,9 @@ SCREENS.results = () => {
     <div class="results-section">
       <h3>Payment Breakdown</h3>
       <div class="payment-line"><span>Show-up fee</span><span>$${CONFIG.showUpFee.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Manager payment (${roundLabel}: ${payRound.hCount} H × $0.10)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Initial belief prize (your guess: ${STATE.belief_0}%)</span><span>$${STATE.beliefBonusInitial_amount.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Round belief prize (${beliefRoundLabelB} guess: ${beliefValueB}%)</span><span>$${STATE.beliefBonusRound_amount.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Manager payment (selected: ${roundLabel}, ${payRound.hCount} H × $0.10)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Initial accuracy payment (your guess: ${STATE.belief_0}%)</span><span>$${STATE.beliefBonusInitial_amount.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Round accuracy payment (selected: ${beliefRoundLabelB}, your guess: ${beliefValueB}%)</span><span>$${STATE.beliefBonusRound_amount.toFixed(2)}</span></div>
       <div class="payment-total"><span>Total payment</span><span>$${STATE.totalBonus.toFixed(2)}</span></div>
     </div>
 
@@ -3439,20 +3472,16 @@ function redirectToProlific() {
 
 async function submitData() {
   // Quiz breakdown:
-  //   - shared         = SE1, SH2, SX1, SX2       (seen by ALL participants)
-  //   - sharedEasy     = SE1                       (shared, easy-difficulty item)
-  //   - sharedHard     = SH2                       (shared, hard-difficulty item)
-  //   - sharedCeiling  = SX1, SX2                  (shared, ceiling-breaker items)
-  //   - distinct       = condition-specific 8 items  (E1–E8 in Easy; H1–H8 in Hard)
+  //   - shared6        = SE1, SX1, SX2, SH2, H1, H2  (6 shared questions, same for all participants)
+  //   - distinct       = condition-specific 6 items    (E3–E8 in Easy; H3–H8 in Hard)
+  const sharedIds = new Set(['SE1', 'SX1', 'SX2', 'SH2', 'H1', 'H2']);
   const quizBreakdown = (STATE.quizAnswers || []).reduce((acc, a) => {
     if (!a.correct) return acc;
     const id = a.questionId || '';
-    if (id === 'SE1')                         { acc.shared++; acc.sharedEasy++; }
-    else if (id === 'SH2')                    { acc.shared++; acc.sharedHard++; }
-    else if (id === 'SX1' || id === 'SX2')    { acc.shared++; acc.sharedCeiling++; }
-    else if (/^[EH]\d+$/.test(id))            { acc.distinct++; }
+    if (sharedIds.has(id))                     { acc.shared6++; }
+    else if (/^[EH]\d+$/.test(id))             { acc.distinct++; }
     return acc;
-  }, { shared: 0, sharedEasy: 0, sharedHard: 0, sharedCeiling: 0, distinct: 0 });
+  }, { shared6: 0, distinct: 0 });
 
   const data = {
     // Identifiers
@@ -3468,11 +3497,8 @@ async function submitData() {
 
     // Quiz
     quizScore: STATE.quizScore,
-    quizScoreShared: quizBreakdown.shared,                 // 0–4 (SE1, SH2, SX1, SX2)
-    quizScoreSharedEasy: quizBreakdown.sharedEasy,         // 0–1 (SE1)
-    quizScoreSharedHard: quizBreakdown.sharedHard,         // 0–1 (SH2)
-    quizScoreSharedCeiling: quizBreakdown.sharedCeiling,   // 0–2 (SX1, SX2)
-    quizScoreDistinct: quizBreakdown.distinct,             // 0–8 (E1–E8 if Easy cond; H1–H8 if Hard cond)
+    quizScoreShared6: quizBreakdown.shared6,               // 0–6 (SE1, SX1, SX2, SH2, H1, H2) — used for γ*
+    quizScoreDistinct: quizBreakdown.distinct,             // 0–6 (E3–E8 if Easy cond; H3–H8 if Hard cond)
     gammaStar: STATE.gammaStar,
     randomProbShown: STATE.randomProbShown,
     quizAnswers: JSON.stringify(STATE.quizAnswers),
