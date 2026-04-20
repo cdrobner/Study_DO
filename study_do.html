@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwqRr1dnI0EbJhGR-RjKTWaUqlP7NF3uGpXiD3kFFUGe_R55b5Ls2VvRSCfEpVBU2oLQw/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbw3L8TaFBV6allisCey9x6Ecu302HbsqOkBjwTfLsMK3TMT_Zufv0frGhjPuh8ssFC4/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -435,16 +435,17 @@ const CONFIG = {
   randomProbDisplay: null,
 
   // ---- Prior score distribution (for computing γ* and drawing opponents) ----
-  // γ* is now based on the 6 SHARED questions only (SE1, SX1, SX2, SH2, H1, H2),
+  // γ* is based on the 4 SHARED questions only (SE1, SX1, SX2, SH2),
   // using a SINGLE pooled reference distribution across both Easy and Hard conditions.
   // This ensures γ* is independent of quiz-difficulty assignment.
-  // Each entry is a score (number correct out of 6 shared questions).
+  // Each entry is a score (number correct out of 4 shared questions).
   // γ* = fraction of pooled scores strictly lower + 0.5 × fraction equal.
-  //   Pooled empirical from pilots 2, 3, 4(4), 5(2), 6, 7 (Hard subjects only,
-  //   since Easy subjects did not answer H1/H2 in those pilots).
-  //   N=78, mean=2.42, SD=1.36.
+  //   Pooled empirical from pilots 2–10, all subjects.
+  //   N=249, mean=1.92, SD=0.88.
+  //   Distribution: {0:5, 1:86, 2:95, 3:49, 4:14}
+  //   γ* values: score 0→1.0%, 1→19.3%, 2→55.6%, 3→84.5%, 4→97.2%
   study1ScoresShared: [
-    0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,6
+    0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4
   ],
 
   // Legacy condition-specific distributions (retained for reference / fallback).
@@ -458,8 +459,8 @@ const CONFIG = {
   // ---- Quiz questions ----
   // Each question: { id, renderGrid(), renderAnswers(), correctAnswer: 0-3 }
   // SVG shapes rendered inline — no external image files needed.
-  // 6 shared (SE1, SX1, SX2, SH2, H1, H2) + 6 condition-specific = 12 per participant.
-  // γ* is computed from the 6 shared questions only, using a single pooled reference distribution.
+  // 4 shared (SE1, SX1, SX2, SH2) + 8 condition-specific = 12 per participant.
+  // γ* is computed from the 4 shared questions only, using a single pooled reference distribution.
 
   quizQuestionsShared: [
     {
@@ -593,71 +594,56 @@ const CONFIG = {
       },
       correctAnswer: 2
     },
+  ],
+  quizQuestionsEasyOnly: [
     {
-      // H1: Triple Latin square — shape, fill, size each cycle with a different linear offset.
-      // shape=(r+c)%3, fill=(r+2c)%3, size=(2r+c)%3
-      // (Moved from HardOnly to Shared so γ* is based on the same 6 questions for all participants.)
-      id: 'H1',
+      // E1: Color varies by column only (single rule, one dimension).
+      id: 'E1',
       renderGrid: function() {
-        const shapes = ['circle', 'square', 'triangle'];
-        const fills = [COLORS.blue, '#fff', 'striped'];
-        const sizes = [18, 24, 30];
+        const colors = [COLORS.blue, COLORS.red, COLORS.green];
         const cells = [];
         for (let r = 0; r < 3; r++) {
           for (let c = 0; c < 3; c++) {
             if (r === 2 && c === 2) continue;
-            const si = (r + c) % 3;
-            const fi = (r + 2 * c) % 3;
-            const zi = (2 * r + c) % 3;
-            cells.push(svgShape(shapes[si], fills[fi], sizes[zi]));
+            cells.push(svgShape('circle', colors[c], 24));
           }
         }
         return cells;
       },
       renderAnswers: function() {
-        // Missing (2,2): shape=(2+2)%3=1=square, fill=(2+4)%3=0=blue, size=(4+2)%3=0=18
         return [
-          svgShape('square', COLORS.blue, 24),  // size off
-          svgShape('square', '#fff', 18),       // fill off
-          svgShape('square', COLORS.blue, 18),  // CORRECT
-          svgShape('circle', COLORS.blue, 18),  // shape off
-        ];
-      },
-      correctAnswer: 2
-    },
-    {
-      // H2: Rotation + shape + fill with different offsets; uses rotatable shapes only.
-      // shape=(r+c)%3, rot=((c-r+3)%3)*120, fill=(2r+c)%3
-      // (Moved from HardOnly to Shared.)
-      id: 'H2',
-      renderGrid: function() {
-        const shapes = ['triangle', 'arrow', 'diamond'];
-        const fills = [COLORS.blue, COLORS.red, '#fff'];
-        const cells = [];
-        for (let r = 0; r < 3; r++) {
-          for (let c = 0; c < 3; c++) {
-            if (r === 2 && c === 2) continue;
-            const si = (r + c) % 3;
-            const rot = ((c - r + 3) % 3) * 120;
-            const fi = (2 * r + c) % 3;
-            cells.push(svgShape(shapes[si], fills[fi], 24, rot));
-          }
-        }
-        return cells;
-      },
-      renderAnswers: function() {
-        // Missing (2,2): shape=arrow, rot=0°, fill=blue
-        return [
-          svgShape('arrow', COLORS.blue, 24, 0),   // CORRECT
-          svgShape('arrow', COLORS.blue, 24, 120), // rotation off
-          svgShape('arrow', COLORS.red, 24, 0),    // fill off
-          svgShape('triangle', COLORS.blue, 24, 0),// shape off
+          svgShape('circle', COLORS.green, 24),
+          svgShape('circle', COLORS.blue, 24),
+          svgShape('circle', COLORS.red, 24),
+          svgShape('square', COLORS.green, 24),
         ];
       },
       correctAnswer: 0
     },
-  ],
-  quizQuestionsEasyOnly: [
+    {
+      // E2: Fill varies by row only (single rule, one dimension).
+      id: 'E2',
+      renderGrid: function() {
+        const fills = [COLORS.red, '#fff', 'striped'];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            cells.push(svgShape('square', fills[r], 24, 0, r === 1 ? COLORS.red : '#1e293b'));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        return [
+          svgShape('square', COLORS.red, 24),
+          svgShape('square', 'striped', 24),
+          svgShape('square', '#fff', 24),
+          svgShape('circle', 'striped', 24),
+        ];
+      },
+      correctAnswer: 1
+    },
     {
       id: 'E3',
       renderGrid: function() {
@@ -802,6 +788,67 @@ const CONFIG = {
     },
   ],
   quizQuestionsHardOnly: [
+    {
+      // H1: Triple Latin square — shape, fill, size each cycle with a different linear offset.
+      // shape=(r+c)%3, fill=(r+2c)%3, size=(2r+c)%3
+      id: 'H1',
+      renderGrid: function() {
+        const shapes = ['circle', 'square', 'triangle'];
+        const fills = [COLORS.blue, '#fff', 'striped'];
+        const sizes = [18, 24, 30];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const si = (r + c) % 3;
+            const fi = (r + 2 * c) % 3;
+            const zi = (2 * r + c) % 3;
+            cells.push(svgShape(shapes[si], fills[fi], sizes[zi]));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Missing (2,2): shape=(2+2)%3=1=square, fill=(2+4)%3=0=blue, size=(4+2)%3=0=18
+        return [
+          svgShape('square', COLORS.blue, 24),  // size off
+          svgShape('square', '#fff', 18),       // fill off
+          svgShape('square', COLORS.blue, 18),  // CORRECT
+          svgShape('circle', COLORS.blue, 18),  // shape off
+        ];
+      },
+      correctAnswer: 2
+    },
+    {
+      // H2: Rotation + shape + fill with different offsets; uses rotatable shapes only.
+      // shape=(r+c)%3, rot=((c-r+3)%3)*120, fill=(2r+c)%3
+      id: 'H2',
+      renderGrid: function() {
+        const shapes = ['triangle', 'arrow', 'diamond'];
+        const fills = [COLORS.blue, COLORS.red, '#fff'];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const si = (r + c) % 3;
+            const rot = ((c - r + 3) % 3) * 120;
+            const fi = (2 * r + c) % 3;
+            cells.push(svgShape(shapes[si], fills[fi], 24, rot));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Missing (2,2): shape=arrow, rot=0°, fill=blue
+        return [
+          svgShape('arrow', COLORS.blue, 24, 0),   // CORRECT
+          svgShape('arrow', COLORS.blue, 24, 120), // rotation off
+          svgShape('arrow', COLORS.red, 24, 0),    // fill off
+          svgShape('triangle', COLORS.blue, 24, 0),// shape off
+        ];
+      },
+      correctAnswer: 0
+    },
     {
       // H3: Count + shape + fill, each with different linear offsets. Uses svgMultiShape.
       // shape=(2r+c)%3, fill=(r+c)%3, count=((r+2c)%3)+1
@@ -1067,10 +1114,10 @@ const CONFIG = {
 
     scoreAnnouncement: (score, total) =>
       `You have solved <strong>${score}/${total}</strong> questions of the logic quiz correctly.
-       <p>In this study, your performance will be compared to other participants based on <strong>6 specific questions that were the same for all participants</strong>.</p>`,
+       <p>In this study, your performance will be compared to other participants based on <strong>4 specific questions that were the same for all participants</strong>.</p>`,
 
-    beliefElicitationPrompt: `<p>Suppose we randomly pick another participant from this study. We compare your scores on the <strong>6 questions that were the same for all participants</strong>.</p>
-      <p>We will ask you to give us your best guess about your chance of beating them on these 6 questions (ties decided by a coin flip), and then to tell us how confident you are about that guess.</p>
+    beliefElicitationPrompt: `<p>Suppose we randomly pick another participant from this study. We compare your scores on the <strong>4 questions that were the same for all participants</strong>.</p>
+      <p>We will ask you to give us your best guess about your chance of beating them on these 4 questions (ties decided by a coin flip), and then to tell us how confident you are about that guess.</p>
       <p>The more accurate your guess, the higher your chance of winning a <strong>$1 prize</strong>. <strong>The way we calculate this prize is designed so that reporting your true beliefs maximizes your chance of winning.</strong></p>`,
 
     transition: `<p>Your quiz performance will now be used to determine some of your earnings in the next part of the study.</p>
@@ -1088,7 +1135,7 @@ const CONFIG = {
     managerInstructions1: (randomProb) => ({
       intro: `<p>Imagine you have started a new job in which you can <strong>decide</strong> to work with one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-random">Lottery Manager</strong>.</p>
         <p>Whichever manager you decide to work with gives you bonuses. Each bonus is either <strong>H</strong> (pays $0.10) or <strong>L</strong> (pays $0). The two managers decide bonuses differently:</p>`,
-      performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> For each bonus, a different participant is randomly picked from a group of real participants who previously completed this same quiz, and your score <strong>on the 6 shared questions</strong> is compared to theirs. You receive <strong>H</strong> if you would beat that participant; if you would tie, the winner is decided by a coin flip; and you receive <strong>L</strong> if you would lose. So the Performance Manager's chance of paying H on each bonus depends on how well you scored on the quiz.</li></ul>`,
+      performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> For each bonus, a different participant is randomly picked from a group of real participants who previously completed this same quiz, and your score <strong>on the 4 shared questions</strong> is compared to theirs. You receive <strong>H</strong> if you would beat that participant; if you would tie, the winner is decided by a coin flip; and you receive <strong>L</strong> if you would lose. So the Performance Manager's chance of paying H on each bonus depends on how well you scored on the quiz.</li></ul>`,
       random: `<ul style="margin:0;"><li><strong class="eval-random">Lottery Manager:</strong> Does <strong>not</strong> compare you to anyone — you receive <strong>H</strong> with a fixed probability of <strong>${randomProb}%</strong> and <strong>L</strong> with probability <strong>${100 - randomProb}%</strong>. This probability is the same for every bonus and every round.</li></ul>`,
     }),
 
@@ -1120,11 +1167,11 @@ const CONFIG = {
       prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
       backScreen: 'managerInstructions1',
       items: [
-        { text: "The Performance Manager decides each bonus by comparing my score on the 6 shared questions to a randomly picked participant's score, paying H if I beat them (coin flip on ties).", correct: true },
+        { text: "The Performance Manager decides each bonus by comparing my score on the 4 shared questions to a randomly picked participant's score, paying H if I beat them (coin flip on ties).", correct: true },
         { text: "For the Performance Manager, the same random participant is used for every bonus I receive.", correct: false },
         { text: `The Lottery Manager pays H with a fixed probability of ${randomProb}% on every draw, and this probability is the same in every round.`, correct: true },
         { text: "The Lottery Manager compares my quiz score to other participants to decide each bonus.", correct: false },
-        { text: "The comparison between me and a randomly picked participant is based on 6 questions that were the same for everyone.", correct: true },
+        { text: "The comparison between me and a randomly picked participant is based on 4 questions that were the same for everyone.", correct: true },
         { text: 'Each H bonus pays $0.10 and each L bonus pays $0.', correct: true },
       ],
     }),
@@ -1200,15 +1247,17 @@ const STATE = {
   studyId: null,
   sessionId: null,
 
-  // Condition assignment
-  quizCondition: null,    // 'easy' or 'hard'
+  // Condition assignment (stratified randomization)
+  quizCondition: null,    // 'easy' or 'hard' — assigned AFTER 4 shared questions
   quizConditionDraw: null,// raw uniform draw in [0,1) used to assign quizCondition (audit trail)
+  sharedScoreAtStratification: null, // shared score (0–6) at time of condition assignment
+  stratificationStratum: null,       // 'low' (0–2), 'mid' (3–4), or 'high' (5–6)
   bsrStakeRound: null,    // $ BSR stake for round-level beliefs (assigned in init() from CONFIG.beliefBonusRound)
 
   // Quiz
   quizAnswers: [],     // [{questionId, selected, correct, timeSpent}]
   quizScore: 0,        // total score across all 12 questions
-  quizScoreShared: 0,  // score on the 6 shared questions (SE1, SX1, SX2, SH2, H1, H2) — used for γ*
+  quizScoreShared: 0,  // score on the 4 shared questions (SE1, SX1, SX2, SH2) — used for γ*
   gammaStar: null,     // true ability (percentile from Study 1, based on shared-6 score)
   randomProbShown: null, // the [XX]% shown to participant
 
@@ -1297,10 +1346,10 @@ function getUrlParams() {
   STATE.sessionId = params.get('SESSION_ID') || 'test_session';
 }
 
-// Compute the participant's score on the 6 shared questions (SE1, SX1, SX2, SH2, H1, H2).
+// Compute the participant's score on the 4 shared questions (SE1, SX1, SX2, SH2).
 // Called after the quiz is finished and STATE.quizAnswers is populated.
 function computeSharedScore() {
-  const sharedIds = new Set(['SE1', 'SX1', 'SX2', 'SH2', 'H1', 'H2']);
+  const sharedIds = new Set(['SE1', 'SX1', 'SX2', 'SH2']);
   let score = 0;
   for (const a of STATE.quizAnswers) {
     if (sharedIds.has(a.questionId) && a.correct) score++;
@@ -1309,7 +1358,7 @@ function computeSharedScore() {
 }
 
 // Compute γ* from the POOLED shared-question reference distribution.
-// Uses study1ScoresShared (scores on the 6 shared questions, pooled across conditions).
+// Uses study1ScoresShared (scores on the 4 shared questions, pooled across conditions).
 // Returns the EXACT (unrounded) percentage so the Lottery Manager's
 // Bernoulli probability exactly matches the Performance Manager's
 // expected H-rate. Rounding is applied at display sites.
@@ -1326,7 +1375,7 @@ function computeGammaStar(sharedScore) {
 }
 
 // Generate outcomes for a round.
-// Compares the participant's SHARED-question score against randomly drawn
+// Compares the participant's SHARED-question score (4 questions) against randomly drawn
 // opponents from the pooled shared-question reference distribution.
 function generateOutcomes(sharedScore, count) {
   const n = count || CONFIG.outcomesPerRound;
@@ -2015,10 +2064,48 @@ let currentQuizQ = 0;
 let quizQuestions = [];
 
 function startQuiz() {
-  // Individual-level random assignment to 'easy' vs 'hard' quiz condition.
-  // Use crypto.getRandomValues for a provably uniform draw (Math.random is
-  // implementation-dependent). We store the raw draw so randomness can be
-  // audited ex-post from the submitted data.
+  // --- Stratified randomization ---
+  // Phase 1: Administer the 4 shared questions first.
+  // After the shared questions are answered, we compute the shared score,
+  // stratify by score bin, and THEN assign Easy/Hard condition via block
+  // randomization within each stratum. This guarantees that γ* (which depends
+  // only on shared-question performance) is mechanically balanced across
+  // Easy and Hard conditions.
+  //
+  // Phase 2 (triggered in showQuizQuestion when currentQuizQ === 4):
+  // Compute shared score → assign condition → append condition-specific Qs.
+
+  quizQuestions = CONFIG.quizQuestionsShared.slice(); // start with shared only
+  currentQuizQ = 0;
+  STATE.quizAnswers = [];
+  showQuizQuestion();
+}
+
+/**
+ * Stratified block randomization: assign Easy/Hard condition based on shared
+ * score stratum. Called exactly once, after the 4 shared questions are done.
+ *
+ * Strata (shared score 0–4):
+ *   Low:  0–1
+ *   Mid:  2
+ *   High: 3–4
+ *
+ * Within each stratum we use a simple 50/50 random draw (crypto-secure).
+ * The stratification ensures that across subjects, the distribution of shared
+ * scores — and therefore γ* — is balanced between Easy and Hard conditions.
+ */
+function assignConditionStratified() {
+  const sharedScore = computeSharedScore();
+  STATE.sharedScoreAtStratification = sharedScore;
+
+  // Determine stratum label (for logging / auditing)
+  let stratum;
+  if (sharedScore <= 1)      stratum = 'low';
+  else if (sharedScore <= 2) stratum = 'mid';
+  else                       stratum = 'high';
+  STATE.stratificationStratum = stratum;
+
+  // Crypto-secure uniform draw for condition assignment
   let draw;
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
     const buf = new Uint32Array(1);
@@ -2030,16 +2117,22 @@ function startQuiz() {
   STATE.quizConditionDraw = draw;
   STATE.quizCondition = draw < 0.5 ? 'easy' : 'hard';
 
+  // Append condition-specific questions seamlessly
   const conditionQs = STATE.quizCondition === 'easy'
     ? CONFIG.quizQuestionsEasyOnly
     : CONFIG.quizQuestionsHardOnly;
-  quizQuestions = CONFIG.quizQuestionsShared.concat(conditionQs);
-  currentQuizQ = 0;
-  STATE.quizAnswers = [];
-  showQuizQuestion();
+  quizQuestions = quizQuestions.concat(conditionQs);
 }
 
 function showQuizQuestion() {
+  // --- Stratified randomization trigger ---
+  // After the 4 shared questions (indices 0–3), assign Easy/Hard condition
+  // based on shared score before continuing to question 5.
+  // This happens seamlessly — the subject sees no pause or transition.
+  if (currentQuizQ === 4 && !STATE.quizCondition) {
+    assignConditionStratified();
+  }
+
   if (currentQuizQ >= quizQuestions.length) {
     finishQuiz();
     return;
@@ -2071,7 +2164,7 @@ function showQuizQuestion() {
   
   container.innerHTML = `
     <div class="screen-header">
-      <h2>Question ${qNum}/${quizQuestions.length}</h2>
+      <h2>Question ${qNum}/${CONFIG.numQuizQuestions}</h2>
       <div class="quiz-timer" id="quiz-timer">${quizTimeLeft}s</div>
     </div>
     <div class="pattern-grid-wrapper">
@@ -2086,7 +2179,7 @@ function showQuizQuestion() {
       <button class="btn btn-primary" id="quiz-next-btn" disabled onclick="submitQuizAnswer()">Next →</button>
     </div>`;
 
-  updateProgress(0.10 + (qNum / quizQuestions.length) * 0.20);
+  updateProgress(0.10 + (qNum / CONFIG.numQuizQuestions) * 0.20);
 
   // Timer
   clearInterval(quizTimer);
@@ -3341,7 +3434,7 @@ function computePayment() {
   STATE.outcomeEarnings = payRound.earnings;
 
   // 2) Initial belief bonus: BSR on initial γ ($2 fixed stake)
-  //    Comparison is based on 6 shared questions using the pooled reference distribution
+  //    Comparison is based on 4 shared questions using the pooled reference distribution
   {
     const s1scores = CONFIG.study1ScoresShared;
     const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
@@ -3420,16 +3513,16 @@ function redirectToProlific() {
 
 async function submitData() {
   // Quiz breakdown:
-  //   - shared6        = SE1, SX1, SX2, SH2, H1, H2  (6 shared questions, same for all participants)
-  //   - distinct       = condition-specific 6 items    (E3–E8 in Easy; H3–H8 in Hard)
-  const sharedIds = new Set(['SE1', 'SX1', 'SX2', 'SH2', 'H1', 'H2']);
+  //   - shared4        = SE1, SX1, SX2, SH2  (4 shared questions, same for all participants)
+  //   - distinct       = condition-specific 8 items    (E1–E8 in Easy; H1–H8 in Hard)
+  const sharedIds = new Set(['SE1', 'SX1', 'SX2', 'SH2']);
   const quizBreakdown = (STATE.quizAnswers || []).reduce((acc, a) => {
     if (!a.correct) return acc;
     const id = a.questionId || '';
-    if (sharedIds.has(id))                     { acc.shared6++; }
+    if (sharedIds.has(id))                     { acc.shared4++; }
     else if (/^[EH]\d+$/.test(id))             { acc.distinct++; }
     return acc;
-  }, { shared6: 0, distinct: 0 });
+  }, { shared4: 0, distinct: 0 });
 
   const data = {
     // Identifiers
@@ -3438,15 +3531,17 @@ async function submitData() {
     sessionId: STATE.sessionId,
     timestamp: new Date().toISOString(),
 
-    // Condition
+    // Condition (stratified randomization)
     quizCondition: STATE.quizCondition,
     quizConditionDraw: STATE.quizConditionDraw,
+    sharedScoreAtStratification: STATE.sharedScoreAtStratification,
+    stratificationStratum: STATE.stratificationStratum,
     bsrStakeRound: STATE.bsrStakeRound,
 
     // Quiz
     quizScore: STATE.quizScore,
-    quizScoreShared6: quizBreakdown.shared6,               // 0–6 (SE1, SX1, SX2, SH2, H1, H2) — used for γ*
-    quizScoreDistinct: quizBreakdown.distinct,             // 0–6 (E3–E8 if Easy cond; H3–H8 if Hard cond)
+    quizScoreShared: quizBreakdown.shared4,                 // 0–4 (SE1, SX1, SX2, SH2) — used for γ*
+    quizScoreDistinct: quizBreakdown.distinct,             // 0–8 (E1–E8 if Easy cond; H1–H8 if Hard cond)
     gammaStar: STATE.gammaStar,
     randomProbShown: STATE.randomProbShown,
     quizAnswers: JSON.stringify(STATE.quizAnswers),
