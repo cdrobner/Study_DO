@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzz0-6yiTzRb4Pp4tqa_u1Ftt8dy0LI3N1afsdf8YPwVwqbYlMbmxbFDAQ5SQCdxaVe/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbx5sl61ivBHTgiKsSVKTjSOAMoHwEJ0B7HoApjOCb0P-DehnwQvsqYY_2WXMAd_C0_a/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -2079,11 +2079,10 @@ function startQuiz() {
   currentQuizQ = 0;
   STATE.quizAnswers = [];
 
-  // Pre-warm the Apps Script instance so the randomization request after Q4
-  // hits a warm container (~100ms) instead of a cold start (~3–5s).
-  // The health-check endpoint returns {"status":"ready"} and is ignored.
+  // Pre-warm the Apps Script: wakes up the container AND opens the
+  // spreadsheet so both are hot when the real randomization fires after Q4.
   if (CONFIG.googleSheetsURL) {
-    fetch(CONFIG.googleSheetsURL, { signal: AbortSignal.timeout(6000) }).catch(() => {});
+    fetch(CONFIG.googleSheetsURL + '?action=warmup', { signal: AbortSignal.timeout(6000) }).catch(() => {});
   }
 
   showQuizQuestion();
