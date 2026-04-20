@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbw3L8TaFBV6allisCey9x6Ecu302HbsqOkBjwTfLsMK3TMT_Zufv0frGhjPuh8ssFC4/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbysND5siW6cU5W8OQncZA3KGDmwnXI2WgQqIEZ0bUxqxnaA8WYazrFDChL1I2EsPSSa/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -3656,7 +3656,7 @@ async function submitData() {
       fetch(CONFIG.googleSheetsURL, {
         method: 'POST',
         mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(data),
         keepalive: true,
       }).catch(function(e) { console.error('Submit error (ignored):', e); });
@@ -3692,7 +3692,7 @@ function showMobileBlocked() {
   if (CONFIG.googleSheetsURL) {
     fetch(CONFIG.googleSheetsURL, {
       method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         prolificPid: new URLSearchParams(window.location.search).get('PROLIFIC_PID') || 'unknown',
         quizCondition: 'MOBILE_BLOCKED',
@@ -3732,7 +3732,7 @@ function showExcluded() {
   if (CONFIG.googleSheetsURL) {
     fetch(CONFIG.googleSheetsURL, {
       method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
         prolificPid: STATE.prolificPid || 'unknown',
         sessionId: STATE.sessionId || '',
@@ -3818,4 +3818,4 @@ init();
 </script>
 </body>
 </html>
-   
+     
