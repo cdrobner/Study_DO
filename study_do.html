@@ -2163,15 +2163,11 @@ async function showQuizQuestion() {
   // After the 4 shared questions (indices 0–3), assign Easy/Hard condition
   // based on shared score before continuing to question 5.
   // The server call is awaited; a brief loading state is shown during the fetch.
-  // If we've just reached Q5 and condition isn't set yet, await the
-  // promise that was fired earlier (when Q4 was answered). In most cases
-  // the server has already responded, so this resolves instantly.
+  // Safety net: if showQuizQuestion is ever called at Q5 before the
+  // condition is assigned (should not happen — submitQuizAnswer waits
+  // via .then()), block here until it resolves.
   if (currentQuizQ === 4 && !STATE.quizCondition) {
-    if (!_conditionPromise) {
-      // Fallback: if the early fire somehow didn't happen, start it now
-      _conditionPromise = assignConditionStratified();
-    }
-    container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:200px;"><p style="color:#6c757d;">Preparing next questions…</p></div>`;
+    if (!_conditionPromise) _conditionPromise = assignConditionStratified();
     await _conditionPromise;
   }
 
