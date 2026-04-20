@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbysND5siW6cU5W8OQncZA3KGDmwnXI2WgQqIEZ0bUxqxnaA8WYazrFDChL1I2EsPSSa/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzz0-6yiTzRb4Pp4tqa_u1Ftt8dy0LI3N1afsdf8YPwVwqbYlMbmxbFDAQ5SQCdxaVe/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -1249,9 +1249,9 @@ const STATE = {
 
   // Condition assignment (stratified randomization)
   quizCondition: null,    // 'easy' or 'hard' — assigned AFTER 4 shared questions
-  quizConditionDraw: null,// raw uniform draw in [0,1) used to assign quizCondition (audit trail)
-  sharedScoreAtStratification: null, // shared score (0–6) at time of condition assignment
-  stratificationStratum: null,       // 'low' (0–2), 'mid' (3–4), or 'high' (5–6)
+  quizConditionDraw: null,// raw uniform draw in [0,1) if local fallback; -1 if server-assigned
+  sharedScoreAtStratification: null, // shared score (0–4) at time of condition assignment
+  stratificationStratum: null,       // 'low' (0–1), 'mid' (2), or 'high' (3–4)
   bsrStakeRound: null,    // $ BSR stake for round-level beliefs (assigned in init() from CONFIG.beliefBonusRound)
 
   // Quiz
@@ -2082,7 +2082,7 @@ function startQuiz() {
 }
 
 /**
- * Stratified block randomization: assign Easy/Hard condition based on shared
+ * Stratified BLOCK randomization: assign Easy/Hard condition based on shared
  * score stratum. Called exactly once, after the 4 shared questions are done.
  *
  * Strata (shared score 0–4):
@@ -2090,32 +2090,60 @@ function startQuiz() {
  *   Mid:  2
  *   High: 3–4
  *
- * Within each stratum we use a simple 50/50 random draw (crypto-secure).
- * The stratification ensures that across subjects, the distribution of shared
- * scores — and therefore γ* — is balanced between Easy and Hard conditions.
+ * The condition is assigned via server-side block randomization: the Apps Script
+ * tracks how many Easy/Hard assignments exist per stratum and assigns to
+ * whichever has fewer (coin flip if tied). This guarantees near-exact 50/50
+ * balance within each stratum regardless of sample size.
+ *
+ * If the server call fails, falls back to a local 50/50 crypto-secure draw.
  */
-function assignConditionStratified() {
+async function assignConditionStratified() {
   const sharedScore = computeSharedScore();
   STATE.sharedScoreAtStratification = sharedScore;
 
-  // Determine stratum label (for logging / auditing)
+  // Determine stratum label
   let stratum;
   if (sharedScore <= 1)      stratum = 'low';
   else if (sharedScore <= 2) stratum = 'mid';
   else                       stratum = 'high';
   STATE.stratificationStratum = stratum;
 
-  // Crypto-secure uniform draw for condition assignment
-  let draw;
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    const buf = new Uint32Array(1);
-    crypto.getRandomValues(buf);
-    draw = buf[0] / 0x100000000; // uniform in [0, 1)
-  } else {
-    draw = Math.random(); // fallback
+  let condition = null;
+  let draw = null;
+
+  // --- Server-side block randomization ---
+  if (CONFIG.googleSheetsURL) {
+    try {
+      const pid = STATE.prolificPid || 'unknown';
+      const url = CONFIG.googleSheetsURL
+        + '?action=randomize'
+        + '&stratum=' + encodeURIComponent(stratum)
+        + '&pid=' + encodeURIComponent(pid);
+      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      const json = await resp.json();
+      if (json.condition === 'easy' || json.condition === 'hard') {
+        condition = json.condition;
+        draw = -1; // sentinel: server-assigned (no local draw)
+      }
+    } catch (e) {
+      console.warn('Server-side randomization failed, falling back to local draw:', e);
+    }
   }
+
+  // --- Fallback: local 50/50 draw ---
+  if (!condition) {
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      const buf = new Uint32Array(1);
+      crypto.getRandomValues(buf);
+      draw = buf[0] / 0x100000000; // uniform in [0, 1)
+    } else {
+      draw = Math.random();
+    }
+    condition = draw < 0.5 ? 'easy' : 'hard';
+  }
+
   STATE.quizConditionDraw = draw;
-  STATE.quizCondition = draw < 0.5 ? 'easy' : 'hard';
+  STATE.quizCondition = condition;
 
   // Append condition-specific questions seamlessly
   const conditionQs = STATE.quizCondition === 'easy'
@@ -2124,13 +2152,14 @@ function assignConditionStratified() {
   quizQuestions = quizQuestions.concat(conditionQs);
 }
 
-function showQuizQuestion() {
+async function showQuizQuestion() {
   // --- Stratified randomization trigger ---
   // After the 4 shared questions (indices 0–3), assign Easy/Hard condition
   // based on shared score before continuing to question 5.
-  // This happens seamlessly — the subject sees no pause or transition.
+  // The server call is awaited; a brief loading state is shown during the fetch.
   if (currentQuizQ === 4 && !STATE.quizCondition) {
-    assignConditionStratified();
+    container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:200px;"><p style="color:#6c757d;">Preparing next questions…</p></div>`;
+    await assignConditionStratified();
   }
 
   if (currentQuizQ >= quizQuestions.length) {
