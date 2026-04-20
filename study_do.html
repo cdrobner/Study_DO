@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxVunevfEXcJxD1hx812ySHuQ8HxSWbova91BpD6IjRQTCT3kuPYsy1yZV_9bxfdQ2Z/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzHJgcqkwItPTuh6XWLcXQRdT6pYocJE1hBYU8stwg8l_qkPD8y3HBwghfaNQkK3JqSYg/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -435,17 +435,16 @@ const CONFIG = {
   randomProbDisplay: null,
 
   // ---- Prior score distribution (for computing γ* and drawing opponents) ----
-  // γ* is based on the 4 SHARED questions only (SE1, SX1, SX2, SH2),
-  // using a SINGLE pooled reference distribution across both Easy and Hard conditions.
-  // This ensures γ* is independent of quiz-difficulty assignment.
-  // Each entry is a score (number correct out of 4 shared questions).
-  // γ* = fraction of pooled scores strictly lower + 0.5 × fraction equal.
-  //   Pooled empirical from pilots 2–10, all subjects.
-  //   N=249, mean=1.92, SD=0.88.
-  //   Distribution: {0:5, 1:86, 2:95, 3:49, 4:14}
-  //   γ* values: score 0→1.0%, 1→19.3%, 2→55.6%, 3→84.5%, 4→97.2%
+  // γ* is based on the 6 SHARED questions (SE1, SX1, SX2, SH2, H1, H2),
+  // using the Hard-treatment reference distribution from pilots 2–10, 12–13.
+  // Each entry is a score (number correct out of 6 shared questions).
+  // γ* = fraction of reference scores strictly lower + 0.5 × fraction equal.
+  //   Hard treatment empirical from pilots 2–10, 12–13.
+  //   N=166, mean=2.50.
+  //   Distribution: {0:6, 1:41, 2:31, 3:50, 4:30, 5:6, 6:2}
+  //   γ* values: score 0→1.8%, 1→16.0%, 2→37.7%, 3→62.0%, 4→86.1%, 5→97.0%, 6→99.4%
   study1ScoresShared: [
-    0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4
+    0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,6,6
   ],
 
   // Legacy condition-specific distributions (retained for reference / fallback).
@@ -459,8 +458,8 @@ const CONFIG = {
   // ---- Quiz questions ----
   // Each question: { id, renderGrid(), renderAnswers(), correctAnswer: 0-3 }
   // SVG shapes rendered inline — no external image files needed.
-  // 4 shared (SE1, SX1, SX2, SH2) + 8 condition-specific = 12 per participant.
-  // γ* is computed from the 4 shared questions only, using a single pooled reference distribution.
+  // 6 shared (SE1, SX1, SX2, SH2, H1, H2) + 6 condition-specific = 12 per participant.
+  // γ* is computed from all 6 shared questions, using a single pooled reference distribution.
 
   quizQuestionsShared: [
     {
@@ -594,56 +593,71 @@ const CONFIG = {
       },
       correctAnswer: 2
     },
-  ],
-  quizQuestionsEasyOnly: [
     {
-      // E1: Color varies by column only (single rule, one dimension).
-      id: 'E1',
+      // H1: Triple Latin square — shape, fill, size each cycle with a different linear offset.
+      // shape=(r+c)%3, fill=(r+2c)%3, size=(2r+c)%3
+      // SHARED: appears in both Easy and Hard conditions.
+      id: 'H1',
       renderGrid: function() {
-        const colors = [COLORS.blue, COLORS.red, COLORS.green];
+        const shapes = ['circle', 'square', 'triangle'];
+        const fills = [COLORS.blue, '#fff', 'striped'];
+        const sizes = [18, 24, 30];
         const cells = [];
         for (let r = 0; r < 3; r++) {
           for (let c = 0; c < 3; c++) {
             if (r === 2 && c === 2) continue;
-            cells.push(svgShape('circle', colors[c], 24));
+            const si = (r + c) % 3;
+            const fi = (r + 2 * c) % 3;
+            const zi = (2 * r + c) % 3;
+            cells.push(svgShape(shapes[si], fills[fi], sizes[zi]));
           }
         }
         return cells;
       },
       renderAnswers: function() {
+        // Missing (2,2): shape=(2+2)%3=1=square, fill=(2+4)%3=0=blue, size=(4+2)%3=0=18
         return [
-          svgShape('circle', COLORS.green, 24),
-          svgShape('circle', COLORS.blue, 24),
-          svgShape('circle', COLORS.red, 24),
-          svgShape('square', COLORS.green, 24),
+          svgShape('square', COLORS.blue, 24),  // size off
+          svgShape('square', '#fff', 18),       // fill off
+          svgShape('square', COLORS.blue, 18),  // CORRECT
+          svgShape('circle', COLORS.blue, 18),  // shape off
+        ];
+      },
+      correctAnswer: 2
+    },
+    {
+      // H2: Rotation + shape + fill with different offsets; uses rotatable shapes only.
+      // shape=(r+c)%3, rot=((c-r+3)%3)*120, fill=(2r+c)%3
+      // SHARED: appears in both Easy and Hard conditions.
+      id: 'H2',
+      renderGrid: function() {
+        const shapes = ['triangle', 'arrow', 'diamond'];
+        const fills = [COLORS.blue, COLORS.red, '#fff'];
+        const cells = [];
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            if (r === 2 && c === 2) continue;
+            const si = (r + c) % 3;
+            const rot = ((c - r + 3) % 3) * 120;
+            const fi = (2 * r + c) % 3;
+            cells.push(svgShape(shapes[si], fills[fi], 24, rot));
+          }
+        }
+        return cells;
+      },
+      renderAnswers: function() {
+        // Missing (2,2): shape=arrow, rot=0°, fill=blue
+        return [
+          svgShape('arrow', COLORS.blue, 24, 0),   // CORRECT
+          svgShape('arrow', COLORS.blue, 24, 120), // rotation off
+          svgShape('arrow', COLORS.red, 24, 0),    // fill off
+          svgShape('triangle', COLORS.blue, 24, 0),// shape off
         ];
       },
       correctAnswer: 0
     },
-    {
-      // E2: Fill varies by row only (single rule, one dimension).
-      id: 'E2',
-      renderGrid: function() {
-        const fills = [COLORS.red, '#fff', 'striped'];
-        const cells = [];
-        for (let r = 0; r < 3; r++) {
-          for (let c = 0; c < 3; c++) {
-            if (r === 2 && c === 2) continue;
-            cells.push(svgShape('square', fills[r], 24, 0, r === 1 ? COLORS.red : '#1e293b'));
-          }
-        }
-        return cells;
-      },
-      renderAnswers: function() {
-        return [
-          svgShape('square', COLORS.red, 24),
-          svgShape('square', 'striped', 24),
-          svgShape('square', '#fff', 24),
-          svgShape('circle', 'striped', 24),
-        ];
-      },
-      correctAnswer: 1
-    },
+  ],
+  quizQuestionsEasyOnly: [
     {
       id: 'E3',
       renderGrid: function() {
@@ -788,67 +802,6 @@ const CONFIG = {
     },
   ],
   quizQuestionsHardOnly: [
-    {
-      // H1: Triple Latin square — shape, fill, size each cycle with a different linear offset.
-      // shape=(r+c)%3, fill=(r+2c)%3, size=(2r+c)%3
-      id: 'H1',
-      renderGrid: function() {
-        const shapes = ['circle', 'square', 'triangle'];
-        const fills = [COLORS.blue, '#fff', 'striped'];
-        const sizes = [18, 24, 30];
-        const cells = [];
-        for (let r = 0; r < 3; r++) {
-          for (let c = 0; c < 3; c++) {
-            if (r === 2 && c === 2) continue;
-            const si = (r + c) % 3;
-            const fi = (r + 2 * c) % 3;
-            const zi = (2 * r + c) % 3;
-            cells.push(svgShape(shapes[si], fills[fi], sizes[zi]));
-          }
-        }
-        return cells;
-      },
-      renderAnswers: function() {
-        // Missing (2,2): shape=(2+2)%3=1=square, fill=(2+4)%3=0=blue, size=(4+2)%3=0=18
-        return [
-          svgShape('square', COLORS.blue, 24),  // size off
-          svgShape('square', '#fff', 18),       // fill off
-          svgShape('square', COLORS.blue, 18),  // CORRECT
-          svgShape('circle', COLORS.blue, 18),  // shape off
-        ];
-      },
-      correctAnswer: 2
-    },
-    {
-      // H2: Rotation + shape + fill with different offsets; uses rotatable shapes only.
-      // shape=(r+c)%3, rot=((c-r+3)%3)*120, fill=(2r+c)%3
-      id: 'H2',
-      renderGrid: function() {
-        const shapes = ['triangle', 'arrow', 'diamond'];
-        const fills = [COLORS.blue, COLORS.red, '#fff'];
-        const cells = [];
-        for (let r = 0; r < 3; r++) {
-          for (let c = 0; c < 3; c++) {
-            if (r === 2 && c === 2) continue;
-            const si = (r + c) % 3;
-            const rot = ((c - r + 3) % 3) * 120;
-            const fi = (2 * r + c) % 3;
-            cells.push(svgShape(shapes[si], fills[fi], 24, rot));
-          }
-        }
-        return cells;
-      },
-      renderAnswers: function() {
-        // Missing (2,2): shape=arrow, rot=0°, fill=blue
-        return [
-          svgShape('arrow', COLORS.blue, 24, 0),   // CORRECT
-          svgShape('arrow', COLORS.blue, 24, 120), // rotation off
-          svgShape('arrow', COLORS.red, 24, 0),    // fill off
-          svgShape('triangle', COLORS.blue, 24, 0),// shape off
-        ];
-      },
-      correctAnswer: 0
-    },
     {
       // H3: Count + shape + fill, each with different linear offsets. Uses svgMultiShape.
       // shape=(2r+c)%3, fill=(r+c)%3, count=((r+2c)%3)+1
@@ -1349,7 +1302,7 @@ function getUrlParams() {
 // Compute the participant's score on the 4 shared questions (SE1, SX1, SX2, SH2).
 // Called after the quiz is finished and STATE.quizAnswers is populated.
 function computeSharedScore() {
-  const sharedIds = new Set(['SE1', 'SX1', 'SX2', 'SH2']);
+  const sharedIds = new Set(['SE1', 'SX1', 'SX2', 'SH2', 'H1', 'H2']);
   let score = 0;
   for (const a of STATE.quizAnswers) {
     if (sharedIds.has(a.questionId) && a.correct) score++;
@@ -1358,7 +1311,7 @@ function computeSharedScore() {
 }
 
 // Compute γ* from the POOLED shared-question reference distribution.
-// Uses study1ScoresShared (scores on the 4 shared questions, pooled across conditions).
+// Uses study1ScoresShared (scores on the 6 shared questions, pooled across conditions).
 // Returns the EXACT (unrounded) percentage so the Lottery Manager's
 // Bernoulli probability exactly matches the Performance Manager's
 // expected H-rate. Rounding is applied at display sites.
@@ -1375,7 +1328,7 @@ function computeGammaStar(sharedScore) {
 }
 
 // Generate outcomes for a round.
-// Compares the participant's SHARED-question score (4 questions) against randomly drawn
+// Compares the participant's SHARED-question score (6 questions) against randomly drawn
 // opponents from the pooled shared-question reference distribution.
 function generateOutcomes(sharedScore, count) {
   const n = count || CONFIG.outcomesPerRound;
@@ -2065,11 +2018,11 @@ let quizQuestions = [];
 
 function startQuiz() {
   // --- Stratified randomization ---
-  // The 4 shared questions are administered first. After Q3, the stratum
-  // is determined (based on 3-question score: Low=0, Mid=1–2, High=3)
+  // The 6 shared questions (SE1, SX1, SX2, SH2, H1, H2) are administered
+  // first. After Q5, the stratum is determined (score 0–5 from first 5 Qs)
   // and the server-side block randomization request fires in the background.
-  // By the time Q4 is answered, the condition is already resolved, so
-  // Q5 appears with zero lag. The 4th shared question contributes to γ*
+  // By the time Q6 is answered, the condition is already resolved, so
+  // Q7 appears with zero lag. The 6th shared question contributes to γ*
   // but not to the stratification stratum.
 
   quizQuestions = CONFIG.quizQuestionsShared.slice(); // start with shared only
@@ -2080,16 +2033,13 @@ function startQuiz() {
 
 /**
  * Stratified BLOCK randomization: assign Easy/Hard condition based on shared
- * score stratum. Fired after Q3 (not Q4) so the server round-trip overlaps
- * with Q4 and causes zero visible lag.
+ * score stratum. Fired after Q5 (not Q6) so the server round-trip overlaps
+ * with Q6 and causes zero visible lag.
  *
- * Strata (based on first 3 shared questions, score 0–3):
- *   s0: 0
- *   s1: 1
- *   s2: 2
- *   s3: 3
+ * Strata (based on first 5 of 6 shared questions, score 0–5):
+ *   s0, s1, s2, s3, s4, s5
  *
- * The 4th shared question still contributes to γ* but not to stratification.
+ * The 6th shared question still contributes to γ* but not to stratification.
  *
  * The condition is assigned via server-side block randomization: the Apps Script
  * tracks how many Easy/Hard assignments exist per stratum and assigns to
@@ -2099,90 +2049,39 @@ function startQuiz() {
  * If the server call fails, falls back to a local 50/50 crypto-secure draw.
  */
 // Promise that resolves once condition assignment is complete.
-// Fired speculatively after Q3 when the stratum is already determined
-// (score 0 → Low, score 3 → High), or after Q4 otherwise. The network
-// round-trip overlaps with the time the subject spends on Q4, so the
-// transition to Q5 is instantaneous.
-let _conditionPromise = null;
-
 /**
- * Fire randomization after Q3. Stratification uses the first 3 shared
- * questions only (score 0–3), so the stratum is always known at this
- * point. The 4th shared question still contributes to γ* but not to
- * the stratification stratum.
- *
- * Strata (one per score value):
- *   s0, s1, s2, s3
+ * Assign condition after all 6 shared questions are answered.
+ * Uses a local 50/50 crypto-secure draw. The stratification stratum
+ * (based on the 6-question shared score) is recorded for analysis
+ * but does not influence the assignment.
  */
-function fireRandomizationAfterQ3() {
-  if (_conditionPromise || STATE.quizCondition) return;
-  const score3 = computeSharedScore(); // score from first 3 shared Qs
-  STATE.sharedScoreAtStratification = score3;
+function assignConditionLocal() {
+  if (STATE.quizCondition) return;
+  const sharedScore = computeSharedScore();
+  STATE.sharedScoreAtStratification = sharedScore;
+  STATE.stratificationStratum = 's' + sharedScore;
 
-  const stratum = 's' + score3; // s0, s1, s2, s3
-  STATE.stratificationStratum = stratum;
-
-  _conditionPromise = assignConditionStratified(stratum);
-}
-
-async function assignConditionStratified(stratum) {
-
-  let condition = null;
-  let draw = null;
-
-  // --- Server-side block randomization ---
-  if (CONFIG.googleSheetsURL) {
-    try {
-      const pid = STATE.prolificPid || 'unknown';
-      const url = CONFIG.googleSheetsURL
-        + '?action=randomize'
-        + '&stratum=' + encodeURIComponent(stratum)
-        + '&pid=' + encodeURIComponent(pid);
-      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      const json = await resp.json();
-      if (json.condition === 'easy' || json.condition === 'hard') {
-        condition = json.condition;
-        draw = -1; // sentinel: server-assigned (no local draw)
-      }
-    } catch (e) {
-      console.warn('Server-side randomization failed, falling back to local draw:', e);
-    }
+  let draw;
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    draw = buf[0] / 0x100000000;
+  } else {
+    draw = Math.random();
   }
-
-  // --- Fallback: local 50/50 draw ---
-  if (!condition) {
-    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-      const buf = new Uint32Array(1);
-      crypto.getRandomValues(buf);
-      draw = buf[0] / 0x100000000; // uniform in [0, 1)
-    } else {
-      draw = Math.random();
-    }
-    condition = draw < 0.5 ? 'easy' : 'hard';
-  }
-
   STATE.quizConditionDraw = draw;
-  STATE.quizCondition = condition;
+  STATE.quizCondition = draw < 0.5 ? 'easy' : 'hard';
 
-  // Append condition-specific questions seamlessly
   const conditionQs = STATE.quizCondition === 'easy'
     ? CONFIG.quizQuestionsEasyOnly
     : CONFIG.quizQuestionsHardOnly;
   quizQuestions = quizQuestions.concat(conditionQs);
 }
 
-async function showQuizQuestion() {
-  // --- Stratified randomization trigger ---
-  // After the 4 shared questions (indices 0–3), assign Easy/Hard condition
-  // based on shared score before continuing to question 5.
-  // The server call is awaited; a brief loading state is shown during the fetch.
-  // Safety net: if showQuizQuestion is ever called at Q5 before the
-  // condition is assigned (should not happen — submitQuizAnswer waits
-  // via .then()), block here until it resolves.
-  // Safety net: if we somehow reach Q5 without a condition, wait for it.
-  if (currentQuizQ === 4 && !STATE.quizCondition) {
-    if (!_conditionPromise) fireRandomizationAfterQ3();
-    await _conditionPromise;
+function showQuizQuestion() {
+  // After the 6 shared questions, assign Easy/Hard via local 50/50 draw.
+  if (currentQuizQ === 6 && !STATE.quizCondition) {
+    assignConditionLocal();
   }
 
   if (currentQuizQ >= quizQuestions.length) {
@@ -2254,14 +2153,6 @@ async function showQuizQuestion() {
         timedOut: true,
       });
       currentQuizQ++;
-      // After Q3: fire randomization (stratum determined from 3 Qs)
-      if (currentQuizQ === 3) fireRandomizationAfterQ3();
-      // After Q4: wait for the in-flight promise before showing Q5
-      if (currentQuizQ === 4 && !STATE.quizCondition) {
-        if (!_conditionPromise) fireRandomizationAfterQ3();
-        _conditionPromise.then(() => showQuizQuestion());
-        return;
-      }
       showQuizQuestion();
     }
   }, 1000);
@@ -2294,16 +2185,6 @@ function submitQuizAnswer() {
   });
   _selectedQuizOption = null;
   currentQuizQ++;
-  // After Q3: fire randomization (stratum is fully determined from 3 Qs).
-  // The request runs in the background while the subject works on Q4.
-  if (currentQuizQ === 3) fireRandomizationAfterQ3();
-  // After Q4: wait for the in-flight promise before showing Q5.
-  // The Q4 screen stays visible — typically resolves instantly.
-  if (currentQuizQ === 4 && !STATE.quizCondition) {
-    if (!_conditionPromise) fireRandomizationAfterQ3(); // safety fallback
-    _conditionPromise.then(() => showQuizQuestion());
-    return;
-  }
   showQuizQuestion();
 }
 
@@ -3583,16 +3464,16 @@ function redirectToProlific() {
 
 async function submitData() {
   // Quiz breakdown:
-  //   - shared4        = SE1, SX1, SX2, SH2  (4 shared questions, same for all participants)
-  //   - distinct       = condition-specific 8 items    (E1–E8 in Easy; H1–H8 in Hard)
-  const sharedIds = new Set(['SE1', 'SX1', 'SX2', 'SH2']);
+  //   - shared6        = SE1, SX1, SX2, SH2, H1, H2  (6 shared questions, same for all participants)
+  //   - distinct       = condition-specific 6 items    (E3–E8 in Easy; H3–H8 in Hard)
+  const sharedIds = new Set(['SE1', 'SX1', 'SX2', 'SH2', 'H1', 'H2']);
   const quizBreakdown = (STATE.quizAnswers || []).reduce((acc, a) => {
     if (!a.correct) return acc;
     const id = a.questionId || '';
-    if (sharedIds.has(id))                     { acc.shared4++; }
+    if (sharedIds.has(id))                     { acc.shared6++; }
     else if (/^[EH]\d+$/.test(id))             { acc.distinct++; }
     return acc;
-  }, { shared4: 0, distinct: 0 });
+  }, { shared6: 0, distinct: 0 });
 
   const data = {
     // Identifiers
@@ -3610,8 +3491,8 @@ async function submitData() {
 
     // Quiz
     quizScore: STATE.quizScore,
-    quizScoreShared: quizBreakdown.shared4,                 // 0–4 (SE1, SX1, SX2, SH2) — used for γ*
-    quizScoreDistinct: quizBreakdown.distinct,             // 0–8 (E1–E8 if Easy cond; H1–H8 if Hard cond)
+    quizScoreShared: quizBreakdown.shared6,                 // 0–6 (SE1, SX1, SX2, SH2, H1, H2) — used for γ*
+    quizScoreDistinct: quizBreakdown.distinct,             // 0–6 (E3–E8 if Easy cond; H3–H8 if Hard cond)
     gammaStar: STATE.gammaStar,
     randomProbShown: STATE.randomProbShown,
     quizAnswers: JSON.stringify(STATE.quizAnswers),
