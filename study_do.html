@@ -1067,10 +1067,10 @@ const CONFIG = {
 
     scoreAnnouncement: (score, total) =>
       `You have solved <strong>${score}/${total}</strong> questions of the logic quiz correctly.
-       <p>In this study, your performance will be compared to other participants based on <strong>4 specific questions that were the same for all participants</strong>.</p>`,
+       <p>In this study, your performance will be compared to other participants based on <strong>6 specific questions that were the same for all participants</strong>.</p>`,
 
-    beliefElicitationPrompt: `<p>Suppose we randomly pick another participant from this study. We compare your scores on the <strong>4 questions that were the same for all participants</strong>.</p>
-      <p>We will ask you to give us your best guess about your chance of beating them on these 4 questions (ties decided by a coin flip), and then to tell us how confident you are about that guess.</p>
+    beliefElicitationPrompt: `<p>Suppose we randomly pick another participant from this study. We compare your scores on the <strong>6 questions that were the same for all participants</strong>.</p>
+      <p>We will ask you to give us your best guess about your chance of beating them on these 6 questions (ties decided by a coin flip), and then to tell us how confident you are about that guess.</p>
       <p>The more accurate your guess, the higher your chance of winning a <strong>$1 prize</strong>. <strong>The way we calculate this prize is designed so that reporting your true beliefs maximizes your chance of winning.</strong></p>`,
 
     transition: `<p>Your quiz performance will now be used to determine some of your earnings in the next part of the study.</p>
@@ -1088,7 +1088,7 @@ const CONFIG = {
     managerInstructions1: (randomProb) => ({
       intro: `<p>Imagine you have started a new job in which you can <strong>decide</strong> to work with one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-random">Lottery Manager</strong>.</p>
         <p>Whichever manager you decide to work with gives you bonuses. Each bonus is either <strong>H</strong> (pays $0.10) or <strong>L</strong> (pays $0). The two managers decide bonuses differently:</p>`,
-      performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> For each bonus, a different participant is randomly picked from a group of real participants who previously completed this same quiz, and your score <strong>on the 4 shared questions</strong> is compared to theirs. You receive <strong>H</strong> if you would beat that participant; if you would tie, the winner is decided by a coin flip; and you receive <strong>L</strong> if you would lose. So the Performance Manager's chance of paying H on each bonus depends on how well you scored on the quiz.</li></ul>`,
+      performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> For each bonus, a different participant is randomly picked from a group of real participants who previously completed this same quiz, and your score <strong>on the 6 shared questions</strong> is compared to theirs. You receive <strong>H</strong> if you would beat that participant; if you would tie, the winner is decided by a coin flip; and you receive <strong>L</strong> if you would lose. So the Performance Manager's chance of paying H on each bonus depends on how well you scored on the quiz.</li></ul>`,
       random: `<ul style="margin:0;"><li><strong class="eval-random">Lottery Manager:</strong> Does <strong>not</strong> compare you to anyone — you receive <strong>H</strong> with a fixed probability of <strong>${randomProb}%</strong> and <strong>L</strong> with probability <strong>${100 - randomProb}%</strong>. This probability is the same for every bonus and every round.</li></ul>`,
     }),
 
@@ -1120,11 +1120,11 @@ const CONFIG = {
       prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
       backScreen: 'managerInstructions1',
       items: [
-        { text: "The Performance Manager decides each bonus by comparing my score on the 4 shared questions to a randomly picked participant's score, paying H if I beat them (coin flip on ties).", correct: true },
+        { text: "The Performance Manager decides each bonus by comparing my score on the 6 shared questions to a randomly picked participant's score, paying H if I beat them (coin flip on ties).", correct: true },
         { text: "For the Performance Manager, the same random participant is used for every bonus I receive.", correct: false },
         { text: `The Lottery Manager pays H with a fixed probability of ${randomProb}% on every draw, and this probability is the same in every round.`, correct: true },
         { text: "The Lottery Manager compares my quiz score to other participants to decide each bonus.", correct: false },
-        { text: "The comparison between me and a randomly picked participant is based on 4 questions that were the same for everyone.", correct: true },
+        { text: "The comparison between me and a randomly picked participant is based on 6 questions that were the same for everyone.", correct: true },
         { text: 'Each H bonus pays $0.10 and each L bonus pays $0.', correct: true },
       ],
     }),
@@ -1201,16 +1201,16 @@ const STATE = {
   sessionId: null,
 
   // Condition assignment (stratified randomization)
-  quizCondition: null,    // 'easy' or 'hard' — assigned AFTER 4 shared questions
+  quizCondition: null,    // 'easy' or 'hard' — assigned AFTER 6 shared questions
   quizConditionDraw: null,// raw uniform draw in [0,1) if local fallback; -1 if server-assigned
-  sharedScoreAtStratification: null, // shared score (0–4) at time of condition assignment
-  stratificationStratum: null,       // 'low' (0–1), 'mid' (2), or 'high' (3–4)
+  sharedScoreAtStratification: null, // shared score (0–6) at time of condition assignment
+  stratificationStratum: null,       // 's0'–'s6' based on 6-question shared score
   bsrStakeRound: null,    // $ BSR stake for round-level beliefs (assigned in init() from CONFIG.beliefBonusRound)
 
   // Quiz
   quizAnswers: [],     // [{questionId, selected, correct, timeSpent}]
   quizScore: 0,        // total score across all 12 questions
-  quizScoreShared: 0,  // score on the 4 shared questions (SE1, SX1, SX2, SH2) — used for γ*
+  quizScoreShared: 0,  // score on the 6 shared questions (SE1, SX1, SX2, SH2, H1, H2) — used for γ*
   gammaStar: null,     // true ability (percentile from Study 1, based on shared-6 score)
   randomProbShown: null, // the [XX]% shown to participant
 
@@ -1299,7 +1299,7 @@ function getUrlParams() {
   STATE.sessionId = params.get('SESSION_ID') || 'test_session';
 }
 
-// Compute the participant's score on the 4 shared questions (SE1, SX1, SX2, SH2).
+// Compute the participant's score on the 6 shared questions (SE1, SX1, SX2, SH2, H1, H2).
 // Called after the quiz is finished and STATE.quizAnswers is populated.
 function computeSharedScore() {
   const sharedIds = new Set(['SE1', 'SX1', 'SX2', 'SH2', 'H1', 'H2']);
@@ -2017,13 +2017,11 @@ let currentQuizQ = 0;
 let quizQuestions = [];
 
 function startQuiz() {
-  // --- Stratified randomization ---
+  // --- Condition assignment ---
   // The 6 shared questions (SE1, SX1, SX2, SH2, H1, H2) are administered
-  // first. After Q5, the stratum is determined (score 0–5 from first 5 Qs)
-  // and the server-side block randomization request fires in the background.
-  // By the time Q6 is answered, the condition is already resolved, so
-  // Q7 appears with zero lag. The 6th shared question contributes to γ*
-  // but not to the stratification stratum.
+  // first. After all 6 are answered, the stratum is determined (score 0–6)
+  // and Easy/Hard is assigned via a local 50/50 draw. The 6 condition-
+  // specific questions (E3–E8 or H3–H8) are then appended.
 
   quizQuestions = CONFIG.quizQuestionsShared.slice(); // start with shared only
   currentQuizQ = 0;
@@ -2032,14 +2030,11 @@ function startQuiz() {
 }
 
 /**
- * Stratified BLOCK randomization: assign Easy/Hard condition based on shared
- * score stratum. Fired after Q5 (not Q6) so the server round-trip overlaps
- * with Q6 and causes zero visible lag.
+ * Local 50/50 randomization: assign Easy/Hard condition based on shared
+ * score stratum. Called after all 6 shared questions are answered.
  *
- * Strata (based on first 5 of 6 shared questions, score 0–5):
- *   s0, s1, s2, s3, s4, s5
- *
- * The 6th shared question still contributes to γ* but not to stratification.
+ * Strata (based on all 6 shared questions, score 0–6):
+ *   s0, s1, s2, s3, s4, s5, s6
  *
  * The condition is assigned via server-side block randomization: the Apps Script
  * tracks how many Easy/Hard assignments exist per stratum and assigns to
@@ -2719,7 +2714,7 @@ function roundSubmitGamma() {
   STATE.currentRound++;
 
   if (STATE.currentRound > CONFIG.numChoiceRounds) {
-    // After Round 10: done
+    // After Round 5: done
     showScreen('roundsComplete');
     return;
   }
@@ -3384,8 +3379,8 @@ function computePayment() {
   const payRound = STATE.rounds[STATE.selectedPaymentRound];
   STATE.outcomeEarnings = payRound.earnings;
 
-  // 2) Initial belief bonus: BSR on initial γ ($2 fixed stake)
-  //    Comparison is based on 4 shared questions using the pooled reference distribution
+  // 2) Initial belief bonus: BSR on initial γ ($1 fixed stake)
+  //    Comparison is based on 6 shared questions using the pooled reference distribution
   {
     const s1scores = CONFIG.study1ScoresShared;
     const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
@@ -3776,4 +3771,4 @@ init();
 </script>
 </body>
 </html>
-     
+   
