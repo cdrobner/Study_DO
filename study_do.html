@@ -2078,6 +2078,14 @@ function startQuiz() {
   quizQuestions = CONFIG.quizQuestionsShared.slice(); // start with shared only
   currentQuizQ = 0;
   STATE.quizAnswers = [];
+
+  // Pre-warm the Apps Script instance so the randomization request after Q4
+  // hits a warm container (~100ms) instead of a cold start (~3–5s).
+  // The health-check endpoint returns {"status":"ready"} and is ignored.
+  if (CONFIG.googleSheetsURL) {
+    fetch(CONFIG.googleSheetsURL, { signal: AbortSignal.timeout(6000) }).catch(() => {});
+  }
+
   showQuizQuestion();
 }
 
