@@ -2097,6 +2097,12 @@ function startQuiz() {
  *
  * If the server call fails, falls back to a local 50/50 crypto-secure draw.
  */
+// Promise that resolves once condition assignment is complete.
+// Fired early (when Q4 answer is recorded) so the network round-trip
+// overlaps with the time the subject spends reading feedback / waiting
+// for the next question timer, eliminating visible lag.
+let _conditionPromise = null;
+
 async function assignConditionStratified() {
   const sharedScore = computeSharedScore();
   STATE.sharedScoreAtStratification = sharedScore;
@@ -2157,9 +2163,16 @@ async function showQuizQuestion() {
   // After the 4 shared questions (indices 0–3), assign Easy/Hard condition
   // based on shared score before continuing to question 5.
   // The server call is awaited; a brief loading state is shown during the fetch.
+  // If we've just reached Q5 and condition isn't set yet, await the
+  // promise that was fired earlier (when Q4 was answered). In most cases
+  // the server has already responded, so this resolves instantly.
   if (currentQuizQ === 4 && !STATE.quizCondition) {
+    if (!_conditionPromise) {
+      // Fallback: if the early fire somehow didn't happen, start it now
+      _conditionPromise = assignConditionStratified();
+    }
     container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:200px;"><p style="color:#6c757d;">Preparing next questions…</p></div>`;
-    await assignConditionStratified();
+    await _conditionPromise;
   }
 
   if (currentQuizQ >= quizQuestions.length) {
@@ -2231,6 +2244,13 @@ async function showQuizQuestion() {
         timedOut: true,
       });
       currentQuizQ++;
+      // When Q4 is answered, fire randomization and wait for it before
+      // advancing — the Q4 screen stays visible so subjects see no loader.
+      if (currentQuizQ === 4 && !STATE.quizCondition) {
+        if (!_conditionPromise) _conditionPromise = assignConditionStratified();
+        _conditionPromise.then(() => showQuizQuestion());
+        return;
+      }
       showQuizQuestion();
     }
   }, 1000);
@@ -2263,6 +2283,13 @@ function submitQuizAnswer() {
   });
   _selectedQuizOption = null;
   currentQuizQ++;
+  // When Q4 is answered, fire randomization and wait for it before
+  // advancing — the Q4 screen stays visible so subjects see no loader.
+  if (currentQuizQ === 4 && !STATE.quizCondition) {
+    if (!_conditionPromise) _conditionPromise = assignConditionStratified();
+    _conditionPromise.then(() => showQuizQuestion());
+    return;
+  }
   showQuizQuestion();
 }
 
