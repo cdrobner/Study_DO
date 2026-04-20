@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbx5sl61ivBHTgiKsSVKTjSOAMoHwEJ0B7HoApjOCb0P-DehnwQvsqYY_2WXMAd_C0_a/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxVunevfEXcJxD1hx812ySHuQ8HxSWbova91BpD6IjRQTCT3kuPYsy1yZV_9bxfdQ2Z/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -2065,37 +2065,31 @@ let quizQuestions = [];
 
 function startQuiz() {
   // --- Stratified randomization ---
-  // Phase 1: Administer the 4 shared questions first.
-  // After the shared questions are answered, we compute the shared score,
-  // stratify by score bin, and THEN assign Easy/Hard condition via block
-  // randomization within each stratum. This guarantees that γ* (which depends
-  // only on shared-question performance) is mechanically balanced across
-  // Easy and Hard conditions.
-  //
-  // Phase 2 (triggered in showQuizQuestion when currentQuizQ === 4):
-  // Compute shared score → assign condition → append condition-specific Qs.
+  // The 4 shared questions are administered first. After Q3, the stratum
+  // is determined (based on 3-question score: Low=0, Mid=1–2, High=3)
+  // and the server-side block randomization request fires in the background.
+  // By the time Q4 is answered, the condition is already resolved, so
+  // Q5 appears with zero lag. The 4th shared question contributes to γ*
+  // but not to the stratification stratum.
 
   quizQuestions = CONFIG.quizQuestionsShared.slice(); // start with shared only
   currentQuizQ = 0;
   STATE.quizAnswers = [];
-
-  // Pre-warm the Apps Script: wakes up the container AND opens the
-  // spreadsheet so both are hot when the real randomization fires after Q4.
-  if (CONFIG.googleSheetsURL) {
-    fetch(CONFIG.googleSheetsURL + '?action=warmup', { signal: AbortSignal.timeout(6000) }).catch(() => {});
-  }
-
   showQuizQuestion();
 }
 
 /**
  * Stratified BLOCK randomization: assign Easy/Hard condition based on shared
- * score stratum. Called exactly once, after the 4 shared questions are done.
+ * score stratum. Fired after Q3 (not Q4) so the server round-trip overlaps
+ * with Q4 and causes zero visible lag.
  *
- * Strata (shared score 0–4):
- *   Low:  0–1
- *   Mid:  2
- *   High: 3–4
+ * Strata (based on first 3 shared questions, score 0–3):
+ *   s0: 0
+ *   s1: 1
+ *   s2: 2
+ *   s3: 3
+ *
+ * The 4th shared question still contributes to γ* but not to stratification.
  *
  * The condition is assigned via server-side block randomization: the Apps Script
  * tracks how many Easy/Hard assignments exist per stratum and assigns to
@@ -2105,21 +2099,33 @@ function startQuiz() {
  * If the server call fails, falls back to a local 50/50 crypto-secure draw.
  */
 // Promise that resolves once condition assignment is complete.
-// Fired early (when Q4 answer is recorded) so the network round-trip
-// overlaps with the time the subject spends reading feedback / waiting
-// for the next question timer, eliminating visible lag.
+// Fired speculatively after Q3 when the stratum is already determined
+// (score 0 → Low, score 3 → High), or after Q4 otherwise. The network
+// round-trip overlaps with the time the subject spends on Q4, so the
+// transition to Q5 is instantaneous.
 let _conditionPromise = null;
 
-async function assignConditionStratified() {
-  const sharedScore = computeSharedScore();
-  STATE.sharedScoreAtStratification = sharedScore;
+/**
+ * Fire randomization after Q3. Stratification uses the first 3 shared
+ * questions only (score 0–3), so the stratum is always known at this
+ * point. The 4th shared question still contributes to γ* but not to
+ * the stratification stratum.
+ *
+ * Strata (one per score value):
+ *   s0, s1, s2, s3
+ */
+function fireRandomizationAfterQ3() {
+  if (_conditionPromise || STATE.quizCondition) return;
+  const score3 = computeSharedScore(); // score from first 3 shared Qs
+  STATE.sharedScoreAtStratification = score3;
 
-  // Determine stratum label
-  let stratum;
-  if (sharedScore <= 1)      stratum = 'low';
-  else if (sharedScore <= 2) stratum = 'mid';
-  else                       stratum = 'high';
+  const stratum = 's' + score3; // s0, s1, s2, s3
   STATE.stratificationStratum = stratum;
+
+  _conditionPromise = assignConditionStratified(stratum);
+}
+
+async function assignConditionStratified(stratum) {
 
   let condition = null;
   let draw = null;
@@ -2173,8 +2179,9 @@ async function showQuizQuestion() {
   // Safety net: if showQuizQuestion is ever called at Q5 before the
   // condition is assigned (should not happen — submitQuizAnswer waits
   // via .then()), block here until it resolves.
+  // Safety net: if we somehow reach Q5 without a condition, wait for it.
   if (currentQuizQ === 4 && !STATE.quizCondition) {
-    if (!_conditionPromise) _conditionPromise = assignConditionStratified();
+    if (!_conditionPromise) fireRandomizationAfterQ3();
     await _conditionPromise;
   }
 
@@ -2247,10 +2254,11 @@ async function showQuizQuestion() {
         timedOut: true,
       });
       currentQuizQ++;
-      // When Q4 is answered, fire randomization and wait for it before
-      // advancing — the Q4 screen stays visible so subjects see no loader.
+      // After Q3: fire randomization (stratum determined from 3 Qs)
+      if (currentQuizQ === 3) fireRandomizationAfterQ3();
+      // After Q4: wait for the in-flight promise before showing Q5
       if (currentQuizQ === 4 && !STATE.quizCondition) {
-        if (!_conditionPromise) _conditionPromise = assignConditionStratified();
+        if (!_conditionPromise) fireRandomizationAfterQ3();
         _conditionPromise.then(() => showQuizQuestion());
         return;
       }
@@ -2286,10 +2294,13 @@ function submitQuizAnswer() {
   });
   _selectedQuizOption = null;
   currentQuizQ++;
-  // When Q4 is answered, fire randomization and wait for it before
-  // advancing — the Q4 screen stays visible so subjects see no loader.
+  // After Q3: fire randomization (stratum is fully determined from 3 Qs).
+  // The request runs in the background while the subject works on Q4.
+  if (currentQuizQ === 3) fireRandomizationAfterQ3();
+  // After Q4: wait for the in-flight promise before showing Q5.
+  // The Q4 screen stays visible — typically resolves instantly.
   if (currentQuizQ === 4 && !STATE.quizCondition) {
-    if (!_conditionPromise) _conditionPromise = assignConditionStratified();
+    if (!_conditionPromise) fireRandomizationAfterQ3(); // safety fallback
     _conditionPromise.then(() => showQuizQuestion());
     return;
   }
@@ -3865,6 +3876,13 @@ function init() {
   getUrlParams();
   STATE.startTime = Date.now();
   STATE.bsrStakeRound = CONFIG.beliefBonusRound;
+
+  // Pre-warm Apps Script on page load (during consent/instructions),
+  // so the container and spreadsheet connection are hot by quiz time.
+  if (CONFIG.googleSheetsURL) {
+    fetch(CONFIG.googleSheetsURL + '?action=warmup', { signal: AbortSignal.timeout(8000) }).catch(() => {});
+  }
+
   if (isMobileDevice()) {
     showMobileBlocked();
     return;
