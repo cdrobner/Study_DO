@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwazWYrbonjJJAna15vDRcTxOsQCbI_DTOgOOIOZPvBbN73yWLIV9B4t7Ze5KZbLe_g/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxOgEmRXm11mh8-zXSktu4SMH-LMEEy3R12ZEXp_NNBEOmLGesDEOKrXsI1LSND1LRO/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -424,8 +424,7 @@ const CONFIG = {
   outcomesPerRound: 10,
   payPerH: 0.10,           // $ per comparison won
   showUpFee: 2.00,         // $ flat fee
-  beliefBonusInitial: 1.00,   // $ BSR stake on initial belief
-  beliefBonusRound: 1.00,     // $ BSR stake on round-level belief
+  beliefBonusStake: 1.00,     // $ BSR stake — one randomly selected guess from all 6
   quizTimePerQuestion: 10, // seconds
   numQuizQuestions: 12,
 
@@ -1046,8 +1045,7 @@ const CONFIG = {
       benefits: `You may not receive any personal benefits from being in this study. However, others may benefit from the knowledge gained from this study.`,
       risks: `This study involves behavioral tasks and does not pose more than minimal risks to you physically, psychologically, and legally.`,
       compensation: () => {
-        const maxBonus = CONFIG.beliefBonusInitial
-                       + STATE.bsrStakeRound
+        const maxBonus = CONFIG.beliefBonusStake
                        + (CONFIG.outcomesPerRound * CONFIG.payPerH);
         return `You will receive a completion fee of $${CONFIG.showUpFee.toFixed(2)}. In addition, you can earn additional payments of up to $${maxBonus.toFixed(2)} based on your decisions during the study. Further details will be given in the instructions when the study begins.`;
       },
@@ -1074,11 +1072,9 @@ const CONFIG = {
        <p>In this study, your performance will be compared to other participants based on <strong>6 specific questions that were the same for all participants</strong>.</p>`,
 
     beliefElicitationPrompt: `<p>Suppose we randomly pick a participant from a group of 100 previous participants. We compare your scores on the <strong>6 questions that were the same for all participants</strong>.</p>
-      <p>We will ask you to give us your best guess about your chance of beating them on these 6 questions (ties decided by a coin flip), and then to tell us how confident you are about that guess.</p>
-      <p>The more accurate your guess, the higher your chance of winning a <strong>$1 prize</strong>. <strong>The way we calculate this prize is designed so that reporting your true beliefs maximizes your chance of winning.</strong></p>`,
+      <p>Please give us your best guess about your chance of beating them on these 6 questions (ties decided by a coin flip), and then tell us how confident you are about that guess.</p>`,
 
-    transition: `<p>Your quiz performance will now be used to determine some of your earnings in the next part of the study.</p>
-      <p>Please read the following instructions carefully. After each instruction page, short questions will help make sure everything is clear. You can only continue once all questions are answered correctly, and you can always go back to re-read the instructions.</p>`,
+    transition: null, // removed — content folded into managerInstructions1
 
     comprehensionCheck0: {
       prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
@@ -1092,7 +1088,8 @@ const CONFIG = {
     managerInstructions1: (fixedH) => {
       const fixedPay = (fixedH * 0.10).toFixed(2);
       return {
-        intro: `<p>Each round, you choose to work with one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-fixed">Fixed Manager</strong>. Each manager pays you, but they work differently:</p>`,
+        intro: `<p>Your quiz performance will now be used to determine some of your earnings. Please read the following instructions carefully. Short questions will help make sure everything is clear.</p>
+          <p>Each round, you choose to work with one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-fixed">Fixed Manager</strong>. Each manager pays you, but they work differently:</p>`,
         performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> Your score on the 6 shared questions is compared to 10 randomly picked participants from a group of 100 previous participants. You earn <strong>$0.10 for each comparison you win</strong> (ties decided by a coin flip).</li></ul>`,
         fixed: `<ul style="margin:0;"><li><strong class="eval-fixed">Fixed Manager:</strong> Does <strong>not</strong> compare you to anyone. You receive a <strong>fixed payment of $${fixedPay}</strong> every round. This amount does not change.</li></ul>`,
       };
@@ -1106,12 +1103,13 @@ const CONFIG = {
         <li><strong>Receive your payment.</strong> You receive your payment for this round.</li>
         <li><strong>Quiz Performance Guess.</strong> You can keep your best guess or adjust it.</li>
       </ol>
+      <p><strong>Important:</strong> Your quiz performance guess never changes your true chance of winning comparisons under the Performance Manager. Your actual quiz performance is already determined &mdash; your guess is simply your best estimate of how you did.</p>
 `,
 
     managerInstructions2b: (roundBsr) => `<p><strong>Payment.</strong></p>
       <ul>
         <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 5 payments you receive from the managers.</li>
-        <li><strong>Accuracy payment for quiz performance guess.</strong> The computer randomly selects <strong>one</strong> of your 5 guesses about your chance of beating a randomly picked participant and scores it: the more accurate your guess, the higher your chance of winning a <strong>$${roundBsr.toFixed(0)} prize</strong>. Reporting your true best guess maximizes your chance of winning.</li>
+        <li><strong>Accuracy payment.</strong> Before the first round and after each round, you can adjust your quiz performance guess or leave it as is. The computer randomly selects <strong>one</strong> of your 6 guesses and scores it for a <strong>$${roundBsr.toFixed(0)} prize</strong>: the more accurate your guess, the higher your chance of winning. Reporting your true best guess maximizes your chance of winning.</li>
       </ul>
 
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin:18px 0;">
@@ -1141,14 +1139,6 @@ const CONFIG = {
         { text: 'I should adjust my best guess after every round, regardless of which manager I worked with.', correct: false },
       ],
     }),
-
-    readyToBegin: `<p>You're about to begin 5 rounds. Here's a quick recap of each round:</p>
-      <ol>
-        <li><strong>Choose</strong> the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-fixed">Fixed Manager</strong></li>
-        <li><strong>Receive</strong> your payment for this round</li>
-        <li><strong>Keep or adjust</strong> your best guess about your chance of beating a randomly picked participant</li>
-      </ol>
-      <p>One random round determines your manager payment, and one random guess is scored for the accuracy payment. Ready?</p>`,
 
     riskPreferences: `<p>How do you see yourself: are you a person who is generally willing to take risks, or do you try to avoid taking risks?</p>
       <p>Please use a scale from 0 to 10, where 0 means you are "completely unwilling to take risks" and 10 means you are "very willing to take risks." You can also use the values in-between to indicate where you fall on the scale.</p>`,
@@ -1198,7 +1188,7 @@ const STATE = {
   quizConditionDraw: null,// raw uniform draw in [0,1) if local fallback; -1 if server-assigned
   sharedScoreAtStratification: null, // shared score (0–6) at time of condition assignment
   stratificationStratum: null,       // 's0'–'s6' based on 6-question shared score
-  bsrStakeRound: null,    // $ BSR stake for round-level beliefs (assigned in init() from CONFIG.beliefBonusRound)
+  bsrStake: null,          // $ BSR stake for the single accuracy payment
 
   // Quiz
   quizAnswers: [],     // [{questionId, selected, correct, timeSpent}]
@@ -1214,6 +1204,7 @@ const STATE = {
 
   // Initial beliefs (post-quiz, μ + 7-level confidence elicitation)
   belief_0: null,              // Best guess γ₀ at t=0 (0–100 integer; mean of Beta prior)
+  belief_preChoice: null,      // Revised guess just before round-1 manager choice (0–100 integer)
   initialConfidence: null,     // Confidence level (1–7 integer)
   initialBeliefEdits: [],      // [{ timestamp, field: 'mu'|'confidence', oldValue, newValue, trigger }]
   initialAlpha: null,          // Beta α fitted to (P10, P50, P90)
@@ -1264,13 +1255,10 @@ const STATE = {
 
   // Payment resolution
   selectedPaymentRound: null,
-  // Initial belief bonus (BSR on γ₀; stake = CONFIG.beliefBonusInitial)
-  beliefBonusInitial_won: false,
-  beliefBonusInitial_amount: 0,
-  // Round belief bonus (BSR on one randomly selected round's γ_t; stake = STATE.bsrStakeRound)
-  selectedBeliefRound: null,
-  beliefBonusRound_won: false,
-  beliefBonusRound_amount: 0,
+  // Accuracy payment (BSR on one randomly selected guess from all 6: pre-choice + rounds 1–5)
+  selectedBeliefIndex: null,   // 0 = pre-choice, 1–5 = rounds
+  beliefBonus_won: false,
+  beliefBonus_amount: 0,
   outcomeEarnings: 0,
   totalBonus: 0,
 
@@ -1421,27 +1409,25 @@ function managerLabel(mgr_id) {
 function buildManagerChoiceHTML(round, belief, onChoose) {
   const fixedH = STATE.fixedBonusH;  // deterministic integer count
 
+  // Badge helper for inline number display
+  const badge = (text) => `<span style="display:inline-block;background:#f1f5f9;color:#1e293b;border:1px solid #cbd5e1;border-radius:4px;padding:1px 6px;font-weight:700;">${text}</span>`;
+
+  const fixedPay = (fixedH * CONFIG.payPerH).toFixed(2);
+  const expectedWins = Math.round(belief / 10);
+  const expectedPay = (expectedWins * CONFIG.payPerH).toFixed(2);
+
+  const perfContext = `Your current quiz performance guess is ${badge(belief + '%')}, which means you expect to win about ${badge(expectedWins + ' out of 10')} comparisons and earn ${badge('$' + expectedPay)}.`;
+  const fixedContext = `The Fixed Manager pays you ${badge('$' + fixedPay)}.`;
+
   function cardHTML(mgr) {
     const isPerf = mgr === 'performance';
     const colorClass = isPerf ? 'eval-performance' : 'eval-fixed';
-
-    // Neutral badge style for numbers (same on both cards)
-    const badge = (text) => `<span style="display:inline-block;background:#f1f5f9;color:#1e293b;border:1px solid #cbd5e1;border-radius:4px;padding:1px 6px;font-weight:700;">${text}</span>`;
-
-    let contextHTML;
-    if (isPerf) {
-      const expectedWins = Math.round(belief / 10);
-      const expectedPay = (expectedWins * CONFIG.payPerH).toFixed(2);
-      contextHTML = `Your current quiz performance guess is ${badge(belief + '%')}, which means you expect to win about ${badge(expectedWins + ' out of 10')} comparisons and earn ${badge('$' + expectedPay)}.`;
-    } else {
-      const fixedPay = (fixedH * CONFIG.payPerH).toFixed(2);
-      contextHTML = `The Fixed Manager pays you ${badge('$' + fixedPay)}.`;
-    }
+    const context = isPerf ? perfContext : fixedContext;
 
     return `
       <div style="flex:1;border:2px solid #e2e8f0;border-radius:12px;padding:18px 16px 14px;display:flex;flex-direction:column;gap:12px;">
         <h3 style="margin:0;text-align:center;" class="${colorClass}">${managerName(mgr)}</h3>
-        <p style="margin:0;font-size:0.9rem;line-height:1.45;color:#475569;">${contextHTML}</p>
+        <p style="margin:0;font-size:0.9rem;line-height:1.45;color:#475569;">${context}</p>
         <button class="btn btn-choice" style="margin-top:auto;width:100%;" onclick="${onChoose}('${mgr}')">
           Choose<br>${managerLabel(mgr)}
         </button>
@@ -1591,8 +1577,8 @@ function renderMuConfidenceWidget(defaultMu) {
           <div class="slider-value" id="init-mu-val">${mu0}%</div>
         </div>
         <div class="slider-labels">
-          <span>0% — Definitely would not beat them</span>
-          <span>100% — Definitely would beat them</span>
+          <span>0%</span>
+          <span>100%</span>
         </div>
         <div id="init-mu-confirm-row" style="display:none;margin-top:14px;text-align:right;">
           <button class="btn btn-primary" onclick="confirmInitMu()">Confirm best guess →</button>
@@ -2267,19 +2253,8 @@ function submitInitialBeliefs() {
   STATE.initialConfidence = _initConfidence + 1;   // store as 1–7
   STATE.initialAlpha      = muC * kappa;
   STATE.initialBeta       = (1 - muC) * kappa;
-  showScreen('transition');
+  showScreen('managerInstructions1');
 }
-
-// ---- 1.19 Transition ----
-SCREENS.transition = () => {
-  container.innerHTML = `
-    <div class="screen-header"><h2>Instructions</h2></div>
-    ${CONFIG.texts.transition}
-    <div class="nav-row">
-      <button class="btn btn-primary" onclick="showScreen('managerInstructions1')">Next →</button>
-    </div>`;
-  updateProgress(0.34);
-};
 
 // ---- Instructions Page 1: Your New Job ----
 SCREENS.managerInstructions1 = () => {
@@ -2295,8 +2270,7 @@ SCREENS.managerInstructions1 = () => {
 
     ${t.fixed}
 
-    <div class="nav-row" style="justify-content:space-between;margin-top:18px;">
-      <button class="btn" onclick="showScreen('transition')">← Back</button>
+    <div class="nav-row" style="margin-top:18px;">
       <button class="btn btn-primary" onclick="showScreen('hProbElicitation')">Next →</button>
     </div>`;
   updateProgress(0.36);
@@ -2432,7 +2406,7 @@ SCREENS.managerInstructions2a = () => {
 SCREENS.managerInstructions2b = () => {
   container.innerHTML = `
     <div class="screen-header"><h2>Instructions — Payment &amp; Informativeness</h2></div>
-    ${CONFIG.texts.managerInstructions2b(STATE.bsrStakeRound)}
+    ${CONFIG.texts.managerInstructions2b(STATE.bsrStake)}
     <div class="nav-row" style="justify-content:space-between;">
       <button class="btn" onclick="showScreen('managerInstructions2a')">← Back</button>
       <button class="btn btn-primary" onclick="showScreen('comprehensionCheck2')">Next →</button>
@@ -2442,22 +2416,60 @@ SCREENS.managerInstructions2b = () => {
 
 // ---- Comprehension Check 2: Payment, Updating & Rank ----
 SCREENS.comprehensionCheck2 = () => {
-  renderComprehensionCheck(CONFIG.texts.comprehensionCheck2(STATE.bsrStakeRound), () => {
-    showScreen('readyToBegin');
+  renderComprehensionCheck(CONFIG.texts.comprehensionCheck2(STATE.bsrStake), () => {
+    showScreen('preChoiceBelief');
   }, 'check2');
   updateProgress(0.52);
 };
 
 // ---- Ready to Begin ----
-SCREENS.readyToBegin = () => {
+// ---- Pre-Choice Belief Re-Elicitation (before Round 1) ----
+SCREENS.preChoiceBelief = () => {
+  const prevBelief = STATE.belief_0;
+  const stake = CONFIG.beliefBonusStake;
+
   container.innerHTML = `
-    <div class="screen-header"><h2>Ready to Begin</h2></div>
-    ${CONFIG.texts.readyToBegin}
+    <div class="screen-header"><h2>Quiz Performance Guess</h2></div>
+
+    <p>You're about to begin 5 rounds. Each round you will choose your manager, receive your payment, and keep or adjust your best guess about the chance of beating a randomly picked participant on the six shared quiz questions.</p>
+
+    <p>Remember, your total quiz score was: <strong>${STATE.quizScore} out of ${CONFIG.quizQuestionsShared.length + (STATE.quizCondition === 'easy' ? CONFIG.quizQuestionsEasyOnly.length : CONFIG.quizQuestionsHardOnly.length)}</strong></p>
+
+    <p>Forming your best guess about your quiz performance helps you understand which payments you can expect from the Performance Manager. Your guess never changes your true chance of winning comparisons &mdash; that depends on how you actually compare to others on the quiz.</p>
+
+    <p>Your previous guess is pre-selected. You can adjust it or leave as is.</p>
+
+    <p><strong>What is the percent chance you beat a randomly picked participant on the quiz?</strong></p>
+
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
+      <div class="slider-container" style="margin:0;">
+        <label>Your best guess:</label>
+        <div class="slider-row">
+          <input type="range" id="prechoice-slider" min="0" max="100" value="${prevBelief}"
+                 oninput="document.getElementById('prechoice-val').textContent = this.value + '%'; document.getElementById('prechoice-expect').textContent = Math.round(this.value / 10);">
+          <div class="slider-value" id="prechoice-val">${prevBelief}%</div>
+        </div>
+        <div class="slider-labels"><span>0%</span><span>100%</span></div>
+      </div>
+    </div>
+
+    <p style="font-size:0.88rem;color:#555;font-style:italic;">This means that under the Performance Manager, where your score is compared to 10 randomly picked participants, you would expect to beat about <strong id="prechoice-expect" style="font-size:1.1rem;color:#1e293b;background:#e0f2fe;padding:1px 6px;border-radius:4px;">${Math.round(prevBelief / 10)}</strong> out of 10.</p>
+
+    <p style="font-size:0.88rem;color:#666;">Reporting your true best guess maximizes your chance of winning the <strong>$${stake.toFixed(0)}</strong> accuracy prize.</p>
+
     <div class="nav-row">
-      <button class="btn btn-primary" onclick="STATE.currentRound = 1; showRoundScreen();">Begin Round 1 →</button>
+      <button class="btn btn-primary" onclick="submitPreChoiceBelief()">Continue &rarr;</button>
     </div>`;
-  updateProgress(0.56);
+
+  updateProgress(0.57);
 };
+
+function submitPreChoiceBelief() {
+  const slider = document.getElementById('prechoice-slider');
+  STATE.belief_preChoice = parseInt(slider.value);
+  STATE.currentRound = 1;
+  showRoundScreen();
+}
 
 function renderComprehensionCheck(checkConfig, onPass, checkId) {
   const { prompt, items, backScreen } = checkConfig;
@@ -2541,9 +2553,9 @@ function showRoundScreen() {
   window._pendingRound = roundData;
 
   if (isFirstRound) {
-    // Round 1: show manager choice using the same unified layout as later rounds.
-    // Use the initial belief (γ₀) elicited before Phase 2 started.
-    const initialBelief = STATE.belief_0;
+    // Round 1: show manager choice. Use belief_preChoice (from the pre-round
+    // re-elicitation screen) if available, otherwise fall back to belief_0.
+    const initialBelief = STATE.belief_preChoice != null ? STATE.belief_preChoice : STATE.belief_0;
     container.innerHTML = `
       <div id="round-step-choice">
         ${buildManagerChoiceHTML(r, initialBelief, 'roundInitialChoice')}
@@ -2572,6 +2584,7 @@ function showRoundScreen() {
 
 // Round 1: handle initial manager choice, then show bonuses
 function roundInitialChoice(chosenManager) {
+  // belief_preChoice is already captured on the preChoiceBelief screen
   STATE.currentManager = chosenManager;
   const roundData = window._pendingRound;
   roundData.manager = chosenManager;
@@ -2633,7 +2646,7 @@ function roundShowBonuses() {
       </div>
       <div id="perf-result-box" style="display:none;">
         <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:20px;text-align:center;margin:12px 0;">
-          <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">You won <span style="font-size:1.5rem;font-weight:800;color:#1e293b;">${hCount} out of 10</span> comparisons</p>
+          <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">You beat <span style="font-size:1.5rem;font-weight:800;color:#1e293b;">${hCount} out of 10</span> randomly picked participants</p>
           <p style="margin:8px 0 0;font-size:1rem;font-weight:400;color:#64748b;">Your payment this round: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings.toFixed(2)}</span></p>
         </div>
         <div class="nav-row">
@@ -2670,9 +2683,9 @@ function roundShowGamma() {
   roundData.tsGammaShown = Date.now();
   const isFirstGammaUpdate = STATE.rounds.length === 0;
   const prevGamma = isFirstGammaUpdate
-    ? STATE.belief_0
+    ? (STATE.belief_preChoice != null ? STATE.belief_preChoice : STATE.belief_0)
     : STATE.rounds[STATE.rounds.length - 1].belief;
-  const stake = STATE.bsrStakeRound.toFixed(0);
+  const stake = STATE.bsrStake.toFixed(0);
 
   const chosenMgr = roundData.manager;
   const mgrNameHTML = chosenMgr === 'performance'
@@ -2688,11 +2701,7 @@ function roundShowGamma() {
 
     ${chosenMgr === 'performance'
       ? `<p>The ${mgrNameHTML} payment can <strong>help</strong> you form a better guess about your quiz performance. Your previous guess is pre-selected, you can adjust it or leave as is.</p>
-    <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:14px 20px;margin:14px 0;display:flex;justify-content:center;gap:24px;flex-wrap:wrap;">
-      <span style="font-size:1.05rem;font-weight:700;color:#1e293b;">Your previous guess: ${prevGamma}%</span>
-      <span style="font-size:1.05rem;color:#94a3b8;">·</span>
-      <span style="font-size:1.05rem;font-weight:700;color:#1e293b;">You won: ${roundData.hCount} out of 10 comparisons (${roundData.hCount * 10}%) in this round</span>
-    </div>`
+    <p>Your previous guess about the chance of beating a single randomly picked participant was <strong>${prevGamma}%</strong>. This means you expected to beat about <strong>${Math.round(prevGamma / 10)} out of 10</strong> participants. The comparisons show that you beat <strong>${roundData.hCount} out of 10</strong> participants.</p>`
       : `<p>The ${mgrNameHTML} payment <strong>cannot</strong> help you form a better guess about your quiz performance. Your previous guess is pre-selected, you can adjust it or leave as is.</p>`
     }
 
@@ -2707,7 +2716,7 @@ function roundShowGamma() {
                  oninput="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'">
           <div class="slider-value" id="gamma-round-val">${prevGamma}%</div>
         </div>
-        <div class="slider-labels"><span>0% — Definitely would not beat them</span><span>100% — Definitely would beat them</span></div>
+        <div class="slider-labels"><span>0%</span><span>100%</span></div>
       </div>
     </div>
 
@@ -3217,10 +3226,10 @@ function computeChoiceExplanationTriggers() {
     const rd = rounds[i];
     if (!rd || !rd.manager) continue;
     const t = rd.roundNum;
-    // Prior belief for round t: belief_0 if t===1 else belief from round t-1
+    // Prior belief for round t: belief_preChoice (or belief_0) if t===1, else belief from round t-1
     let prior;
     if (t === 1) {
-      prior = STATE.belief_0;
+      prior = STATE.belief_preChoice != null ? STATE.belief_preChoice : STATE.belief_0;
     } else {
       const prev = rounds.find(x => x && x.roundNum === (t - 1));
       prior = prev ? prev.belief : null;
@@ -3330,10 +3339,10 @@ function computeFixedBeliefAdjustRounds() {
   for (let i = 0; i < rounds.length; i++) {
     const rd = rounds[i];
     if (!rd || rd.manager !== 'fixed') continue;
-    // Prior belief: belief_0 if round 1, else previous round's belief
+    // Prior belief: belief_preChoice (or belief_0) if round 1, else previous round's belief
     let prior;
     if (rd.roundNum === 1) {
-      prior = STATE.belief_0;
+      prior = STATE.belief_preChoice != null ? STATE.belief_preChoice : STATE.belief_0;
     } else {
       const prev = rounds.find(x => x && x.roundNum === (rd.roundNum - 1));
       prior = prev ? prev.belief : null;
@@ -3503,34 +3512,24 @@ function computePayment() {
   const payRound = STATE.rounds[STATE.selectedPaymentRound];
   STATE.outcomeEarnings = payRound.earnings;
 
-  // 2) Initial belief bonus: BSR on initial γ ($1 fixed stake)
-  //    Comparison is based on 6 shared questions using the pooled reference distribution
+  // 2) Accuracy payment: BSR on one randomly selected guess from all 6
+  //    Index 0 = pre-choice belief, 1–5 = round beliefs
+  STATE.selectedBeliefIndex = Math.floor(Math.random() * 6);
   {
+    const selectedBelief = STATE.selectedBeliefIndex === 0
+      ? (STATE.belief_preChoice != null ? STATE.belief_preChoice : STATE.belief_0)
+      : STATE.rounds[STATE.selectedBeliefIndex - 1].belief;
     const s1scores = CONFIG.study1ScoresShared;
     const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
     const beat = STATE.quizScoreShared > oppScore || (STATE.quizScoreShared === oppScore && Math.random() < 0.5);
-    const bsr = resolveBSR(STATE.belief_0, beat, CONFIG.beliefBonusInitial);
-    STATE.beliefBonusInitial_won = bsr.won;
-    STATE.beliefBonusInitial_amount = bsr.amount;
-  }
-
-  // 3) Round belief bonus: BSR on one randomly selected round γ belief
-  // (stake = STATE.bsrStakeRound, set by between-subject cell assignment)
-  STATE.selectedBeliefRound = Math.floor(Math.random() * totalRounds);
-  {
-    const beliefRound = STATE.rounds[STATE.selectedBeliefRound];
-    const s1scores = CONFIG.study1ScoresShared;
-    const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
-    const beat = STATE.quizScoreShared > oppScore || (STATE.quizScoreShared === oppScore && Math.random() < 0.5);
-    const bsr = resolveBSR(beliefRound.belief, beat, STATE.bsrStakeRound);
-    STATE.beliefBonusRound_won = bsr.won;
-    STATE.beliefBonusRound_amount = bsr.amount;
+    const bsr = resolveBSR(selectedBelief, beat, STATE.bsrStake);
+    STATE.beliefBonus_won = bsr.won;
+    STATE.beliefBonus_amount = bsr.amount;
   }
 
   STATE.totalBonus = CONFIG.showUpFee
     + STATE.outcomeEarnings
-    + STATE.beliefBonusInitial_amount
-    + STATE.beliefBonusRound_amount;
+    + STATE.beliefBonus_amount;
 
   // Compute rank for end-of-study revelation
   computeRank();
@@ -3544,11 +3543,12 @@ SCREENS.results = () => {
   const payRound = STATE.rounds[STATE.selectedPaymentRound];
   const roundLabel = `Round ${payRound.roundNum}`;
 
-  // Round belief details
-  const beliefRoundB = STATE.rounds[STATE.selectedBeliefRound];
-  const beliefValueB = beliefRoundB.belief;
-  const beliefRoundLabelB = `Round ${beliefRoundB.roundNum}`;
-  const stake = STATE.bsrStakeRound.toFixed(0);
+  // Accuracy payment details
+  const beliefIndex = STATE.selectedBeliefIndex;
+  const beliefLabel = beliefIndex === 0 ? 'Pre-round guess' : `Round ${beliefIndex}`;
+  const beliefValue = beliefIndex === 0
+    ? (STATE.belief_preChoice != null ? STATE.belief_preChoice : STATE.belief_0)
+    : STATE.rounds[beliefIndex - 1].belief;
 
   // Rank revelation
   const rankPct = ((STATE.rankTotalN - STATE.rankAmongAll) / STATE.rankTotalN * 100).toFixed(0);
@@ -3567,8 +3567,7 @@ SCREENS.results = () => {
       <h3>Payment Breakdown</h3>
       <div class="payment-line"><span>Show-up fee</span><span>$${CONFIG.showUpFee.toFixed(2)}</span></div>
       <div class="payment-line"><span>Manager payment (selected: ${roundLabel}, ${payRound.hCount} wins × $0.10)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Initial accuracy payment (your guess: ${STATE.belief_0}%)</span><span>$${STATE.beliefBonusInitial_amount.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Round accuracy payment (selected: ${beliefRoundLabelB}, your guess: ${beliefValueB}%)</span><span>$${STATE.beliefBonusRound_amount.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Accuracy payment (selected: ${beliefLabel}, your guess: ${beliefValue}%)</span><span>$${STATE.beliefBonus_amount.toFixed(2)}</span></div>
       <div class="payment-total"><span>Total payment</span><span>$${STATE.totalBonus.toFixed(2)}</span></div>
     </div>
 
@@ -3617,7 +3616,7 @@ async function submitData() {
     quizConditionDraw: STATE.quizConditionDraw,
     sharedScoreAtStratification: STATE.sharedScoreAtStratification,
     stratificationStratum: STATE.stratificationStratum,
-    bsrStakeRound: STATE.bsrStakeRound,
+    bsrStake: STATE.bsrStake,
 
     // Quiz
     quizScore: STATE.quizScore,
@@ -3634,6 +3633,7 @@ async function submitData() {
 
     // Initial beliefs (γ₀ + 7-level confidence elicitation; Beta from γ₀ + κ)
     belief_0: STATE.belief_0,
+    belief_preChoice: STATE.belief_preChoice,
     initialConfidence: STATE.initialConfidence,
     initialAlpha: STATE.initialAlpha,
     initialBeta: STATE.initialBeta,
@@ -3713,11 +3713,9 @@ async function submitData() {
     // Payment
     selectedPaymentRound: STATE.selectedPaymentRound,
     outcomeEarnings: STATE.outcomeEarnings,
-    beliefBonusInitial_amount: STATE.beliefBonusInitial_amount,
-    beliefBonusInitial_won: STATE.beliefBonusInitial_won,
-    selectedBeliefRound: STATE.selectedBeliefRound,
-    beliefBonusRound_amount: STATE.beliefBonusRound_amount,
-    beliefBonusRound_won: STATE.beliefBonusRound_won,
+    selectedBeliefIndex: STATE.selectedBeliefIndex,
+    beliefBonus_amount: STATE.beliefBonus_amount,
+    beliefBonus_won: STATE.beliefBonus_won,
     totalBonus: STATE.totalBonus,
 
     // Timing
@@ -3783,15 +3781,23 @@ function showMobileBlocked() {
 
   // Log rejection to Google Sheets
   if (CONFIG.googleSheetsURL) {
-    fetch(CONFIG.googleSheetsURL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        prolificPid: new URLSearchParams(window.location.search).get('PROLIFIC_PID') || 'unknown',
-        quizCondition: 'MOBILE_BLOCKED',
-        timestamp: new Date().toISOString(),
-      }),
-    }).catch(() => {});
+    try {
+      fetch(CONFIG.googleSheetsURL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          prolificPid: STATE.prolificPid || '',
+          studyId: STATE.studyId || '',
+          sessionId: STATE.sessionId || '',
+          timestamp: new Date().toISOString(),
+          mobileBlocked: true,
+          userAgent: navigator.userAgent,
+          screenWidth: window.innerWidth,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch (e) {}
   }
 }
 
@@ -3898,7 +3904,7 @@ function showExcluded() {
 function init() {
   getUrlParams();
   STATE.startTime = Date.now();
-  STATE.bsrStakeRound = CONFIG.beliefBonusRound;
+  STATE.bsrStake = CONFIG.beliefBonusStake;
 
   // Pre-warm Apps Script on page load (during consent/instructions),
   // so the container and spreadsheet connection are hot by quiz time.
@@ -3918,4 +3924,3 @@ init();
 </script>
 </body>
 </html>
-   
