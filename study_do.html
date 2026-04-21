@@ -84,9 +84,9 @@ strong { font-weight: 600; }
 }
 
 /* Manager labels — types are disclosed from the start */
-:root { --eval-color-perf: #6d28d9; --eval-color-random: #0e7490; }
+:root { --eval-color-perf: #6d28d9; --eval-color-fixed: #0e7490; }
 .eval-performance { color: var(--eval-color-perf); font-weight: 600; }
-.eval-random { color: var(--eval-color-random); font-weight: 600; }
+.eval-fixed { color: var(--eval-color-fixed); font-weight: 600; }
 
 /* Info panel */
 .info-panel {
@@ -414,7 +414,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzHJgcqkwItPTuh6XWLcXQRdT6pYocJE1hBYU8stwg8l_qkPD8y3HBwghfaNQkK3JqSYg/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwazWYrbonjJJAna15vDRcTxOsQCbI_DTOgOOIOZPvBbN73yWLIV9B4t7Ze5KZbLe_g/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -422,29 +422,33 @@ const CONFIG = {
   // ---- Study parameters ----
   numChoiceRounds: 5,
   outcomesPerRound: 10,
-  payPerH: 0.10,           // $ per H outcome
+  payPerH: 0.10,           // $ per comparison won
   showUpFee: 2.00,         // $ flat fee
   beliefBonusInitial: 1.00,   // $ BSR stake on initial belief
   beliefBonusRound: 1.00,     // $ BSR stake on round-level belief
   quizTimePerQuestion: 10, // seconds
   numQuizQuestions: 12,
 
-  // ---- Lottery Manager probability display ----
+  // ---- Fixed Manager probability display ----
   // Set to null to use participant's γ* (computed from Study 1 data).
   // Set to a number (e.g. 40) to show a fixed value to all participants.
-  randomProbDisplay: null,
+  fixedProbDisplay: null,
 
   // ---- Prior score distribution (for computing γ* and drawing opponents) ----
   // γ* is based on the 6 SHARED questions (SE1, SX1, SX2, SH2, H1, H2),
   // using the Hard-treatment reference distribution from pilots 2–10, 12–13.
   // Each entry is a score (number correct out of 6 shared questions).
   // γ* = fraction of reference scores strictly lower + 0.5 × fraction equal.
-  //   Hard treatment empirical from pilots 2–10, 12–13.
-  //   N=166, mean=2.50.
-  //   Distribution: {0:6, 1:41, 2:31, 3:50, 4:30, 5:6, 6:2}
-  //   γ* values: score 0→1.8%, 1→16.0%, 2→37.7%, 3→62.0%, 4→86.1%, 5→97.0%, 6→99.4%
+  //   Empirical from pilots 10 & 13, with corrected SX1 scoring (selected=1 is correct).
+  //   N=168, mean=2.43.
+  //   Distribution: {0:3, 1:35, 2:51, 3:43, 4:25, 5:8, 6:3}
+  //   γ* values: score 0→0.9%, 1→12.2%, 2→37.8%, 3→65.8%, 4→86.0%, 5→95.8%, 6→99.1%
+  // Reference sample: exactly 100 previous participants' shared-question scores (0–6).
+  // Proportionally rounded from N=168 via largest-remainder method.
+  //   N=100 distribution: {0:2, 1:21, 2:30, 3:25, 4:15, 5:5, 6:2}
+  //   N=100 γ*: score 0→1.0%, 1→12.5%, 2→38.0%, 3→65.5%, 4→85.5%, 5→95.5%, 6→99.0%
   study1ScoresShared: [
-    0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,6,6
+    0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,6,6
   ],
 
   // Legacy condition-specific distributions (retained for reference / fallback).
@@ -489,7 +493,7 @@ const CONFIG = {
       //   size  = (2r + c) mod 3   -> [18, 24, 30]
       // All three features depend on BOTH row and column, so the task cannot
       // be decomposed into separate row- and column-only sub-rules.
-      // Missing cell (2,2): shape=square, color=blue, size=24.
+      // Missing cell (2,2): shape=square, color=blue, size=18.
       id: 'SX1',
       renderGrid: function() {
         const shapes = ['circle', 'square', 'triangle'];
@@ -508,16 +512,16 @@ const CONFIG = {
         return cells;
       },
       renderAnswers: function() {
-        // Correct: square, blue, size 24.
+        // Correct: square, blue, size 18.
         // Distractors: each differs from the correct answer on exactly one feature.
         return [
-          svgShape('square',   COLORS.blue,  24),  // CORRECT
-          svgShape('square',   COLORS.blue,  18),  // size wrong
-          svgShape('circle',   COLORS.blue,  24),  // shape wrong
-          svgShape('square',   COLORS.green, 24),  // color wrong
+          svgShape('square',   COLORS.blue,  24),  // size wrong
+          svgShape('square',   COLORS.blue,  18),  // CORRECT
+          svgShape('circle',   COLORS.blue,  18),  // shape wrong
+          svgShape('square',   COLORS.green, 18),  // color wrong
         ];
       },
-      correctAnswer: 0
+      correctAnswer: 1
     },
     {
       // SX2: Ceiling-breaker. Each cell is an overlay of an outer outline
@@ -1069,7 +1073,7 @@ const CONFIG = {
       `You have solved <strong>${score}/${total}</strong> questions of the logic quiz correctly.
        <p>In this study, your performance will be compared to other participants based on <strong>6 specific questions that were the same for all participants</strong>.</p>`,
 
-    beliefElicitationPrompt: `<p>Suppose we randomly pick another participant from this study. We compare your scores on the <strong>6 questions that were the same for all participants</strong>.</p>
+    beliefElicitationPrompt: `<p>Suppose we randomly pick a participant from a group of 100 previous participants. We compare your scores on the <strong>6 questions that were the same for all participants</strong>.</p>
       <p>We will ask you to give us your best guess about your chance of beating them on these 6 questions (ties decided by a coin flip), and then to tell us how confident you are about that guess.</p>
       <p>The more accurate your guess, the higher your chance of winning a <strong>$1 prize</strong>. <strong>The way we calculate this prize is designed so that reporting your true beliefs maximizes your chance of winning.</strong></p>`,
 
@@ -1085,74 +1089,63 @@ const CONFIG = {
       ],
     },
 
-    managerInstructions1: (randomProb) => ({
-      intro: `<p>Imagine you have started a new job in which you can <strong>decide</strong> to work with one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-random">Lottery Manager</strong>.</p>
-        <p>Whichever manager you decide to work with gives you bonuses. Each bonus is either <strong>H</strong> (pays $0.10) or <strong>L</strong> (pays $0). The two managers decide bonuses differently:</p>`,
-      performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> For each bonus, a different participant is randomly picked from a group of real participants who previously completed this same quiz, and your score <strong>on the 6 shared questions</strong> is compared to theirs. You receive <strong>H</strong> if you would beat that participant; if you would tie, the winner is decided by a coin flip; and you receive <strong>L</strong> if you would lose. So the Performance Manager's chance of paying H on each bonus depends on how well you scored on the quiz.</li></ul>`,
-      random: `<ul style="margin:0;"><li><strong class="eval-random">Lottery Manager:</strong> Does <strong>not</strong> compare you to anyone — you receive <strong>H</strong> with a fixed probability of <strong>${randomProb}%</strong> and <strong>L</strong> with probability <strong>${100 - randomProb}%</strong>. This probability is the same for every bonus and every round.</li></ul>`,
-    }),
+    managerInstructions1: (fixedH) => {
+      const fixedPay = (fixedH * 0.10).toFixed(2);
+      return {
+        intro: `<p>Each round, you choose to work with one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-fixed">Fixed Manager</strong>. Each manager pays you, but they work differently:</p>`,
+        performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> Your score on the 6 shared questions is compared to 10 randomly picked participants from a group of 100 previous participants. You earn <strong>$0.10 for each comparison you win</strong> (ties decided by a coin flip).</li></ul>`,
+        fixed: `<ul style="margin:0;"><li><strong class="eval-fixed">Fixed Manager:</strong> Does <strong>not</strong> compare you to anyone. You receive a <strong>fixed payment of $${fixedPay}</strong> every round. This amount does not change.</li></ul>`,
+      };
+    },
 
-    hProbElicitationIntro: `<p>Before we continue, let's make sure you understand how likely each manager is to give you an <strong>H</strong> bonus.</p>
-      <p>Think about your quiz score and what each manager does, then answer the two questions below.</p>`,
+    hProbElicitationIntro: `<p>Let's make sure you understand how the two managers work. Answer the questions below.</p>`,
 
     managerInstructions2a: `<p>There are <strong>5 rounds</strong>. Each round proceeds as follows:</p>
       <ol>
-        <li><strong>Choose your manager.</strong> You decide whether to work with the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-random">Lottery Manager</strong> for this round.</li>
-        <li><strong>Receive bonuses.</strong> The manager you chose gives you 10 bonuses (each H or L).</li>
-        <li><strong>Performance guess.</strong> You can keep your best guess or adjust it based on the bonuses you received.</li>
+        <li><strong>Choose your manager.</strong> You decide whether to work with the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-fixed">Fixed Manager</strong> for this round.</li>
+        <li><strong>Receive your payment.</strong> You receive your payment for this round.</li>
+        <li><strong>Quiz Performance Guess.</strong> You can keep your best guess or adjust it.</li>
       </ol>
-      <p>After your guess, you choose which manager to work with in the next round. You may stay with your current manager or switch.</p>`,
+`,
 
-    managerInstructions2b: (randomProb, roundBsr) => `<p><strong>Payment.</strong> This part of the study determines two further payments:</p>
+    managerInstructions2b: (roundBsr) => `<p><strong>Payment.</strong></p>
       <ul>
-        <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 5 rounds and pays you for the bonuses earned in that round ($0.10 per H, $0 per L).</li>
-        <li><strong>Accuracy payment.</strong> The computer randomly selects <strong>one</strong> of your 5 guesses (one from each round) and scores it: the more accurate your guess, the higher your chance of winning a <strong>$${roundBsr.toFixed(0)} prize</strong>.</li>
+        <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 5 payments you receive from the managers.</li>
+        <li><strong>Accuracy payment for quiz performance guess.</strong> The computer randomly selects <strong>one</strong> of your 5 guesses about your chance of beating a randomly picked participant and scores it: the more accurate your guess, the higher your chance of winning a <strong>$${roundBsr.toFixed(0)} prize</strong>. Reporting your true best guess maximizes your chance of winning.</li>
       </ul>
-      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin:18px 0;">
-        <p style="margin:0 0 10px;font-weight:600;color:#1e40af;">Why does your manager choice matter for your guess?</p>
-        <p style="margin:0 0 10px;">The <strong class="eval-performance">Performance Manager's</strong> bonuses are based on 10 comparisons of your quiz performance with randomly picked participants. Observing these bonuses <strong>helps</strong> you form a better guess about your chance of beating a randomly picked participant.</p>
-        <p style="margin:0;">The <strong class="eval-random">Lottery Manager's</strong> bonuses are <strong>NOT</strong> based on 10 comparisons of your quiz performance &mdash; they come from a fixed, known probability. Observing these bonuses <strong>does not help</strong> you form a better guess about your chance of beating a randomly picked participant.</p>
-      </div>
 
-      <p><strong>The way we calculate the accuracy payment is designed so that reporting your true best guess maximizes your chance of winning.</strong> Because any single round could be the one that counts, treat every round seriously.</p>`,
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin:18px 0;">
+        <p style="margin:0 0 10px;font-weight:600;color:#166534;">Rank revelation</p>
+        <p style="margin:0;">At the end of the study, you will learn your <strong>exact rank</strong> among the 100 previous participants. This tells you precisely how you performed relative to others &mdash; regardless of which manager you chose during the rounds.</p>
+      </div>`,
 
-    comprehensionCheck1: (randomProb) => ({
-      prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
-      backScreen: 'managerInstructions1',
-      items: [
-        { text: "The Performance Manager decides each bonus by comparing my score on the 6 shared questions to a randomly picked participant's score, paying H if I beat them (coin flip on ties).", correct: true },
-        { text: "For the Performance Manager, the same random participant is used for every bonus I receive.", correct: false },
-        { text: `The Lottery Manager pays H with a fixed probability of ${randomProb}% on every draw, and this probability is the same in every round.`, correct: true },
-        { text: "The Lottery Manager compares my quiz score to other participants to decide each bonus.", correct: false },
-        { text: "The comparison between me and a randomly picked participant is based on 6 questions that were the same for everyone.", correct: true },
-        { text: 'Each H bonus pays $0.10 and each L bonus pays $0.', correct: true },
-      ],
-    }),
+    comprehensionCheck1: (fixedH) => {
+      const fixedPay = (fixedH * 0.10).toFixed(2);
+      return {
+        prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
+        backScreen: 'managerInstructions1',
+        items: [
+          { text: "The Performance Manager compares my score to 10 randomly picked participants from a group of 100. I earn $0.10 per comparison I win.", correct: true },
+          { text: `The Fixed Manager always pays me a fixed payment of $${fixedPay} every round. This amount does not change.`, correct: true },
+          { text: "Both managers pay an amount that depends on whether I perform better than 10 randomly picked participants from a group of 100.", correct: false },
+        ],
+      };
+    },
 
-    comprehensionCheck2: (randomProb, roundBsr) => ({
+    comprehensionCheck2: (roundBsr) => ({
       prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
       backScreen: 'managerInstructions2b',
       items: [
-        { text: 'In every round I get to choose whether to work with the Performance Manager or the Lottery Manager.', correct: true },
-        { text: 'I will be paid for the bonuses from all rounds.', correct: false },
-        { text: 'My total payment depends only on the bonuses; my guesses do not affect my payment.', correct: false },
-      ],
-    }),
-
-    comprehensionCheck3: (randomProb) => ({
-      prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
-      backScreen: 'comprehensionCheck2',
-      items: [
-        { text: "After seeing the Performance Manager's bonuses, I should consider adjusting my best guess because the bonuses are based on 10 comparisons of my quiz score with randomly drawn participants and can therefore help me form a better guess.", correct: true },
-        { text: "After seeing the Lottery Manager's bonuses, I should keep my best guess because the bonuses cannot help me form a better guess.", correct: true },
+        { text: "After a Performance Manager round, I should consider adjusting my best guess because learning how many comparisons I won can help me form a better guess.", correct: true },
+        { text: "After a Fixed Manager round, I should keep my best guess because the fixed payment cannot help me form a better guess.", correct: true },
         { text: 'I should adjust my best guess after every round, regardless of which manager I worked with.', correct: false },
       ],
     }),
 
     readyToBegin: `<p>You're about to begin 5 rounds. Here's a quick recap of each round:</p>
       <ol>
-        <li><strong>Choose</strong> the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-random">Lottery Manager</strong></li>
-        <li><strong>Receive</strong> 10 bonuses (H or L) from your chosen manager</li>
+        <li><strong>Choose</strong> the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-fixed">Fixed Manager</strong></li>
+        <li><strong>Receive</strong> your payment for this round</li>
         <li><strong>Keep or adjust</strong> your best guess about your chance of beating a randomly picked participant</li>
       </ol>
       <p>One random round determines your manager payment, and one random guess is scored for the accuracy payment. Ready?</p>`,
@@ -1181,7 +1174,7 @@ const CONFIG = {
     resultsReveal: (payRoundNum, payRoundMgrId) => {
       const mgrLabel = payRoundMgrId === 'performance'
         ? '<span class="eval-performance">Performance Manager</span>'
-        : '<span class="eval-random">Lottery Manager</span>';
+        : '<span class="eval-fixed">Fixed Manager</span>';
       return `<p>Thank you for completing the study! Here are your results.</p>`;
     },
 
@@ -1212,7 +1205,12 @@ const STATE = {
   quizScore: 0,        // total score across all 12 questions
   quizScoreShared: 0,  // score on the 6 shared questions (SE1, SX1, SX2, SH2, H1, H2) — used for γ*
   gammaStar: null,     // true ability (percentile from Study 1, based on shared-6 score)
-  randomProbShown: null, // the [XX]% shown to participant
+  fixedProbShown: null, // the [XX]% shown to participant (kept for display-percentage context)
+  fixedBonusH: null,      // integer 0–10: # of comparisons won (= Fixed Manager bonus / $0.10)
+  fixedBonusFloor: null,  // floor(γ*/10) — lower rounding option
+  fixedBonusCeil: null,   // ceil(γ*/10) — upper rounding option
+  roundingDirection: null, // 'up' or 'down' — between-subjects proportional rounding IV
+  fixedBonusDisplayPct: null, // fixedBonusH * 10 (integer percentage shown on Fixed card)
 
   // Initial beliefs (post-quiz, μ + 7-level confidence elicitation)
   belief_0: null,              // Best guess γ₀ at t=0 (0–100 integer; mean of Beta prior)
@@ -1223,17 +1221,17 @@ const STATE = {
 
   // Post-managerInstructions1 H-likelihood elicitation
   elicitedPerfHProb: null,
-  elicitedRandHProb: null,
-  elicitedBetterManager: null,   // 'performance' | 'random'
+  elicitedFixedHCount: null,
+  elicitedBetterManager: null,   // 'performance' | 'fixed'
 
   // Rounds data: array of round objects
   rounds: [],
-  // Each round: { roundNum (1-5), manager ('performance'|'random'),
-  //   transferred (bool, null for round 1), outcomes: ['H'|'L',...],
+  // Each round: { roundNum (1-5), manager ('performance'|'fixed'),
+  //   transferred (bool, null for round 1), outcomes: ['H'|'L',...] (internal),
   //   opponentScores: [int,...], earnings: float,
   //   belief: int (0-100) }
 
-  currentManager: null, // 'performance' or 'random'
+  currentManager: null, // 'performance' or 'fixed'
   currentRound: 1,        // 1-5
 
   // Post-experiment
@@ -1249,12 +1247,16 @@ const STATE = {
   perfChoiceExplanationShown: false,         // did we show the screen (either Q)?
   perfChoiceExplanationRounds: [],           // UNION of rounds across both Qs (legacy)
   perfChoiceExplanation: '',                 // combined text (legacy; joined for back-compat)
-  // Direction A: chose Random but prior belief > rp (belief favored Performance)
-  choseRandomAgainstBeliefRounds: [],
-  choseRandomAgainstBeliefText: '',
+  // Direction A: chose Fixed but prior belief > rp (belief favored Performance)
+  choseFixedAgainstBeliefRounds: [],
+  choseFixedAgainstBeliefText: '',
   // Direction B: chose Performance but prior belief < rp (belief favored Random)
   chosePerfAgainstBeliefRounds: [],
   chosePerfAgainstBeliefText: '',
+  // Belief adjustment after Fixed Manager rounds
+  fixedBeliefAdjustRounds: [],           // rounds where participant chose Fixed AND changed guess
+  fixedBeliefAdjustExplanationShown: false,
+  fixedBeliefAdjustExplanationText: '',
   demographicAge: null,
   demographicGender: null,
   feedbackClarity: '',
@@ -1271,6 +1273,10 @@ const STATE = {
   beliefBonusRound_amount: 0,
   outcomeEarnings: 0,
   totalBonus: 0,
+
+  // Rank revelation (end of study)
+  rankAmongAll: null,         // 1-based rank in the full reference distribution
+  rankTotalN: null,           // total N in reference distribution
 
   // Comprehension check failure tracking
   comprehensionAttempts: {},  // { checkId: numberOfFailedAttempts }
@@ -1310,9 +1316,9 @@ function computeSharedScore() {
   return score;
 }
 
-// Compute γ* from the POOLED shared-question reference distribution.
-// Uses study1ScoresShared (scores on the 6 shared questions, pooled across conditions).
-// Returns the EXACT (unrounded) percentage so the Lottery Manager's
+// Compute γ* from the 100-participant reference sample.
+// Uses study1ScoresShared (scores on the 6 shared questions, N=100).
+// Returns the EXACT (unrounded) percentage so the Fixed Manager's
 // Bernoulli probability exactly matches the Performance Manager's
 // expected H-rate. Rounding is applied at display sites.
 function computeGammaStar(sharedScore) {
@@ -1328,18 +1334,23 @@ function computeGammaStar(sharedScore) {
 }
 
 // Generate outcomes for a round.
-// Compares the participant's SHARED-question score (6 questions) against randomly drawn
-// opponents from the pooled shared-question reference distribution.
+// Compares the participant's SHARED-question score (6 questions) against 10
+// randomly drawn WITHOUT REPLACEMENT from the 100-participant reference sample.
 function generateOutcomes(sharedScore, count) {
   const n = count || CONFIG.outcomesPerRound;
   const outcomes = [];
   const opponents = [];
-  const scores = CONFIG.study1ScoresShared;
+  // Shuffle a copy of the reference scores and take the first n (without replacement)
+  const pool = CONFIG.study1ScoresShared.slice();
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
   for (let i = 0; i < n; i++) {
-    const oppIdx = Math.floor(Math.random() * scores.length);
-    const oppScore = scores[oppIdx];
+    const oppScore = pool[i];
     opponents.push(oppScore);
-    // H if participant strictly beats opponent; tie broken randomly (50/50)
+    // Win if participant strictly beats opponent; tie broken randomly (50/50)
+    // (Internally stored as 'H'/'L' for backward-compat with data pipeline)
     if (sharedScore > oppScore) outcomes.push('H');
     else if (sharedScore === oppScore) outcomes.push(Math.random() < 0.5 ? 'H' : 'L');
     else outcomes.push('L');
@@ -1396,10 +1407,10 @@ function logTimestamp(screenName) {
 
 // Manager display helpers (disclosed-types design)
 function managerName(mgr_id) {
-  return mgr_id === 'performance' ? 'Performance Manager' : 'Lottery Manager';
+  return mgr_id === 'performance' ? 'Performance Manager' : 'Fixed Manager';
 }
 function managerClass(mgr_id) {
-  return mgr_id === 'performance' ? 'eval-performance' : 'eval-random';
+  return mgr_id === 'performance' ? 'eval-performance' : 'eval-fixed';
 }
 function managerLabel(mgr_id) {
   return `<span class="${managerClass(mgr_id)}">${managerName(mgr_id)}</span>`;
@@ -1408,22 +1419,24 @@ function managerLabel(mgr_id) {
 // `belief` is the participant's current γ estimate; `round` is the upcoming round number.
 // `onChoose` is the JS function name to call: 'roundInitialChoice' (round 1) or 'roundMakeChoiceByMgr' (rounds 2+).
 function buildManagerChoiceHTML(round, belief, onChoose) {
-  const rp   = Math.round(STATE.randomProbShown);  // displayed (integer) version
+  const fixedH = STATE.fixedBonusH;  // deterministic integer count
 
   function cardHTML(mgr) {
     const isPerf = mgr === 'performance';
-    const colorClass = isPerf ? 'eval-performance' : 'eval-random';
-    const pH = isPerf ? belief : rp;       // probability of H
-    const expectedH = Math.round(pH / 10);  // roughly X out of 10
+    const colorClass = isPerf ? 'eval-performance' : 'eval-fixed';
 
     // Neutral badge style for numbers (same on both cards)
     const badge = (text) => `<span style="display:inline-block;background:#f1f5f9;color:#1e293b;border:1px solid #cbd5e1;border-radius:4px;padding:1px 6px;font-weight:700;">${text}</span>`;
 
-    // Context text: links guess → expected H frequency with highlighted badges
-    const expectedPay = (expectedH * CONFIG.payPerH).toFixed(2);
-    const contextHTML = isPerf
-      ? `Your current best guess is that you would beat a randomly picked participant ${badge(pH + '%')} of the time. This would imply that you roughly expect ${badge(expectedH + ' out of 10')} H bonuses (${badge('$' + expectedPay)}).`
-      : `The H-probability is fixed and known at ${badge(pH + '%')}. This means you would roughly expect ${badge(expectedH + ' out of 10')} H bonuses (${badge('$' + expectedPay)}).`;
+    let contextHTML;
+    if (isPerf) {
+      const expectedWins = Math.round(belief / 10);
+      const expectedPay = (expectedWins * CONFIG.payPerH).toFixed(2);
+      contextHTML = `Your current quiz performance guess is ${badge(belief + '%')}, which means you expect to win about ${badge(expectedWins + ' out of 10')} comparisons and earn ${badge('$' + expectedPay)}.`;
+    } else {
+      const fixedPay = (fixedH * CONFIG.payPerH).toFixed(2);
+      contextHTML = `The Fixed Manager pays you ${badge('$' + fixedPay)}.`;
+    }
 
     return `
       <div style="flex:1;border:2px solid #e2e8f0;border-radius:12px;padding:18px 16px 14px;display:flex;flex-direction:column;gap:12px;">
@@ -1443,7 +1456,7 @@ function buildManagerChoiceHTML(round, belief, onChoose) {
 
     <div style="display:flex;gap:16px;margin:18px 0;">
       ${cardHTML('performance')}
-      ${cardHTML('random')}
+      ${cardHTML('fixed')}
     </div>`;
 }
 
@@ -2188,11 +2201,43 @@ function finishQuiz() {
   STATE.quizScoreShared = computeSharedScore();
   STATE.gammaStar = computeGammaStar(STATE.quizScoreShared);
 
-  // Determine the Lottery Manager probability to show
-  if (CONFIG.randomProbDisplay !== null) {
-    STATE.randomProbShown = CONFIG.randomProbDisplay;
+  // ---- Proportional between-subjects rounding IV ----
+  // γ* is a percentage (0–100 float). The Fixed Manager pays a deterministic
+  // amount equivalent to an integer number of wins out of 10. We round γ*/10
+  // up or down with probabilities that make E[Fixed payment] = γ* × $0.10 exactly.
+  const gammaFrac = STATE.gammaStar / 100;         // e.g. 0.47
+  const exactH = gammaFrac * 10;                   // e.g. 4.7
+  const floorH = Math.floor(exactH);               // e.g. 4
+  const ceilH  = Math.ceil(exactH);                // e.g. 5
+
+  if (floorH === ceilH) {
+    // γ* is an exact multiple of 10 — no rounding needed
+    STATE.fixedBonusFloor = floorH;
+    STATE.fixedBonusCeil  = ceilH;
+    STATE.roundingDirection = 'exact';
+    STATE.fixedBonusH = floorH;
   } else {
-    STATE.randomProbShown = STATE.gammaStar;
+    STATE.fixedBonusFloor = floorH;
+    STATE.fixedBonusCeil  = ceilH;
+    // P(round up) = exactH - floor = fractional part, so E[H] = exactH
+    const pUp = exactH - floorH;  // e.g. 0.7
+    const draw = Math.random();
+    if (draw < pUp) {
+      STATE.roundingDirection = 'up';
+      STATE.fixedBonusH = ceilH;
+    } else {
+      STATE.roundingDirection = 'down';
+      STATE.fixedBonusH = floorH;
+    }
+  }
+
+  STATE.fixedBonusDisplayPct = STATE.fixedBonusH * 10; // integer percentage for display
+
+  // Determine the Fixed Manager probability to show (kept for legacy/display compatibility)
+  if (CONFIG.fixedProbDisplay !== null) {
+    STATE.fixedProbShown = CONFIG.fixedProbDisplay;
+  } else {
+    STATE.fixedProbShown = STATE.fixedBonusDisplayPct;
   }
 
   showScreen('scoreAndBelief');
@@ -2238,17 +2283,17 @@ SCREENS.transition = () => {
 
 // ---- Instructions Page 1: Your New Job ----
 SCREENS.managerInstructions1 = () => {
-  const t = CONFIG.texts.managerInstructions1(Math.round(STATE.randomProbShown));
+  const t = CONFIG.texts.managerInstructions1(STATE.fixedBonusH);
   container.innerHTML = `
-    <div class="screen-header"><h2>Instructions — Your New Job</h2></div>
+    <div class="screen-header"><h2>Instructions — The Managers</h2></div>
     ${t.intro}
     ${t.performance}
 
     <div class="info-panel" style="margin:14px 0;">
-      <p style="margin:0;"><strong>Reminder:</strong> Earlier, you guessed a <strong>${STATE.belief_0}%</strong> chance that you would beat a randomly picked participant on the quiz, where ties are decided by a coin flip. Since the Performance Manager pays H whenever you beat a randomly picked participant, this means you would expect the Performance Manager to give you H about <strong>${STATE.belief_0}%</strong> of the time.</p>
+      <p style="margin:0;"><strong>Reminder:</strong> You guessed a <strong>${STATE.belief_0}%</strong> chance of beating a randomly picked participant. This means you would expect to win about <strong>${Math.round(STATE.belief_0 / 10)} out of 10</strong> comparisons (<strong>$${(Math.round(STATE.belief_0 / 10) * 0.10).toFixed(2)}</strong>).</p>
     </div>
 
-    ${t.random}
+    ${t.fixed}
 
     <div class="nav-row" style="justify-content:space-between;margin-top:18px;">
       <button class="btn" onclick="showScreen('transition')">← Back</button>
@@ -2264,28 +2309,28 @@ SCREENS.hProbElicitation = () => {
     ${CONFIG.texts.hProbElicitationIntro}
 
     <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
-      <p style="margin:0 0 12px;"><strong>1.</strong> According to your guess about how you compare to a randomly picked participant on the quiz, what is the likelihood that the <strong class="eval-performance">Performance Manager</strong> gives you an <strong>H</strong> bonus on a single draw?</p>
+      <p style="margin:0 0 12px;"><strong>1.</strong> According to your guess about your quiz performance, which payment do you expect to receive from the <strong class="eval-performance">Performance Manager</strong>?</p>
       <div style="display:flex;align-items:center;gap:8px;">
-        <input type="number" id="perf-h-input" min="0" max="100" step="1" placeholder="0–100" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
-        <span style="font-size:1rem;color:#333;">%</span>
+        <span style="font-size:1rem;color:#333;">$</span>
+        <input type="number" id="perf-h-input" min="0" max="1" step="0.10" placeholder="0.00" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
       </div>
     </div>
 
     <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
-      <p style="margin:0 0 12px;"><strong>2.</strong> What is the likelihood that the <strong class="eval-random">Lottery Manager</strong> gives you an <strong>H</strong> bonus on a single draw?</p>
+      <p style="margin:0 0 12px;"><strong>2.</strong> What is the <strong class="eval-fixed">Fixed Manager's</strong> payment each round?</p>
       <div style="display:flex;align-items:center;gap:8px;">
-        <input type="number" id="rand-h-input" min="0" max="100" step="1" placeholder="0–100" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
-        <span style="font-size:1rem;color:#333;">%</span>
+        <span style="font-size:1rem;color:#333;">$</span>
+        <input type="number" id="rand-h-input" min="0" max="1" step="0.10" placeholder="0.00" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
       </div>
     </div>
 
     <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
-      <p style="margin:0 0 12px;"><strong>3.</strong> Based on your answers above, which manager do you expect to give you <strong>more H bonuses</strong>?</p>
+      <p style="margin:0 0 12px;"><strong>3.</strong> Based on your answers above, which manager do you expect to pay you a <strong>higher payment</strong>?</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn btn-choice" id="better-perf-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
                 onclick="selectBetterManager('performance')"><span class="eval-performance">Performance Manager</span></button>
         <button class="btn btn-choice" id="better-rand-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
-                onclick="selectBetterManager('random')"><span class="eval-random">Lottery Manager</span></button>
+                onclick="selectBetterManager('fixed')"><span class="eval-fixed">Fixed Manager</span></button>
       </div>
     </div>
 
@@ -2305,9 +2350,9 @@ SCREENS.hProbElicitation = () => {
   window._selectedBetterManager = null;
 
   function checkComplete() {
-    const p = parseInt(perfIn.value, 10);
-    const r = parseInt(randIn.value, 10);
-    const numsOk = !isNaN(p) && p >= 0 && p <= 100 && !isNaN(r) && r >= 0 && r <= 100;
+    const p = parseFloat(perfIn.value);
+    const r = parseFloat(randIn.value);
+    const numsOk = !isNaN(p) && p >= 0 && p <= 1.00 && !isNaN(r) && r >= 0 && r <= 1.00;
     const betterOk = window._selectedBetterManager != null;
     nextBtn.disabled = !(numsOk && betterOk);
     errBox.style.display = 'none';
@@ -2330,30 +2375,33 @@ function selectBetterManager(choice) {
   // Re-check if form is complete
   const perfIn = document.getElementById('perf-h-input');
   const randIn = document.getElementById('rand-h-input');
-  const p = parseInt(perfIn.value, 10);
-  const r = parseInt(randIn.value, 10);
-  const numsOk = !isNaN(p) && p >= 0 && p <= 100 && !isNaN(r) && r >= 0 && r <= 100;
+  const p = parseFloat(perfIn.value);
+  const r = parseFloat(randIn.value);
+  const numsOk = !isNaN(p) && p >= 0 && p <= 1.00 && !isNaN(r) && r >= 0 && r <= 1.00;
   document.getElementById('mgr-prob-next-btn').disabled = !numsOk;
   document.getElementById('mgr-prob-error').style.display = 'none';
 }
 
 function submitHProbElicitation() {
-  const perfVal = parseInt(document.getElementById('perf-h-input').value, 10);
-  const randVal = parseInt(document.getElementById('rand-h-input').value, 10);
-  STATE.elicitedPerfHProb = perfVal;
-  STATE.elicitedRandHProb = randVal;
+  const perfVal = parseFloat(document.getElementById('perf-h-input').value);
+  const randVal = parseFloat(document.getElementById('rand-h-input').value);
+  STATE.elicitedPerfHProb = perfVal;       // now: expected dollar bonus from Performance
+  STATE.elicitedFixedHCount = randVal;     // now: dollar amount from Fixed
   STATE.elicitedBetterManager = window._selectedBetterManager;
 
-  const correctPerf = STATE.belief_0;
-  const correctRand = Math.round(STATE.randomProbShown);
-  // Correct "better manager" choice: whichever has the higher H-probability.
-  // On a tie we accept either answer since "About the same" is not offered.
+  // Q1 correct answer: round(belief_0 / 10) wins × $0.10
+  const correctPerfPay = +(Math.round(STATE.belief_0 / 10) * 0.10).toFixed(2);
+  // Q2 correct answer: fixedBonusH × $0.10
+  const correctFixedPay = +(STATE.fixedBonusH * 0.10).toFixed(2);
+  // "Better manager" comparison
   let betterOk;
-  if (correctPerf > correctRand)      betterOk = window._selectedBetterManager === 'performance';
-  else if (correctPerf < correctRand) betterOk = window._selectedBetterManager === 'random';
-  else                                betterOk = (window._selectedBetterManager === 'performance'
-                                                || window._selectedBetterManager === 'random');
-  if (perfVal !== correctPerf || randVal !== correctRand || !betterOk) {
+  if (correctPerfPay > correctFixedPay)      betterOk = window._selectedBetterManager === 'performance';
+  else if (correctPerfPay < correctFixedPay) betterOk = window._selectedBetterManager === 'fixed';
+  else                                       betterOk = (window._selectedBetterManager === 'performance'
+                                                        || window._selectedBetterManager === 'fixed');
+  const perfValRounded = +perfVal.toFixed(2);
+  const randValRounded = +randVal.toFixed(2);
+  if (perfValRounded !== correctPerfPay || randValRounded !== correctFixedPay || !betterOk) {
     document.getElementById('mgr-prob-error').style.display = 'block';
     return;
   }
@@ -2362,7 +2410,7 @@ function submitHProbElicitation() {
 
 // ---- Comprehension Check 1: Manager Structure ----
 SCREENS.comprehensionCheck1 = () => {
-  renderComprehensionCheck(CONFIG.texts.comprehensionCheck1(Math.round(STATE.randomProbShown)), () => {
+  renderComprehensionCheck(CONFIG.texts.comprehensionCheck1(STATE.fixedBonusH), () => {
     showScreen('managerInstructions2a');
   }, 'check1');
   updateProgress(0.42);
@@ -2384,7 +2432,7 @@ SCREENS.managerInstructions2a = () => {
 SCREENS.managerInstructions2b = () => {
   container.innerHTML = `
     <div class="screen-header"><h2>Instructions — Payment &amp; Informativeness</h2></div>
-    ${CONFIG.texts.managerInstructions2b(Math.round(STATE.randomProbShown), STATE.bsrStakeRound)}
+    ${CONFIG.texts.managerInstructions2b(STATE.bsrStakeRound)}
     <div class="nav-row" style="justify-content:space-between;">
       <button class="btn" onclick="showScreen('managerInstructions2a')">← Back</button>
       <button class="btn btn-primary" onclick="showScreen('comprehensionCheck2')">Next →</button>
@@ -2392,20 +2440,12 @@ SCREENS.managerInstructions2b = () => {
   updateProgress(0.48);
 };
 
-// ---- Comprehension Check 2: Payment & Beliefs ----
+// ---- Comprehension Check 2: Payment, Updating & Rank ----
 SCREENS.comprehensionCheck2 = () => {
-  renderComprehensionCheck(CONFIG.texts.comprehensionCheck2(Math.round(STATE.randomProbShown), STATE.bsrStakeRound), () => {
-    showScreen('comprehensionCheck3');
-  }, 'check2');
-  updateProgress(0.50);
-};
-
-// ---- Comprehension Check 3: Updating Best Guess ----
-SCREENS.comprehensionCheck3 = () => {
-  renderComprehensionCheck(CONFIG.texts.comprehensionCheck3(Math.round(STATE.randomProbShown)), () => {
+  renderComprehensionCheck(CONFIG.texts.comprehensionCheck2(STATE.bsrStakeRound), () => {
     showScreen('readyToBegin');
-  }, 'check3');
-  updateProgress(0.53);
+  }, 'check2');
+  updateProgress(0.52);
 };
 
 // ---- Ready to Begin ----
@@ -2562,13 +2602,13 @@ function roundShowBonuses() {
     outcomes = result.outcomes;
     opponents = result.opponents;
   } else {
-    // Lottery Manager: i.i.d. Bernoulli draws at the stated probability
-    const prob = STATE.randomProbShown / 100;
+    // Fixed Manager: deterministic — always exactly fixedBonusH wins
+    const fixedH = STATE.fixedBonusH;
     outcomes = [];
     opponents = [];
     for (let i = 0; i < CONFIG.outcomesPerRound; i++) {
-      outcomes.push(Math.random() < prob ? 'H' : 'L');
-      opponents.push(null); // no opponent for random draws
+      outcomes.push(i < fixedH ? 'H' : 'L');
+      opponents.push(null);
     }
   }
   const hCount = outcomes.filter(o => o === 'H').length;
@@ -2577,74 +2617,55 @@ function roundShowBonuses() {
   roundData.opponentScores = opponents;
   roundData.hCount = hCount;
   roundData.earnings = earnings;
-  roundData.bonusRevealTimestamps = [];  // track when each bonus is revealed
 
   const outcomesDiv = document.getElementById('round-step-outcomes');
   outcomesDiv.style.display = '';
-  const mgrName = mgr === 'performance' ? 'Performance Manager' : 'Lottery Manager';
-  const mgrClass = mgr === 'performance' ? 'eval-performance' : 'eval-random';
-  const mechanismLine = (mgr === 'performance')
-    ? `these bonuses are based on 10 comparisons of your quiz performance with randomly picked participants.`
-    : `these bonuses are <strong style="color:#b91c1c;font-weight:800;">NOT</strong> based on 10 comparisons of your quiz performance with randomly picked participants.`;
-  outcomesDiv.innerHTML = `
-    <h3 class="step-heading">Bonuses from the <span class="${mgrClass}">${mgrName}</span> in this round</h3>
-    <p style="margin:14px 0 18px;">You chose the <strong class="${mgrClass}">${mgrName}</strong>. Click each box to reveal your 10 bonuses &mdash; ${mechanismLine}</p>
+  const mgrNameStr = mgr === 'performance' ? 'Performance Manager' : 'Fixed Manager';
+  const mgrClass = mgr === 'performance' ? 'eval-performance' : 'eval-fixed';
 
-    <div class="outcomes-row">
-      ${outcomes.map((o, i) => `
-        <div class="outcome-box" id="bonus-box-${i}" style="cursor:pointer;background:#f8fafc;border:2px solid #cbd5e1;" onclick="revealBonus(${i})">
-          <span class="outcome-label">Bonus ${i+1}</span>
-          <span style="font-size:1.5rem;color:#94a3b8;">?</span>
+  if (mgr === 'performance') {
+    // Performance Manager: show a reveal button so it feels like new information
+    outcomesDiv.innerHTML = `
+      <h3 class="step-heading"><span class="${mgrClass}">${mgrNameStr}</span> Payment</h3>
+      <p style="margin:14px 0 10px;">You chose the <strong class="${mgrClass}">${mgrNameStr}</strong>. Your quiz score was compared to 10 randomly picked participants.</p>
+      <div id="perf-reveal-container" style="text-align:center;margin:16px 0;">
+        <button class="btn btn-primary" id="perf-reveal-btn" style="font-size:1.05rem;padding:12px 32px;" onclick="revealPerformanceResult()">Reveal my results →</button>
+      </div>
+      <div id="perf-result-box" style="display:none;">
+        <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:20px;text-align:center;margin:12px 0;">
+          <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">You won <span style="font-size:1.5rem;font-weight:800;color:#1e293b;">${hCount} out of 10</span> comparisons</p>
+          <p style="margin:8px 0 0;font-size:1rem;font-weight:400;color:#64748b;">Your payment this round: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings.toFixed(2)}</span></p>
         </div>
-      `).join('')}
-    </div>
-
-    <div id="outcomes-summary" style="display:none;">
-      ${mgr === 'performance'
-        ? `<p style="text-align:center;margin:8px 0 4px;font-size:0.95rem;color:#475569;">Your score was higher in <strong>${hCount} out of 10</strong> comparisons with randomly picked participants. If this round is selected for payment, you earn <strong>$${earnings.toFixed(2)}</strong>.</p>`
-        : `<p style="text-align:center;margin:8px 0 4px;font-size:0.95rem;color:#475569;">The lottery paid H <strong>${hCount}/10</strong> times. If this round is selected for payment, you earn <strong>$${earnings.toFixed(2)}</strong>.</p>`
-      }
-    </div>
-
-    <div class="nav-row" id="outcomes-nav" style="display:none;">
-      <button class="btn btn-primary" onclick="roundShowGamma()">Continue →</button>
-    </div>`;
-
-  // Store outcomes on window for the reveal function
-  window._pendingOutcomes = outcomes;
-  window._revealedCount = 0;
+        <div class="nav-row">
+          <button class="btn btn-primary" onclick="roundShowGamma()">Continue →</button>
+        </div>
+      </div>`;
+  } else {
+    // Fixed Manager: show dollar amount directly — no reveal needed, no new info
+    outcomesDiv.innerHTML = `
+      <h3 class="step-heading"><span class="${mgrClass}">${mgrNameStr}</span> Payment</h3>
+      <p style="margin:14px 0 10px;">You chose the <strong class="${mgrClass}">${mgrNameStr}</strong>.</p>
+      <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:20px;text-align:center;margin:12px 0;">
+        <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">Your fixed payment: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings.toFixed(2)}</span></p>
+      </div>
+      <div class="nav-row">
+        <button class="btn btn-primary" onclick="roundShowGamma()">Continue →</button>
+      </div>`;
+  }
 
   outcomesDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// Reveal a single bonus box
-function revealBonus(idx) {
-  const box = document.getElementById('bonus-box-' + idx);
-  if (!box || box.dataset.revealed) return;  // already revealed
-
-  const outcome = window._pendingOutcomes[idx];
+// Reveal performance results (adds anticipation / makes it feel like new info)
+function revealPerformanceResult() {
   const roundData = window._pendingRound;
-  roundData.bonusRevealTimestamps.push({ index: idx, timestamp: Date.now() });
-
-  // Reveal the outcome with appropriate styling
-  box.dataset.revealed = '1';
-  box.style.cursor = 'default';
-  box.classList.add('outcome-' + outcome);
-  box.innerHTML = `<span class="outcome-label">Bonus ${idx + 1}</span>${outcome}`;
-
-  window._revealedCount++;
-
-  // Once all are revealed, show summary and Continue button
-  if (window._revealedCount >= CONFIG.outcomesPerRound) {
-    document.getElementById('outcomes-summary').style.display = '';
-    document.getElementById('outcomes-nav').style.display = '';
-  }
+  roundData.tsResultRevealed = Date.now();
+  document.getElementById('perf-reveal-btn').style.display = 'none';
+  document.getElementById('perf-result-box').style.display = '';
 }
 
 // Bonuses → γ slider
 function roundShowGamma() {
-  document.getElementById('outcomes-nav').style.display = 'none';
-
   const roundData = window._pendingRound;
   roundData.tsGammaShown = Date.now();
   const isFirstGammaUpdate = STATE.rounds.length === 0;
@@ -2656,19 +2677,24 @@ function roundShowGamma() {
   const chosenMgr = roundData.manager;
   const mgrNameHTML = chosenMgr === 'performance'
     ? '<strong class="eval-performance">Performance Manager</strong>'
-    : '<strong class="eval-random">Lottery Manager</strong>';
+    : '<strong class="eval-fixed">Fixed Manager</strong>';
 
   const gammaDiv = document.getElementById('round-step-gamma');
   gammaDiv.style.display = '';
   gammaDiv.innerHTML = `
     <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
 
-    <h3 class="step-heading">Performance guess</h3>
+    <h3 class="step-heading">Quiz Performance Guess</h3>
 
-    <p>You just saw 10 bonuses from the ${mgrNameHTML}${chosenMgr === 'performance'
-      ? ', which can help you form a better guess of beating a randomly picked participant.'
-      : ', which <strong>cannot</strong> help you form a better guess of beating a randomly picked participant.'
-    } Your previous guess of <strong>${prevGamma}%</strong> is pre-selected, you can adjust it or leave as is.</p>
+    ${chosenMgr === 'performance'
+      ? `<p>The ${mgrNameHTML} payment can <strong>help</strong> you form a better guess about your quiz performance. Your previous guess is pre-selected, you can adjust it or leave as is.</p>
+    <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:14px 20px;margin:14px 0;display:flex;justify-content:center;gap:24px;flex-wrap:wrap;">
+      <span style="font-size:1.05rem;font-weight:700;color:#1e293b;">Your previous guess: ${prevGamma}%</span>
+      <span style="font-size:1.05rem;color:#94a3b8;">·</span>
+      <span style="font-size:1.05rem;font-weight:700;color:#1e293b;">You won: ${roundData.hCount} out of 10 comparisons (${roundData.hCount * 10}%) in this round</span>
+    </div>`
+      : `<p>The ${mgrNameHTML} payment <strong>cannot</strong> help you form a better guess about your quiz performance. Your previous guess is pre-selected, you can adjust it or leave as is.</p>`
+    }
 
     <p>What is the percent chance you beat a randomly picked participant on the quiz?</p>
 
@@ -3157,27 +3183,34 @@ function submitBoredom() {
     return;
   }
   // Compute the belief-inconsistency triggers, split by direction:
-  //  A. chose Random while prior > rp   (belief favored Performance)
+  //  A. chose Fixed while prior > rp   (belief favored Performance)
   //  B. chose Performance while prior < rp (belief favored Random)
   const split = computeChoiceExplanationTriggers();
-  STATE.choseRandomAgainstBeliefRounds = split.aRoundsRandomVsPerf;
+  STATE.choseFixedAgainstBeliefRounds = split.aRoundsFixedVsPerf;
   STATE.chosePerfAgainstBeliefRounds   = split.bRoundsPerfVsRandom;
-  STATE.perfChoiceExplanationRounds    = [...split.aRoundsRandomVsPerf, ...split.bRoundsPerfVsRandom].sort((x,y)=>x-y);
+  STATE.perfChoiceExplanationRounds    = [...split.aRoundsFixedVsPerf, ...split.bRoundsPerfVsRandom].sort((x,y)=>x-y);
+
+  // Compute rounds where participant chose Fixed AND adjusted their guess
+  STATE.fixedBeliefAdjustRounds = computeFixedBeliefAdjustRounds();
+
   if (STATE.perfChoiceExplanationRounds.length > 0) {
     STATE.perfChoiceExplanationShown = true;
     showScreen('perfChoiceExplanation');
+  } else if (STATE.fixedBeliefAdjustRounds.length > 0) {
+    STATE.fixedBeliefAdjustExplanationShown = true;
+    showScreen('fixedBeliefAdjustExplanation');
   } else {
     showScreen('demographics');
   }
 }
 
-// Helper: returns { aRoundsRandomVsPerf, bRoundsPerfVsRandom } — 1-indexed
+// Helper: returns { aRoundsFixedVsPerf, bRoundsPerfVsRandom } — 1-indexed
 // round lists split by direction of belief-inconsistent manager choice.
 function computeChoiceExplanationTriggers() {
-  // Compare against the ROUNDED (displayed) probability so the criterion
-  // matches what the participant actually saw against their integer belief.
-  const rp = Math.round(Number(STATE.randomProbShown));
-  const out = { aRoundsRandomVsPerf: [], bRoundsPerfVsRandom: [] };
+  // Compare against the Fixed Manager's displayed percentage (fixedBonusH * 10)
+  // so the criterion matches what the participant actually saw.
+  const rp = STATE.fixedBonusDisplayPct;
+  const out = { aRoundsFixedVsPerf: [], bRoundsPerfVsRandom: [] };
   if (!Number.isFinite(rp)) return out;
   const rounds = STATE.rounds || [];
   for (let i = 0; i < rounds.length; i++) {
@@ -3194,7 +3227,7 @@ function computeChoiceExplanationTriggers() {
     }
     if (prior == null || !Number.isFinite(Number(prior))) continue;
     const priorN = Number(prior);
-    if      (rd.manager === 'random'      && priorN > rp) out.aRoundsRandomVsPerf.push(t);
+    if      (rd.manager === 'fixed'      && priorN > rp) out.aRoundsFixedVsPerf.push(t);
     else if (rd.manager === 'performance' && priorN < rp) out.bRoundsPerfVsRandom.push(t);
   }
   return out;
@@ -3203,7 +3236,7 @@ function computeChoiceExplanationTriggers() {
 // ---- 3.2d Open-ended follow-ups: belief-inconsistent manager choices ----
 // One question per direction, each only shown if that direction has ≥1 round.
 SCREENS.perfChoiceExplanation = () => {
-  const aRounds = STATE.choseRandomAgainstBeliefRounds || []; // chose Random vs belief→Perf
+  const aRounds = STATE.choseFixedAgainstBeliefRounds || []; // chose Fixed vs belief→Perf
   const bRounds = STATE.chosePerfAgainstBeliefRounds   || []; // chose Perf vs belief→Random
 
   function fmtRounds(rs) {
@@ -3216,11 +3249,11 @@ SCREENS.perfChoiceExplanation = () => {
   const blockA = aRounds.length === 0 ? '' : `
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin:16px 0;">
       <p style="margin:0 0 10px;">
-        In ${nStr(aRounds)} (${fmtRounds(aRounds)}) you chose the <strong class="eval-random">Lottery Manager</strong>
-        even though your latest guess suggested the <strong class="eval-performance">Performance Manager</strong> had
-        a higher chance of paying&nbsp;H.
+        In ${nStr(aRounds)} (${fmtRounds(aRounds)}) you chose the <strong class="eval-fixed">Fixed Manager</strong>
+        even though your latest guess suggested the <strong class="eval-performance">Performance Manager</strong> would
+        pay you more.
       </p>
-      <p style="margin:0 0 10px;"><strong>What made you pick the Lottery Manager in those rounds?</strong></p>
+      <p style="margin:0 0 10px;"><strong>What made you pick the Fixed Manager in those rounds?</strong></p>
       <textarea id="explain-chose-random" rows="4"
         placeholder="Please write at least a sentence or two..."
         style="width:100%;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"
@@ -3231,8 +3264,8 @@ SCREENS.perfChoiceExplanation = () => {
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin:16px 0;">
       <p style="margin:0 0 10px;">
         In ${nStr(bRounds)} (${fmtRounds(bRounds)}) you chose the <strong class="eval-performance">Performance Manager</strong>
-        even though your latest guess suggested the <strong class="eval-random">Lottery Manager</strong> had
-        a higher chance of paying&nbsp;H.
+        even though your latest guess suggested the <strong class="eval-fixed">Fixed Manager</strong> would
+        pay you more.
       </p>
       <p style="margin:0 0 10px;"><strong>What made you pick the Performance Manager in those rounds?</strong></p>
       <textarea id="explain-chose-perf" rows="4"
@@ -3242,7 +3275,7 @@ SCREENS.perfChoiceExplanation = () => {
     </div>`;
 
   container.innerHTML = `
-    <div class="screen-header"><h2>One last question</h2></div>
+    <div class="screen-header"><h2>Additional Questions</h2></div>
     ${blockA}
     ${blockB}
     <div class="error-msg" id="choice-explain-error">Please write a short answer before continuing.</div>
@@ -3274,13 +3307,91 @@ function submitChoiceExplanations() {
     if (err) err.classList.add('visible');
     return;
   }
-  STATE.choseRandomAgainstBeliefText = aText;
+  STATE.choseFixedAgainstBeliefText = aText;
   STATE.chosePerfAgainstBeliefText   = bText;
   // Legacy combined field for back-compat
   const parts = [];
-  if (aText) parts.push('[chose Random vs belief→Perf] ' + aText);
+  if (aText) parts.push('[chose Fixed vs belief→Perf] ' + aText);
   if (bText) parts.push('[chose Perf vs belief→Random] ' + bText);
   STATE.perfChoiceExplanation = parts.join(' | ');
+  if (STATE.fixedBeliefAdjustRounds.length > 0) {
+    STATE.fixedBeliefAdjustExplanationShown = true;
+    showScreen('fixedBeliefAdjustExplanation');
+  } else {
+    showScreen('demographics');
+  }
+}
+
+// ---- 3.2e Fixed Manager belief adjustment follow-up ----
+// Identifies rounds where the participant chose the Fixed Manager AND changed their guess.
+function computeFixedBeliefAdjustRounds() {
+  const rounds = STATE.rounds || [];
+  const adjustRounds = [];
+  for (let i = 0; i < rounds.length; i++) {
+    const rd = rounds[i];
+    if (!rd || rd.manager !== 'fixed') continue;
+    // Prior belief: belief_0 if round 1, else previous round's belief
+    let prior;
+    if (rd.roundNum === 1) {
+      prior = STATE.belief_0;
+    } else {
+      const prev = rounds.find(x => x && x.roundNum === (rd.roundNum - 1));
+      prior = prev ? prev.belief : null;
+    }
+    if (prior == null) continue;
+    if (rd.belief !== prior) adjustRounds.push(rd.roundNum);
+  }
+  return adjustRounds;
+}
+
+SCREENS.fixedBeliefAdjustExplanation = () => {
+  const adjRounds = STATE.fixedBeliefAdjustRounds || [];
+  function fmtRounds(rs) {
+    if (rs.length === 1) return `round ${rs[0]}`;
+    if (rs.length === 2) return `rounds ${rs[0]} and ${rs[1]}`;
+    return `rounds ${rs.slice(0,-1).join(', ')}, and ${rs[rs.length-1]}`;
+  }
+  function nStr(rs) { return rs.length === 1 ? 'one round' : `${rs.length} rounds`; }
+
+  container.innerHTML = `
+    <div class="screen-header"><h2>Additional Questions</h2></div>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin:16px 0;">
+      <p style="margin:0 0 10px;">
+        In ${nStr(adjRounds)} (${fmtRounds(adjRounds)}) you chose the <strong class="eval-fixed">Fixed Manager</strong>
+        and then adjusted your quiz performance guess.
+      </p>
+      <p style="margin:0 0 10px;">The Fixed Manager payment does not provide new information about your quiz performance.
+        <strong>Why did you change your guess in ${adjRounds.length === 1 ? 'that round' : 'those rounds'}?</strong></p>
+      <textarea id="explain-fixed-adjust" rows="4"
+        placeholder="Please write at least a sentence or two..."
+        style="width:100%;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"
+        oninput="checkFixedAdjustExplanation()"></textarea>
+    </div>
+    <div class="error-msg" id="fixed-adjust-error">Please write a short answer before continuing.</div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="fixed-adjust-next" disabled onclick="submitFixedAdjustExplanation()">Next →</button>
+    </div>`;
+  updateProgress(0.97);
+};
+
+function checkFixedAdjustExplanation() {
+  const el = document.getElementById('explain-fixed-adjust');
+  const btn = document.getElementById('fixed-adjust-next');
+  const err = document.getElementById('fixed-adjust-error');
+  const ok = el && el.value.trim().length >= 3;
+  if (btn) btn.disabled = !ok;
+  if (ok && err) err.style.display = 'none';
+}
+
+function submitFixedAdjustExplanation() {
+  const el = document.getElementById('explain-fixed-adjust');
+  const text = el ? el.value.trim() : '';
+  if (text.length < 3) {
+    const err = document.getElementById('fixed-adjust-error');
+    if (err) err.classList.add('visible');
+    return;
+  }
+  STATE.fixedBeliefAdjustExplanationText = text;
   showScreen('demographics');
 }
 
@@ -3370,6 +3481,19 @@ function submitFeedback() {
   computePayment();
 }
 
+// ---- Rank computation (revealed at end of study) ----
+function computeRank() {
+  const scores = CONFIG.study1ScoresShared;
+  const myScore = STATE.quizScoreShared;
+  // Rank = 1 + number of people who scored strictly higher (1 = best)
+  let above = 0;
+  for (const s of scores) {
+    if (s > myScore) above++;
+  }
+  STATE.rankAmongAll = above + 1;
+  STATE.rankTotalN = scores.length;
+}
+
 // ---- Payment computation ----
 function computePayment() {
   const totalRounds = STATE.rounds.length; // 5 rounds
@@ -3408,6 +3532,9 @@ function computePayment() {
     + STATE.beliefBonusInitial_amount
     + STATE.beliefBonusRound_amount;
 
+  // Compute rank for end-of-study revelation
+  computeRank();
+
   // Submit data then show results
   submitData().then(() => showScreen('results'));
 }
@@ -3423,15 +3550,23 @@ SCREENS.results = () => {
   const beliefRoundLabelB = `Round ${beliefRoundB.roundNum}`;
   const stake = STATE.bsrStakeRound.toFixed(0);
 
+  // Rank revelation
+  const rankPct = ((STATE.rankTotalN - STATE.rankAmongAll) / STATE.rankTotalN * 100).toFixed(0);
+
   container.innerHTML = `
     <div class="screen-header"><h2>Results</h2></div>
 
     ${CONFIG.texts.resultsReveal(payRound.roundNum, payRound.manager)}
 
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px 24px;margin:16px 0;">
+      <h3 style="margin:0 0 10px;color:#166534;">Your Rank</h3>
+      <p style="margin:0;font-size:1.05rem;">On the 6 shared quiz questions, you ranked <strong>#${STATE.rankAmongAll} out of ${STATE.rankTotalN}</strong> participants who previously completed this quiz. This means you scored higher than approximately <strong>${rankPct}%</strong> of participants.</p>
+    </div>
+
     <div class="results-section">
       <h3>Payment Breakdown</h3>
       <div class="payment-line"><span>Show-up fee</span><span>$${CONFIG.showUpFee.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Manager payment (selected: ${roundLabel}, ${payRound.hCount} H × $0.10)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Manager payment (selected: ${roundLabel}, ${payRound.hCount} wins × $0.10)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
       <div class="payment-line"><span>Initial accuracy payment (your guess: ${STATE.belief_0}%)</span><span>$${STATE.beliefBonusInitial_amount.toFixed(2)}</span></div>
       <div class="payment-line"><span>Round accuracy payment (selected: ${beliefRoundLabelB}, your guess: ${beliefValueB}%)</span><span>$${STATE.beliefBonusRound_amount.toFixed(2)}</span></div>
       <div class="payment-total"><span>Total payment</span><span>$${STATE.totalBonus.toFixed(2)}</span></div>
@@ -3489,7 +3624,12 @@ async function submitData() {
     quizScoreShared: quizBreakdown.shared6,                 // 0–6 (SE1, SX1, SX2, SH2, H1, H2) — used for γ*
     quizScoreDistinct: quizBreakdown.distinct,             // 0–6 (E3–E8 if Easy cond; H3–H8 if Hard cond)
     gammaStar: STATE.gammaStar,
-    randomProbShown: STATE.randomProbShown,
+    fixedProbShown: STATE.fixedProbShown,
+    fixedBonusH: STATE.fixedBonusH,
+    fixedBonusFloor: STATE.fixedBonusFloor,
+    fixedBonusCeil: STATE.fixedBonusCeil,
+    roundingDirection: STATE.roundingDirection,
+    fixedBonusDisplayPct: STATE.fixedBonusDisplayPct,
     quizAnswers: JSON.stringify(STATE.quizAnswers),
 
     // Initial beliefs (γ₀ + 7-level confidence elicitation; Beta from γ₀ + κ)
@@ -3501,7 +3641,7 @@ async function submitData() {
 
     // Comprehension: elicited H-probabilities and expected better manager
     elicitedPerfHProb: STATE.elicitedPerfHProb,
-    elicitedRandHProb: STATE.elicitedRandHProb,
+    elicitedFixedHCount: STATE.elicitedFixedHCount,
     elicitedBetterManager: STATE.elicitedBetterManager,
 
     // Rounds — one column per variable per round (flat structure for Google Sheets)
@@ -3555,13 +3695,20 @@ async function submitData() {
     perfChoiceExplanationShown: STATE.perfChoiceExplanationShown ? 1 : 0,
     perfChoiceExplanationRounds: JSON.stringify(STATE.perfChoiceExplanationRounds || []),
     perfChoiceExplanation: STATE.perfChoiceExplanation || '',
-    choseRandomAgainstBeliefRounds: JSON.stringify(STATE.choseRandomAgainstBeliefRounds || []),
-    choseRandomAgainstBeliefText:   STATE.choseRandomAgainstBeliefText || '',
+    choseFixedAgainstBeliefRounds: JSON.stringify(STATE.choseFixedAgainstBeliefRounds || []),
+    choseFixedAgainstBeliefText:   STATE.choseFixedAgainstBeliefText || '',
     chosePerfAgainstBeliefRounds:   JSON.stringify(STATE.chosePerfAgainstBeliefRounds || []),
     chosePerfAgainstBeliefText:     STATE.chosePerfAgainstBeliefText || '',
+    fixedBeliefAdjustRounds:        JSON.stringify(STATE.fixedBeliefAdjustRounds || []),
+    fixedBeliefAdjustExplanationShown: STATE.fixedBeliefAdjustExplanationShown ? 1 : 0,
+    fixedBeliefAdjustExplanationText:  STATE.fixedBeliefAdjustExplanationText || '',
 
     feedbackClarity: STATE.feedbackClarity,
     feedbackComplaints: STATE.feedbackComplaints,
+
+    // Rank revelation
+    rankAmongAll: STATE.rankAmongAll,
+    rankTotalN: STATE.rankTotalN,
 
     // Payment
     selectedPaymentRound: STATE.selectedPaymentRound,
