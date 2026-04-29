@@ -418,7 +418,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwulKku7r_QkdiY_22F9cGJPqa78SJC5QnvKEpOwNawxco_nAP0i0N3-HM3lvv7NYvD/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxfgXi30pPgN00xfQHVQVzsByKIFCQT1XIvOHVpgxoD5EZ4G93eA-QW33WH2wud4V67/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -1199,8 +1199,9 @@ const STATE = {
   belief_0: null,              // Best guess γ₀ at t=0 (0–100 integer; mean of Beta prior; post-instructions, pre-Round-1)
   initialConfidence: null,     // Continuous confidence slider value (0–100; was 1–7 level in pilot)
   initialBeliefEdits: [],      // [{ timestamp, field: 'mu'|'confidence', oldValue, newValue, trigger }]
-  initialAlpha: null,          // Beta α fitted to (P10, P50, P90)
-  initialBeta: null,           // Beta β fitted to (P10, P50, P90)
+  initialKappa: null,          // Beta concentration κ = α + β (mapped from initialConfidence via sliderToKappa)
+  initialAlpha: null,          // Beta α = μ · κ
+  initialBeta: null,           // Beta β = (1 − μ) · κ
 
   // Post-managerInstructions1 H-likelihood elicitation
   elicitedPerfHProb: null,
@@ -1556,9 +1557,13 @@ function requireSliders(sliderIds, warningId) {
  *   κ(slider, μ) = κ_min(μ) · exp((slider/100) · ln(κ_max/κ_min(μ)))
  */
 function sliderToKappa(v, mu) {
-  const muC = Math.max(0.005, Math.min(0.995, mu));
+  // Clamp μ to [0.05, 0.95] for the κ_min floor calculation so that
+  // extreme μ doesn't push κ_min above κ_max (would invert the slider).
+  // The recorded μ itself is unchanged elsewhere.
+  const muC = Math.max(0.05, Math.min(0.95, mu));
   const kMin = Math.max(2, 1 / muC + 0.5, 1 / (1 - muC) + 0.5);
-  const kMax = 120;
+  const kMaxBase = 80; // pilot-15 ~95th pctile; consistent with Bosch-Rosa/Meissner bin resolution
+  const kMax = Math.max(kMaxBase, kMin * 1.5);
   return kMin * Math.exp((v / 100) * Math.log(kMax / kMin));
 }
 
@@ -1611,11 +1616,11 @@ function renderMuConfidenceWidget(defaultMu, stake) {
                  oninput="onInitConfChange(this.value)">
         </div>
         <div style="position:relative;margin:8px 0 0;height:50px;font-size:0.74rem;color:#64748b;">
-          <div style="position:absolute;left:0%;transform:none;text-align:left;width:110px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 0 4px;"></div>Just a guess —<br>could easily be wrong</div>
-          <div style="position:absolute;left:25%;transform:translateX(-50%);text-align:center;width:100px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 auto 4px;"></div>Some sense<br>of the answer</div>
-          <div style="position:absolute;left:50%;transform:translateX(-50%);text-align:center;width:100px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 auto 4px;"></div>Reasonably sure</div>
+          <div style="position:absolute;left:0%;transform:none;text-align:left;width:110px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 0 4px;"></div>No clue at all</div>
+          <div style="position:absolute;left:25%;transform:translateX(-50%);text-align:center;width:100px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 auto 4px;"></div>A rough guess</div>
+          <div style="position:absolute;left:50%;transform:translateX(-50%);text-align:center;width:100px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 auto 4px;"></div>Somewhat sure</div>
           <div style="position:absolute;left:75%;transform:translateX(-50%);text-align:center;width:100px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 auto 4px;"></div>Pretty sure</div>
-          <div style="position:absolute;right:0;transform:none;text-align:right;width:110px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 0 4px auto;"></div>Very sure —<br>fairly set on this</div>
+          <div style="position:absolute;right:0;transform:none;text-align:right;width:110px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 0 4px auto;"></div>Absolutely certain</div>
         </div>
 
         <div id="init-conf-confirm-row" style="display:none;margin-top:14px;text-align:right;">
@@ -2611,6 +2616,7 @@ function submitPreChoiceBelief() {
   const kappa = sliderToKappa(_initConfSlider, muC);
   STATE.belief_0  = mu;
   STATE.initialConfidence = _initConfSlider;       // 0-100 slider value (was 1-7 in pilot)
+  STATE.initialKappa      = kappa;
   STATE.initialAlpha      = muC * kappa;
   STATE.initialBeta       = (1 - muC) * kappa;
   STATE.currentRound = 1;
@@ -3527,10 +3533,11 @@ async function submitData() {
     fixedBonusDisplayPct: STATE.fixedBonusDisplayPct,
     quizAnswers: JSON.stringify(STATE.quizAnswers),
 
-    // Initial beliefs (γ₀ + 7-level confidence elicitation; Beta from γ₀ + κ)
+    // Initial beliefs (γ₀ + continuous confidence slider; Beta from γ₀ + κ)
     initial_belief: STATE.initial_belief,
     belief_0: STATE.belief_0,
     initialConfidence: STATE.initialConfidence,
+    initialKappa: STATE.initialKappa,
     initialAlpha: STATE.initialAlpha,
     initialBeta: STATE.initialBeta,
     initialBeliefEdits: JSON.stringify(STATE.initialBeliefEdits || []),
