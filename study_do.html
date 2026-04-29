@@ -418,7 +418,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxfgXi30pPgN00xfQHVQVzsByKIFCQT1XIvOHVpgxoD5EZ4G93eA-QW33WH2wud4V67/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwuHFGM92WitLIs_YLsr6tVWo3Aa9I6sc_GmUHZ8y9iCeIKs4HwoS5H1O4HjwvMEGzR/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -1099,14 +1099,22 @@ const CONFIG = {
 
     hProbElicitationIntro: `<p>Let's make sure you understand how the two managers work. Answer the questions below.</p>`,
 
-    managerInstructions2a: `<p>There are <strong>5 rounds</strong>. Each round proceeds as follows:</p>
+    managerInstructions2a: (fixedH) => {
+      const fixedPay = (fixedH * 0.10).toFixed(2);
+      return `<p>There are <strong>5 rounds</strong>. Each round proceeds as follows:</p>
       <ol>
         <li><strong>Choose your manager.</strong> You decide whether to receive payments from the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-fixed">Fixed Manager</strong> for this round.</li>
         <li><strong>Receive your payment.</strong> You receive your payment for this round.</li>
         <li><strong>Quiz performance guess:</strong> You can keep or adjust your best guess about beating a randomly picked participant on the quiz.</li>
       </ol>
+      <p><strong>When to adjust your guess:</strong></p>
+      <ul>
+        <li>After a <strong class="eval-performance">Performance Manager</strong> round, you see how many of 10 comparisons you won. That gives you a hint about your quiz performance, so you may want to update your guess.</li>
+        <li>After a <strong class="eval-fixed">Fixed Manager</strong> round, you receive the same fixed payment of $${fixedPay} every round. You don't see anything new about your quiz performance, so your guess should stay the same.</li>
+      </ul>
       <p><strong>Important:</strong> Your quiz performance guess never changes your true chance of winning comparisons under the Performance Manager. Your actual quiz performance is already determined &mdash; your guess is simply your best estimate of how you did.</p>
-`,
+`;
+    },
 
     managerInstructions2b: (roundBsr) => `<ul>
         <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 5 payments you receive from the managers.</li>
@@ -1132,9 +1140,9 @@ const CONFIG = {
       prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
       backScreen: 'managerInstructions2b',
       items: [
-        { text: "After a Performance Manager round, I should consider adjusting my best guess because learning how many comparisons I won can help me form a better guess.", correct: true },
-        { text: "After a Fixed Manager round, I should keep my best guess because the fixed payment cannot help me form a better guess.", correct: true },
-        { text: 'I should adjust my best guess after every round, regardless of which manager I worked with.', correct: false },
+        { text: "After a Performance Manager round, I should adjust my best guess because the number of comparisons I won is a hint about my quiz performance.", correct: true },
+        { text: "After a Fixed Manager round, I should keep my best guess because the fixed payment is not a hint about my quiz performance.", correct: true },
+        { text: "After a Fixed Manager round, I should adjust my best guess because the fixed payment is a hint about my quiz performance.", correct: false },
       ],
     }),
 
@@ -2557,7 +2565,7 @@ SCREENS.comprehensionCheck1 = () => {
 SCREENS.managerInstructions2a = () => {
   container.innerHTML = `
     <div class="screen-header"><h2>Instructions — The Rounds</h2></div>
-    ${CONFIG.texts.managerInstructions2a}
+    ${CONFIG.texts.managerInstructions2a(STATE.fixedBonusH)}
     <div class="nav-row" style="justify-content:space-between;">
       <button class="btn" onclick="showScreen('comprehensionCheck1')">← Back</button>
       <button class="btn btn-primary" onclick="showScreen('managerInstructions2b')">Next →</button>
@@ -2878,9 +2886,10 @@ function roundShowGamma() {
     <h3 class="step-heading">Quiz Performance Guess</h3>
 
     ${chosenMgr === 'performance'
-      ? `<p>The ${mgrNameHTML} payment can <strong>help</strong> you form a better guess about your quiz performance. Your previous guess is pre-selected, you can adjust it or leave as is.</p>
-    <p>Your previous guess about the chance of beating a single randomly picked participant was <strong>${prevGamma}%</strong>. This means you would on average expect to beat <strong>${(prevGamma / 10).toFixed(1)} out of 10</strong> participants. The comparisons show that you beat <strong>${roundData.hCount} out of 10</strong> participants.</p>`
-      : `<p>The ${mgrNameHTML} payment <strong>cannot</strong> help you form a better guess about your quiz performance. Your previous guess is pre-selected, you can adjust it or leave as is.</p>`
+      ? `<p>The ${mgrNameHTML} payment can <strong>help</strong> you form a better guess about your quiz performance.</p>
+    <p>Your previous guess was <strong>${prevGamma}%</strong>, so you expected to beat <strong>${(prevGamma / 10).toFixed(1)} out of 10</strong> participants on average. You actually beat <strong>${roundData.hCount} out of 10</strong>.</p>`
+      : `<p>The ${mgrNameHTML} payment <strong>cannot</strong> help you form a better guess about your quiz performance.</p>
+    <p>Your previous guess was <strong>${prevGamma}%</strong>, so you expected to beat <strong>${(prevGamma / 10).toFixed(1)} out of 10</strong> participants on average.</p>`
     }
 
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
@@ -2889,18 +2898,19 @@ function roundShowGamma() {
         <label>Your best guess:</label>
         <div class="slider-row">
           <input type="range" id="gamma-round-slider" min="0" max="100" value="${prevGamma}" data-touched=""
-                 onpointerdown="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'"
-                 oninput="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'">
+                 onpointerdown="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'; document.getElementById('gamma-nav').style.display = '';"
+                 oninput="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'; document.getElementById('gamma-nav').style.display = '';">
           <div class="slider-value" id="gamma-round-val">${prevGamma}%</div>
         </div>
         <div class="slider-labels"><span>0%</span><span>100%</span></div>
+        <p style="font-size:0.82rem;color:#94a3b8;font-style:italic;margin:10px 0 0;">Click the slider once to confirm or move it to revise.</p>
       </div>
     </div>
 
     <p style="font-size:0.88rem; color:#666;">Reporting your true best guess maximizes your chance of winning the <strong>$${stake}</strong> accuracy prize.</p>
 
     <div id="gamma-slider-warning" class="slider-warning"></div>
-    <div class="nav-row" id="gamma-nav">
+    <div class="nav-row" id="gamma-nav" style="display:none;">
       <button class="btn btn-primary" onclick="roundSubmitGamma()">Next →</button>
     </div>`;
 
