@@ -145,6 +145,10 @@ strong { font-weight: 600; }
 .slider-hidden-thumb::-moz-range-thumb {
   opacity: 0 !important;
 }
+.slider-value-placeholder {
+  color: #f8fafc !important;  /* matches slider-container background — invisible until touched */
+  font-weight: normal !important;
+}
 .slider-warning {
   color: #dc2626; font-size: 0.88rem; margin-top: 4px; display: none;
 }
@@ -414,7 +418,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxOgEmRXm11mh8-zXSktu4SMH-LMEEy3R12ZEXp_NNBEOmLGesDEOKrXsI1LSND1LRO/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwulKku7r_QkdiY_22F9cGJPqa78SJC5QnvKEpOwNawxco_nAP0i0N3-HM3lvv7NYvD/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -1035,7 +1039,7 @@ const CONFIG = {
   // You can edit all participant-facing text below.
   texts: {
 
-    welcome: `Welcome to our study! As a reminder, you must complete this survey on a <strong>desktop computer</strong>. No mobile devices are allowed. Please click next to continue.`,
+    welcome: `Welcome to our study! As a reminder, you must complete this survey on a <strong>desktop or laptop computer</strong>. No mobile devices are allowed. Please click next to continue.`,
 
     consent: {
       title: 'Consent Form',
@@ -1055,7 +1059,7 @@ const CONFIG = {
     },
 
     studyRules: `<p>All instructions and information you receive in this study are <strong>true and accurate</strong>.</p>
-      <p><strong>No AI tools:</strong> The use of AI tools (such as ChatGPT, Copilot, or similar) is strictly prohibited during this study. We trust you to complete this study using only your own reasoning. Please treat this as a commitment to honest participation — your integrity is essential to the quality of our research.</p>`,
+      <p><strong>No AI tools:</strong> The use of AI tools (such as ChatGPT, Copilot, or similar) is strictly prohibited during this study. We trust you to complete this study using only your own reasoning. Please participate honestly — your responses are essential to the quality of our research.</p>`,
 
     quizInstructions: `<p>You will begin by completing a short logic quiz with <strong>12&nbsp;questions</strong>. You will have <strong>10&nbsp;seconds</strong> to solve each question.</p>
       <p><strong>The higher your score, the more you can earn.</strong> So please do your best.</p>
@@ -1068,11 +1072,9 @@ const CONFIG = {
     sampleQuestionFeedbackWrong: `<strong style="color:#dc2626;">Not quite.</strong> The correct answer is now highlighted in green. You will see questions of varying difficulty. If a question feels hard to solve, it is probably a difficult question for everyone. Do your best at all times — the better you perform, the more you can earn.`,
 
     scoreAnnouncement: (score, total) =>
-      `You have solved <strong>${score}/${total}</strong> questions of the logic quiz correctly.
-       <p>In this study, your performance will be compared to other participants based on <strong>6 specific questions that were the same for all participants</strong>.</p>`,
+      `You have solved <strong>${score} out of ${total}</strong> questions of the logic quiz correctly.`,
 
-    beliefElicitationPrompt: `<p>Suppose we randomly pick a participant from a group of 100 previous participants. We compare your scores on the <strong>6 questions that were the same for all participants</strong>.</p>
-      <p>Please give us your best guess about your chance of beating them on these 6 questions (ties decided by a coin flip), and then tell us how confident you are about that guess.</p>`,
+    beliefElicitationPrompt: `<p>Your score on 6 questions that were the same for all participants is compared to that of a randomly picked participant from a group of 100 previous Prolific participants (ties decided by a coin flip).</p>`,
 
     transition: null, // removed — content folded into managerInstructions1
 
@@ -1088,9 +1090,9 @@ const CONFIG = {
     managerInstructions1: (fixedH) => {
       const fixedPay = (fixedH * 0.10).toFixed(2);
       return {
-        intro: `<p>Your quiz performance will now be used to determine some of your earnings. Please read the following instructions carefully. Short questions will help make sure everything is clear.</p>
-          <p>Each round, you choose to work with one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-fixed">Fixed Manager</strong>. Each manager pays you, but they work differently:</p>`,
-        performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> Your score on the 6 shared questions is compared to 10 randomly picked participants from a group of 100 previous participants. You earn <strong>$0.10 for each comparison you win</strong> (ties decided by a coin flip).</li></ul>`,
+        intro: `<p>Your quiz performance may now be used to determine some of your earnings. Please read the following instructions carefully. Short questions will help make sure everything is clear.</p>
+          <p>You will choose to receive payments from one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-fixed">Fixed Manager</strong>. Each manager pays you, but they work differently:</p>`,
+        performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> Your score on the 6 shared questions is compared to 10 randomly picked participants from a group of 100 previous Prolific participants. You earn <strong>$0.10 for each comparison you win</strong> (ties decided by a coin flip).</li></ul>`,
         fixed: `<ul style="margin:0;"><li><strong class="eval-fixed">Fixed Manager:</strong> Does <strong>not</strong> compare you to anyone. You receive a <strong>fixed payment of $${fixedPay}</strong> every round. This amount does not change.</li></ul>`,
       };
     },
@@ -1099,23 +1101,19 @@ const CONFIG = {
 
     managerInstructions2a: `<p>There are <strong>5 rounds</strong>. Each round proceeds as follows:</p>
       <ol>
-        <li><strong>Choose your manager.</strong> You decide whether to work with the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-fixed">Fixed Manager</strong> for this round.</li>
+        <li><strong>Choose your manager.</strong> You decide whether to receive payments from the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-fixed">Fixed Manager</strong> for this round.</li>
         <li><strong>Receive your payment.</strong> You receive your payment for this round.</li>
-        <li><strong>Quiz Performance Guess.</strong> You can keep your best guess or adjust it.</li>
+        <li><strong>Quiz performance guess:</strong> You can keep or adjust your best guess about beating a randomly picked participant on the quiz.</li>
       </ol>
       <p><strong>Important:</strong> Your quiz performance guess never changes your true chance of winning comparisons under the Performance Manager. Your actual quiz performance is already determined &mdash; your guess is simply your best estimate of how you did.</p>
 `,
 
-    managerInstructions2b: (roundBsr) => `<p><strong>Payment.</strong></p>
-      <ul>
+    managerInstructions2b: (roundBsr) => `<ul>
         <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 5 payments you receive from the managers.</li>
         <li><strong>Accuracy payment.</strong> Before the first round and after each round, you can adjust your quiz performance guess or leave it as is. The computer randomly selects <strong>one</strong> of your 6 guesses and scores it for a <strong>$${roundBsr.toFixed(0)} prize</strong>: the more accurate your guess, the higher your chance of winning. Reporting your true best guess maximizes your chance of winning.</li>
       </ul>
 
-      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin:18px 0;">
-        <p style="margin:0 0 10px;font-weight:600;color:#166534;">Rank revelation</p>
-        <p style="margin:0;">At the end of the study, you will learn your <strong>exact rank</strong> among the 100 previous participants. This tells you precisely how you performed relative to others &mdash; regardless of which manager you chose during the rounds.</p>
-      </div>`,
+`,
 
     comprehensionCheck1: (fixedH) => {
       const fixedPay = (fixedH * 0.10).toFixed(2);
@@ -1123,9 +1121,9 @@ const CONFIG = {
         prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
         backScreen: 'managerInstructions1',
         items: [
-          { text: "The Performance Manager compares my score to 10 randomly picked participants from a group of 100. I earn $0.10 per comparison I win.", correct: true },
+          { text: "The Performance Manager compares my score to 10 randomly picked participants from a group of 100 previous Prolific participants. I earn $0.10 per comparison I win.", correct: true },
           { text: `The Fixed Manager always pays me a fixed payment of $${fixedPay} every round. This amount does not change.`, correct: true },
-          { text: "Both managers pay an amount that depends on whether I perform better than 10 randomly picked participants from a group of 100.", correct: false },
+          { text: "Both managers pay an amount that depends on whether I perform better than 10 randomly picked participants from a group of 100 previous Prolific participants.", correct: false },
         ],
       };
     },
@@ -1154,12 +1152,6 @@ const CONFIG = {
     ambiguityUrnReminder: `Urn&nbsp;A = unknown mixture &nbsp;·&nbsp; Urn&nbsp;B = exactly 50&nbsp;white / 50&nbsp;black`,
     ambiguityQuestion: `From which urn would you prefer to draw your ball?`,
 
-    // CEI-II — Curiosity and Exploration Inventory II (Kashdan et al., 2009)
-    curiosityIntro: `Below are statements people use to describe themselves. Please rate each statement for how accurately it reflects the way you <strong>generally</strong> feel and behave.`,
-    curiosityInstructions: `Do not rate what you think you should do, or wish you do, or things you no longer do. Please be as honest as possible.`,
-
-    // SBPS — Short Boredom Proneness Scale (Struk, Carriere, Cheyne, & Danckert, 2015)
-    boredomIntro: `Please rate how much you agree or disagree with each of the following statements as a description of yourself.`,
 
     resultsReveal: (payRoundNum, payRoundMgrId) => {
       const mgrLabel = payRoundMgrId === 'performance'
@@ -1203,9 +1195,9 @@ const STATE = {
   fixedBonusDisplayPct: null, // fixedBonusH * 10 (integer percentage shown on Fixed card)
 
   // Initial beliefs (post-quiz, μ + 7-level confidence elicitation)
-  belief_0: null,              // Best guess γ₀ at t=0 (0–100 integer; mean of Beta prior)
-  belief_preChoice: null,      // Revised guess just before round-1 manager choice (0–100 integer)
-  initialConfidence: null,     // Confidence level (1–7 integer)
+  initial_belief: null,        // Pre-instructions baseline guess (0–100 integer; before BSR / manager instructions)
+  belief_0: null,              // Best guess γ₀ at t=0 (0–100 integer; mean of Beta prior; post-instructions, pre-Round-1)
+  initialConfidence: null,     // Continuous confidence slider value (0–100; was 1–7 level in pilot)
   initialBeliefEdits: [],      // [{ timestamp, field: 'mu'|'confidence', oldValue, newValue, trigger }]
   initialAlpha: null,          // Beta α fitted to (P10, P50, P90)
   initialBeta: null,           // Beta β fitted to (P10, P50, P90)
@@ -1228,10 +1220,6 @@ const STATE = {
   // Post-experiment
   riskPreference: null,
   ambiguityAnswers: { comprehensionAttempts: 0 },
-  // CEI-II (Kashdan et al. 2009): 10 Likert ratings, array of ints 1..5 (or null until answered)
-  curiosityAnswers: new Array(10).fill(null),
-  // SBPS (Struk, Carriere, Cheyne, & Danckert, 2015): 8 Likert ratings, ints 1..7 (or null until answered)
-  boredomAnswers: new Array(8).fill(null),
   // Open-ended follow-ups: triggered when the chosen manager is NOT the one the
   // participant's PRIOR belief γ_{t-1} (or γ₀ for t=1) implied had the higher
   // H-probability. Split into TWO questions by direction of inconsistency.
@@ -1262,12 +1250,9 @@ const STATE = {
   outcomeEarnings: 0,
   totalBonus: 0,
 
-  // Rank revelation (end of study)
-  rankAmongAll: null,         // 1-based rank in the full reference distribution
-  rankTotalN: null,           // total N in reference distribution
-
   // Comprehension check failure tracking
   comprehensionAttempts: {},  // { checkId: numberOfFailedAttempts }
+  comprehensionItemFailures: {},  // { checkId: [ { attempt: N, items: { 0: {checked, correct}, ... } }, ... ] }
 
   // Timestamps
   startTime: null,
@@ -1278,6 +1263,16 @@ const STATE = {
   tabSwitches: [],
   totalFocusLostMs: 0,
   copyAttempts: 0,
+
+  // Visual perception honeypot (AI detection — Pseudo-Ebbinghaus illusion)
+  // Silent log only; not used for in-study exclusion.
+  visualCheck: null,
+
+  // HTML honeypot (AI detection — invisible form field on demographics screen)
+  // Real participants never see / fill this; DOM-scraping form-filler bots will.
+  // Silent log only; not used for in-study exclusion.
+  htmlHoneypotValue: '',
+  htmlHoneypotFilled: false,
 };
 
 
@@ -1413,10 +1408,10 @@ function buildManagerChoiceHTML(round, belief, onChoose) {
   const badge = (text) => `<span style="display:inline-block;background:#f1f5f9;color:#1e293b;border:1px solid #cbd5e1;border-radius:4px;padding:1px 6px;font-weight:700;">${text}</span>`;
 
   const fixedPay = (fixedH * CONFIG.payPerH).toFixed(2);
-  const expectedWins = Math.round(belief / 10);
-  const expectedPay = (expectedWins * CONFIG.payPerH).toFixed(2);
+  const expectedWins = (belief / 10).toFixed(1);
+  const expectedPay = (belief / 10 * CONFIG.payPerH).toFixed(2);
 
-  const perfContext = `Your current quiz performance guess is ${badge(belief + '%')}, which means you expect to win about ${badge(expectedWins + ' out of 10')} comparisons and earn ${badge('$' + expectedPay)}.`;
+  const perfContext = `Your current quiz performance guess is ${badge(belief + '%')}, which means you would on average expect to beat ${badge(expectedWins + ' out of 10')} randomly picked participants and earn ${badge('$' + expectedPay)}.`;
   const fixedContext = `The Fixed Manager pays you ${badge('$' + fixedPay)}.`;
 
   function cardHTML(mgr) {
@@ -1523,6 +1518,7 @@ function betaCDFInverse(p, a, b) {
 
 function markSliderTouched(slider) {
   slider.classList.remove('slider-untouched');
+  slider.classList.remove('slider-hidden-thumb');
   slider.dataset.touched = '1';
   const warn = slider.closest('.beta-widget, .screen-content, .card')?.querySelector('.slider-warning');
   if (warn) {
@@ -1548,29 +1544,47 @@ function requireSliders(sliderIds, warningId) {
    PHASE 1 WIDGET — μ + 7-level confidence (from experiment_new.html)
    ============================================================== */
 
-const CONF_LEVELS = [
-  { label: 'Not sure\nat all', kappa: 3   },
-  { label: 'Very\nunsure',     kappa: 6   },
-  { label: 'A little\nsure',   kappa: 12  },
-  { label: 'Moderately\nsure', kappa: 20  },
-  { label: 'Fairly\nsure',     kappa: 35  },
-  { label: 'Quite\nsure',      kappa: 60  },
-  { label: 'Very\nsure',       kappa: 120 },
-];
+/* ---- Continuous confidence slider → κ mapping ----
+ * The slider runs 0–100. It maps log-linearly to the precision parameter κ
+ * of a Beta(α, β) distribution, with a μ-adaptive minimum that ensures
+ * α > 1 AND β > 1 (i.e., a unimodal prior with an interior mode — no
+ * pathological U-shapes). This restriction follows Engelberg, Manski &
+ * Williams (2009) and Gonzalez-Fernandez, Bosch-Rosa & Meissner (2025).
+ *
+ *   κ_min(μ) = max(2, 1/μ + 0.5, 1/(1-μ) + 0.5)
+ *   κ_max    = 120
+ *   κ(slider, μ) = κ_min(μ) · exp((slider/100) · ln(κ_max/κ_min(μ)))
+ */
+function sliderToKappa(v, mu) {
+  const muC = Math.max(0.005, Math.min(0.995, mu));
+  const kMin = Math.max(2, 1 / muC + 0.5, 1 / (1 - muC) + 0.5);
+  const kMax = 120;
+  return kMin * Math.exp((v / 100) * Math.log(kMax / kMin));
+}
+
+/* ---- Beta-Binomial PMF — predictive probability of k wins out of n ---- */
+function logComb(n, k) {
+  return logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1);
+}
+function betaBinomialPMF(k, n, alpha, beta) {
+  return Math.exp(logComb(n, k) + logBetaFn(alpha + k, beta + n - k) - logBetaFn(alpha, beta));
+}
 
 let _initMuTouched = false;
-let _initConfidence = null;   // 0–6 index, null until chosen
+let _initConfSlider = null;   // 0–100 slider value, null until touched
+let _initConfTouched = false;
 let _initReviewShown = false;
 
-function renderMuConfidenceWidget(defaultMu) {
+function renderMuConfidenceWidget(defaultMu, stake) {
   const mu0 = defaultMu == null ? 50 : defaultMu;
+  const stakeStr = stake != null ? stake.toFixed(0) : '1';
   return `
     <div id="mu-conf-widget">
 
       <!-- Step 1: μ slider -->
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 22px;margin:16px 0;">
-        <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;font-weight:700;margin-bottom:8px;">Step 1 — Your best guess</div>
-        <p style="margin:0 0 12px;font-size:0.97rem;">What is the percent chance you would beat a randomly picked participant on the quiz?</p>
+        <p style="margin:0 0 14px;">What do you think is the percent chance that you beat a randomly picked participant on the quiz?</p>
+        <label style="font-weight:500;">Your best guess:</label>
         <div class="slider-row">
           <input type="range" id="init-mu-slider" min="0" max="100" value="${mu0}" data-touched="1"
                  oninput="onInitMuChange(this.value)">
@@ -1580,33 +1594,58 @@ function renderMuConfidenceWidget(defaultMu) {
           <span>0%</span>
           <span>100%</span>
         </div>
-        <div id="init-mu-confirm-row" style="display:none;margin-top:14px;text-align:right;">
-          <button class="btn btn-primary" onclick="confirmInitMu()">Confirm best guess →</button>
+      </div>
+
+      <p style="font-size:0.88rem;color:#666;">Reporting your true best guess maximizes your chance of winning the <strong>$${stakeStr}</strong> accuracy prize.</p>
+
+      <div id="init-mu-confirm-row" style="margin-top:14px;text-align:right;">
+        <button class="btn btn-primary" onclick="confirmInitMu()">Confirm best guess &rarr;</button>
+      </div>
+
+      <!-- Step 2: continuous confidence slider (hidden until μ confirmed) -->
+      <div id="init-conf-wrap" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 22px;margin:16px 0;">
+        <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;font-weight:700;margin-bottom:8px;">Step 2 — How sure are you?</div>
+        <p style="margin:0 0 12px;font-size:0.97rem;">How sure are you about your best guess?</p>
+        <div class="slider-row">
+          <input type="range" id="init-conf-slider" min="0" max="100" value="50"
+                 oninput="onInitConfChange(this.value)">
+        </div>
+        <div style="position:relative;margin:8px 0 0;height:50px;font-size:0.74rem;color:#64748b;">
+          <div style="position:absolute;left:0%;transform:none;text-align:left;width:110px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 0 4px;"></div>Just a guess —<br>could easily be wrong</div>
+          <div style="position:absolute;left:25%;transform:translateX(-50%);text-align:center;width:100px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 auto 4px;"></div>Some sense<br>of the answer</div>
+          <div style="position:absolute;left:50%;transform:translateX(-50%);text-align:center;width:100px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 auto 4px;"></div>Reasonably sure</div>
+          <div style="position:absolute;left:75%;transform:translateX(-50%);text-align:center;width:100px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 auto 4px;"></div>Pretty sure</div>
+          <div style="position:absolute;right:0;transform:none;text-align:right;width:110px;line-height:1.25;"><div style="width:1px;height:6px;background:#cbd5e1;margin:0 0 4px auto;"></div>Very sure —<br>fairly set on this</div>
+        </div>
+
+        <div id="init-conf-confirm-row" style="display:none;margin-top:14px;text-align:right;">
+          <button class="btn btn-primary" onclick="confirmInitConf()">See what this means &rarr;</button>
         </div>
       </div>
 
-      <!-- Step 2: confidence (hidden until μ confirmed) -->
-      <div id="init-conf-wrap" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 22px;margin:16px 0;">
-        <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;font-weight:700;margin-bottom:8px;">Step 2 — How confident are you?</div>
-        <p style="margin:0 0 12px;font-size:0.97rem;">How sure are you about your best guess?</p>
-        <div id="init-conf-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;"></div>
-      </div>
-
-      <!-- Review panel (hidden until confidence chosen) -->
+      <!-- Review panel (hidden until confidence confirm clicked) -->
       <div id="init-review-wrap" style="display:none;margin:16px 0;">
         <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:22px 24px;">
-          <h3 style="font-size:0.97rem;font-weight:700;color:#1e293b;margin:0 0 16px;">Review your answer</h3>
-          <canvas id="init-beta-canvas" style="display:block;width:100%;height:180px;"></canvas>
-          <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:0.77rem;color:#64748b;margin:8px 0 14px;">
-            <span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:3px;background:#2563eb;border-radius:2px;"></span>Best guess (μ)</span>
-            <span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;border-top:2.5px dashed #94a3b8;"></span>P₁₀ / P₉₀</span>
-            <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:2px;"></span>80% credible region</span>
-          </div>
-          <div id="init-stats-block" style="font-size:0.93rem;line-height:1.85;color:#334155;border-top:1px solid #e2e8f0;padding-top:14px;"></div>
+          <h3 style="font-size:0.97rem;font-weight:700;color:#1e293b;margin:0 0 8px;">Does this match what you think?</h3>
+          <p style="font-size:0.92rem;color:#475569;margin:0 0 14px;">
+            Given your best guess and how sure you are, you would on average expect to beat
+            <strong id="init-expect-out-of-10" style="font-size:1.05rem;color:#1e293b;background:#e0f2fe;padding:1px 6px;border-radius:4px;">${(mu0 / 10).toFixed(1)}</strong>
+            out of 10 randomly picked participants when you choose the Performance Manager. Here's how likely each outcome would be:
+          </p>
+          <table style="width:100%;border-collapse:collapse;font-size:0.92rem;margin-top:4px;">
+            <thead>
+              <tr>
+                <th style="text-align:left;color:#64748b;font-weight:600;font-size:0.78rem;padding:4px 8px;border-bottom:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.04em;width:130px;">You beat</th>
+                <th style="border-bottom:1px solid #e2e8f0;"></th>
+                <th style="text-align:right;color:#64748b;font-weight:600;font-size:0.78rem;padding:4px 8px;border-bottom:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:0.04em;width:50px;">Chance</th>
+              </tr>
+            </thead>
+            <tbody id="init-outcome-tbody"></tbody>
+          </table>
           <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;" id="init-confirm-row">
-            <button class="btn btn-primary" onclick="submitInitialBeliefs()">Yes, this matches what I think — submit</button>
-            <button class="btn btn-secondary" onclick="reviseInitialBeliefs()">No, let me revise</button>
+            <button class="btn btn-primary" onclick="submitPreChoiceBelief()">This matches what I think</button>
+            <button class="btn btn-secondary" onclick="reviseInitialBeliefs()">Let me revise this</button>
           </div>
         </div>
       </div>
@@ -1616,21 +1655,12 @@ function renderMuConfidenceWidget(defaultMu) {
 
 function initMuConfidenceWidget(defaultMu) {
   _initMuTouched = false;
-  _initConfidence = null;
+  _initConfSlider = null;
+  _initConfTouched = false;
   _initReviewShown = false;
   STATE.initialBeliefEdits = [];
-  const grid = document.getElementById('init-conf-grid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  CONF_LEVELS.forEach((lv, i) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.id = 'init-conf-' + i;
-    btn.style.cssText = 'padding:10px 4px 8px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:0.76rem;text-align:center;line-height:1.35;transition:all 0.15s;color:#475569;font-family:inherit;';
-    btn.innerHTML = `<span style="display:block;font-size:1.05rem;font-weight:700;margin-bottom:3px;">${i + 1}</span>${lv.label.replace('\n', '<br>')}`;
-    btn.onclick = () => selectInitConf(i);
-    grid.appendChild(btn);
-  });
+  const cs = document.getElementById('init-conf-slider');
+  if (cs) cs.value = 50;
 }
 
 function onInitMuChange(val) {
@@ -1659,51 +1689,73 @@ function confirmInitMu() {
   document.getElementById('init-conf-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function selectInitConf(idx) {
-  const prev = _initConfidence;
-  _initConfidence = idx;
-
-  for (let i = 0; i < 7; i++) {
-    const btn = document.getElementById('init-conf-' + i);
-    if (!btn) continue;
-    const sel = (i === idx);
-    btn.style.borderColor = sel ? '#2563eb' : '#e2e8f0';
-    btn.style.background  = sel ? '#eff6ff' : '#fff';
-    btn.style.color       = sel ? '#1d4ed8' : '#475569';
-    btn.style.fontWeight  = sel ? '600' : '';
-  }
+function onInitConfChange(val) {
+  const prev = _initConfSlider;
+  const now = parseInt(val);
+  _initConfSlider = now;
 
   if (_initReviewShown && prev !== null) {
     STATE.initialBeliefEdits.push({
       timestamp: Date.now(), field: 'confidence',
-      oldValue: prev, newValue: idx, trigger: 'live',
+      oldValue: prev, newValue: now, trigger: 'live',
     });
   }
 
-  if (!_initReviewShown) {
-    _initReviewShown = true;
-    document.getElementById('init-review-wrap').style.display = '';
-    requestAnimationFrame(() => requestAnimationFrame(updateInitReview));
-  } else {
+  // First touch: reveal confirm button (review stays hidden until click)
+  if (!_initConfTouched) {
+    _initConfTouched = true;
+    document.getElementById('init-conf-confirm-row').style.display = '';
+  }
+
+  // Once review is shown (after confirm click), keep it live-updated
+  if (_initReviewShown) {
     updateInitReview();
   }
+}
+
+function confirmInitConf() {
+  document.getElementById('init-conf-confirm-row').style.display = 'none';
+  _initReviewShown = true;
+  document.getElementById('init-review-wrap').style.display = '';
+  requestAnimationFrame(() => requestAnimationFrame(updateInitReview));
+  document.getElementById('init-review-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function getInitParams() {
   const muRaw = parseInt(document.getElementById('init-mu-slider').value);
   const muClamped = Math.max(0.005, Math.min(0.995, muRaw / 100));
-  const kappa = CONF_LEVELS[_initConfidence].kappa;
-  return { muRaw, mu: muClamped, alpha: muClamped * kappa, beta: (1 - muClamped) * kappa, kappa };
+  const sliderVal = _initConfSlider !== null ? _initConfSlider : 50;
+  const kappa = sliderToKappa(sliderVal, muClamped);
+  return { muRaw, mu: muClamped, alpha: muClamped * kappa, beta: (1 - muClamped) * kappa, kappa, sliderVal };
 }
 
 function updateInitReview() {
-  if (_initConfidence === null) return;
-  const { mu, alpha, beta } = getInitParams();
-  const p10 = betaCDFInverse(0.1, alpha, beta);
-  const p90 = betaCDFInverse(0.9, alpha, beta);
-  const pAbove50 = 1 - betaCDF(0.5, alpha, beta);
-  drawInitCurve(alpha, beta, mu, p10, p90);
-  updateInitStats(mu, p10, p90, pAbove50);
+  if (_initConfSlider === null) return;
+  const { muRaw, alpha, beta } = getInitParams();
+  const expectEl = document.getElementById('init-expect-out-of-10');
+  if (expectEl) expectEl.textContent = (muRaw / 10).toFixed(1);
+  renderOutcomeTable(alpha, beta, 10);
+}
+
+function renderOutcomeTable(alpha, beta, n) {
+  const probs = [];
+  for (let k = 0; k <= n; k++) probs.push(betaBinomialPMF(k, n, alpha, beta));
+  const maxP = Math.max(...probs);
+  const tbody = document.getElementById('init-outcome-tbody');
+  if (!tbody) return;
+  let html = '';
+  for (let k = 0; k <= n; k++) {
+    const pct = probs[k] * 100;
+    const barW = maxP > 0 ? (probs[k] / maxP) * 100 : 0;
+    const pctStr = pct < 0.5 ? '<1%' : pct.toFixed(0) + '%';
+    html += `
+      <tr>
+        <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;color:#475569;width:130px;">${k} of ${n}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;"><div style="height:14px;background:#2563eb;border-radius:3px;min-width:1px;width:${barW}%;"></div></td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right;color:#1e293b;font-variant-numeric:tabular-nums;font-weight:600;width:50px;">${pctStr}</td>
+      </tr>`;
+  }
+  tbody.innerHTML = html;
 }
 
 function updateInitStats(mu, p10, p90, pAbove50) {
@@ -1848,11 +1900,11 @@ SCREENS.welcome = () => {
   container.innerHTML = `
     <div class="screen-header"><h2>Welcome</h2></div>
     <p>Welcome to our study! Before we begin, please note the following:</p>
-    <p><strong>This study must be completed on a desktop computer.</strong> If you are using a mobile device or tablet, you will be excluded and will not receive payment. Please close this page and reopen it on a desktop computer.</p>
+    <p><strong>This study must be completed on a desktop or laptop computer.</strong> If you are using a mobile device or tablet, you will be excluded and will not receive payment. Please close this page and reopen it on a desktop or laptop computer.</p>
     ${CONFIG.texts.studyRules}
     <div class="consent-row">
       <input type="checkbox" id="device-check" onchange="document.getElementById('device-btn').disabled = !this.checked">
-      <label for="device-check">I confirm that I am using a desktop computer and agree to follow the rules above.</label>
+      <label for="device-check">I confirm that I am using a desktop or laptop computer and agree to follow the rules above.</label>
     </div>
     <div class="nav-row">
       <button class="btn btn-primary" id="device-btn" disabled onclick="showScreen('consent')">Next →</button>
@@ -1881,6 +1933,99 @@ SCREENS.consent = () => {
       <button class="btn btn-primary" id="consent-btn" disabled onclick="showScreen('quizInstructions')">I Agree — Next →</button>
     </div>`;
   updateProgress(0.03);
+};
+
+// ---- 1.2 Visual Check (Pseudo-Ebbinghaus AI honeypot) ----
+// Silent log only — answers are recorded to STATE.visualCheck for offline analysis.
+// Does NOT block participants on failure. Two trials.
+//
+// Design: each trial shows two central circles of clearly different sizes
+// surrounded by smaller circles in an Ebbinghaus-like arrangement.
+// Humans easily see which central circle is larger.
+// LLM-based agents tend to pattern-match to the classic Ebbinghaus illusion
+// (where central circles are equal-sized) and incorrectly answer "same size".
+// See Anders et al., Communications Psychology 4:20 (2026).
+SCREENS.visualCheck = () => {
+  const trials = [
+    // Trial 1: B (right) is larger; surround pattern reinforces classic illusion cue
+    { id: 1, leftR: 28, rightR: 38, leftSurround: 22, rightSurround: 10, correct: 'right' },
+    // Trial 2: A (left) is larger; surround pattern flipped
+    { id: 2, leftR: 38, rightR: 28, leftSurround: 10, rightSurround: 22, correct: 'left' },
+  ];
+
+  const _t = window._visualCheckState = {
+    trialIndex: 0,
+    startTime: Date.now(),
+    trialStart: null,
+    trialResults: [],
+  };
+
+  function svgEbbinghaus(centerR, surroundR, cx, cy) {
+    const ringR = centerR + surroundR + 14; // gap between center and surround
+    let surround = '';
+    for (let k = 0; k < 8; k++) {
+      const angle = (k / 8) * 2 * Math.PI;
+      const x = cx + ringR * Math.cos(angle);
+      const y = cy + ringR * Math.sin(angle);
+      surround += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${surroundR}" fill="#94a3b8"/>`;
+    }
+    return surround + `<circle cx="${cx}" cy="${cy}" r="${centerR}" fill="#1e40af"/>`;
+  }
+
+  function renderTrial(i) {
+    const t = trials[i];
+    _t.trialStart = Date.now();
+    container.innerHTML = `
+      <div class="screen-header"><h2>Visual Check</h2></div>
+      <p>Look at the two blue central circles below. Which one is larger?</p>
+      <p style="font-size:0.85rem;color:#64748b;margin-bottom:8px;">Question ${i + 1} of ${trials.length}</p>
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:24px;margin:14px 0;text-align:center;">
+        <svg viewBox="0 0 500 220" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:500px;height:auto;display:block;margin:0 auto;">
+          ${svgEbbinghaus(t.leftR, t.leftSurround, 130, 110)}
+          ${svgEbbinghaus(t.rightR, t.rightSurround, 370, 110)}
+          <text x="130" y="210" text-anchor="middle" font-size="15" font-weight="700" fill="#475569">A</text>
+          <text x="370" y="210" text-anchor="middle" font-size="15" font-weight="700" fill="#475569">B</text>
+        </svg>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-choice" onclick="recordVisualCheck('left')" style="min-width:140px;">A is larger</button>
+        <button class="btn btn-choice" onclick="recordVisualCheck('same')" style="min-width:140px;">Same size</button>
+        <button class="btn btn-choice" onclick="recordVisualCheck('right')" style="min-width:140px;">B is larger</button>
+      </div>`;
+  }
+
+  window.recordVisualCheck = (answer) => {
+    const t = trials[_t.trialIndex];
+    const rt = Date.now() - _t.trialStart;
+    _t.trialResults.push({
+      trial: t.id,
+      leftR: t.leftR,
+      rightR: t.rightR,
+      leftSurround: t.leftSurround,
+      rightSurround: t.rightSurround,
+      correct: t.correct,
+      answer: answer,
+      isCorrect: answer === t.correct,
+      responseTimeMs: rt,
+    });
+
+    _t.trialIndex++;
+    if (_t.trialIndex < trials.length) {
+      renderTrial(_t.trialIndex);
+    } else {
+      // Persist to STATE and silently proceed (no blocking on failure)
+      STATE.visualCheck = {
+        trials: _t.trialResults,
+        totalCorrect: _t.trialResults.filter(r => r.isCorrect).length,
+        totalTrials: trials.length,
+        totalDurationMs: Date.now() - _t.startTime,
+      };
+      computePayment();
+    }
+  };
+
+  renderTrial(0);
+  updateProgress(0.96);
 };
 
 // ---- 1.3 Quiz Instructions ----
@@ -1939,6 +2084,9 @@ SCREENS.sampleQuestion = () => {
     <div id="sample-feedback" style="margin-top:12px;"></div>
     <div class="nav-row" id="sample-submit-nav" style="display:none;">
       <button class="btn btn-primary" id="sample-submit-btn" onclick="submitSampleQuestion()">Submit answer</button>
+    </div>
+    <div id="sample-timer-warning" style="display:none;margin-top:12px;padding:12px 16px;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;font-size:0.9rem;color:#92400e;">
+      <strong>Reminder:</strong> Each question has a <strong>10-second time limit</strong>. A timer will count down at the top of the screen. If time runs out, the question is counted as incorrect.
     </div>
     <div class="nav-row" id="sample-nav" style="display:none;">
       <button class="btn btn-primary" onclick="startQuiz()">Start Quiz →</button>
@@ -2005,6 +2153,8 @@ function submitSampleQuestion() {
   // Hide Submit button, reveal Start Quiz button
   const submitNav = document.getElementById('sample-submit-nav');
   if (submitNav) submitNav.style.display = 'none';
+  const timerWarn = document.getElementById('sample-timer-warning');
+  if (timerWarn) timerWarn.style.display = '';
   const nav = document.getElementById('sample-nav');
   if (nav) nav.style.display = '';
 }
@@ -2229,30 +2379,38 @@ function finishQuiz() {
   showScreen('scoreAndBelief');
 }
 
-// ---- 1.18 Score and Belief Elicitation (μ + 7-level confidence) ----
+// ---- 1.18 Score and Belief Elicitation (point belief only; confidence moved to pre-choice) ----
 SCREENS.scoreAndBelief = () => {
   container.innerHTML = `
     <div class="screen-header"><h2>Your Score</h2></div>
     <p>${CONFIG.texts.scoreAnnouncement(STATE.quizScore, CONFIG.numQuizQuestions)}</p>
     ${CONFIG.texts.beliefElicitationPrompt}
 
-    ${renderMuConfidenceWidget(50)}`;
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
+      <p style="margin:0 0 8px;">Suppose we randomly pick a participant from this group of 100. What do you think is the percent chance that you beat a randomly picked participant on the quiz?</p>
+      <p style="margin:0 0 14px;"><strong>Your score is shown above. Please consider it carefully before making your guess.</strong></p>
+      <div class="slider-container" style="margin:0;">
+        <label>Your best guess:</label>
+        <div class="slider-row">
+          <input type="range" id="init-mu-slider" min="0" max="100" value="50" class="slider-hidden-thumb"
+                 onpointerdown="markSliderTouched(this); const v=document.getElementById('init-mu-val'); v.classList.remove('slider-value-placeholder'); v.textContent = this.value + '%'; document.getElementById('init-mu-submit-row').style.display = '';"
+                 oninput="markSliderTouched(this); const v=document.getElementById('init-mu-val'); v.classList.remove('slider-value-placeholder'); v.textContent = this.value + '%'; document.getElementById('init-mu-submit-row').style.display = '';">
+          <div class="slider-value slider-value-placeholder" id="init-mu-val">—</div>
+        </div>
+        <div class="slider-labels"><span>0%</span><span>100%</span></div>
+      </div>
+    </div>
 
-  // Initialize the widget after the DOM is ready
-  requestAnimationFrame(() => initMuConfidenceWidget(50));
+    <div class="nav-row" id="init-mu-submit-row" style="display:none;">
+      <button class="btn btn-primary" onclick="submitInitialBeliefs()">Submit &rarr;</button>
+    </div>`;
 
   updateProgress(0.32);
 };
 
 function submitInitialBeliefs() {
-  if (_initConfidence === null) return; // guard: can only be called from review panel
   const mu = parseInt(document.getElementById('init-mu-slider').value);
-  const kappa = CONF_LEVELS[_initConfidence].kappa;
-  const muC = Math.max(0.005, Math.min(0.995, mu / 100));
-  STATE.belief_0          = mu;
-  STATE.initialConfidence = _initConfidence + 1;   // store as 1–7
-  STATE.initialAlpha      = muC * kappa;
-  STATE.initialBeta       = (1 - muC) * kappa;
+  STATE.initial_belief = mu;
   showScreen('managerInstructions1');
 }
 
@@ -2265,7 +2423,7 @@ SCREENS.managerInstructions1 = () => {
     ${t.performance}
 
     <div class="info-panel" style="margin:14px 0;">
-      <p style="margin:0;"><strong>Reminder:</strong> You guessed a <strong>${STATE.belief_0}%</strong> chance of beating a randomly picked participant. This means you would expect to win about <strong>${Math.round(STATE.belief_0 / 10)} out of 10</strong> comparisons (<strong>$${(Math.round(STATE.belief_0 / 10) * 0.10).toFixed(2)}</strong>).</p>
+      <p style="margin:0;"><strong>Reminder:</strong> You guessed a <strong>${STATE.initial_belief}%</strong> chance of beating a randomly picked participant. This means you would on average expect to beat <strong>${(STATE.initial_belief / 10).toFixed(1)} out of 10</strong> randomly picked participants (<strong>$${(STATE.initial_belief / 10 * 0.10).toFixed(2)}</strong>).</p>
     </div>
 
     ${t.fixed}
@@ -2279,14 +2437,14 @@ SCREENS.managerInstructions1 = () => {
 // ---- H-Probability Elicitation ----
 SCREENS.hProbElicitation = () => {
   container.innerHTML = `
-    <div class="screen-header"><h2>Understanding the Probabilities</h2></div>
+    <div class="screen-header"><h2>Check Your Understanding</h2></div>
     ${CONFIG.texts.hProbElicitationIntro}
 
     <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
       <p style="margin:0 0 12px;"><strong>1.</strong> According to your guess about your quiz performance, which payment do you expect to receive from the <strong class="eval-performance">Performance Manager</strong>?</p>
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:1rem;color:#333;">$</span>
-        <input type="number" id="perf-h-input" min="0" max="1" step="0.10" placeholder="0.00" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
+        <input type="number" id="perf-h-input" min="0" max="1" step="0.01" placeholder="0.00" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
       </div>
     </div>
 
@@ -2363,8 +2521,8 @@ function submitHProbElicitation() {
   STATE.elicitedFixedHCount = randVal;     // now: dollar amount from Fixed
   STATE.elicitedBetterManager = window._selectedBetterManager;
 
-  // Q1 correct answer: round(belief_0 / 10) wins × $0.10
-  const correctPerfPay = +(Math.round(STATE.belief_0 / 10) * 0.10).toFixed(2);
+  // Q1 correct answer: (initial_belief / 10) wins × $0.10 (decimal expected wins)
+  const correctPerfPay = +(STATE.initial_belief / 10 * 0.10).toFixed(2);
   // Q2 correct answer: fixedBonusH × $0.10
   const correctFixedPay = +(STATE.fixedBonusH * 0.10).toFixed(2);
   // "Better manager" comparison
@@ -2405,7 +2563,7 @@ SCREENS.managerInstructions2a = () => {
 // ---- Instructions Page 2b: Payment & Informativeness ----
 SCREENS.managerInstructions2b = () => {
   container.innerHTML = `
-    <div class="screen-header"><h2>Instructions — Payment &amp; Informativeness</h2></div>
+    <div class="screen-header"><h2>Instructions — Payment</h2></div>
     ${CONFIG.texts.managerInstructions2b(STATE.bsrStake)}
     <div class="nav-row" style="justify-content:space-between;">
       <button class="btn" onclick="showScreen('managerInstructions2a')">← Back</button>
@@ -2414,7 +2572,7 @@ SCREENS.managerInstructions2b = () => {
   updateProgress(0.48);
 };
 
-// ---- Comprehension Check 2: Payment, Updating & Rank ----
+// ---- Comprehension Check 2: Payment & Updating ----
 SCREENS.comprehensionCheck2 = () => {
   renderComprehensionCheck(CONFIG.texts.comprehensionCheck2(STATE.bsrStake), () => {
     showScreen('preChoiceBelief');
@@ -2422,54 +2580,53 @@ SCREENS.comprehensionCheck2 = () => {
   updateProgress(0.52);
 };
 
-// ---- Ready to Begin ----
-// ---- Pre-Choice Belief Re-Elicitation (before Round 1) ----
+// ---- Pre-Choice Belief Re-Elicitation + Confidence (before Round 1) ----
 SCREENS.preChoiceBelief = () => {
-  const prevBelief = STATE.belief_0;
+  const prevBelief = STATE.initial_belief;
   const stake = CONFIG.beliefBonusStake;
 
   container.innerHTML = `
-    <div class="screen-header"><h2>Quiz Performance Guess</h2></div>
+    <div class="screen-header"><h2>Your Best Guess</h2></div>
 
-    <p>You're about to begin 5 rounds. Each round you will choose your manager, receive your payment, and keep or adjust your best guess about the chance of beating a randomly picked participant on the six shared quiz questions.</p>
+    <p>Now that you understand how the managers work, please review your quiz performance guess before we begin with the first round.</p>
 
-    <p>Remember, you solved <strong>${STATE.quizScore} out of ${CONFIG.quizQuestionsShared.length + (STATE.quizCondition === 'easy' ? CONFIG.quizQuestionsEasyOnly.length : CONFIG.quizQuestionsHardOnly.length)}</strong> quiz questions correctly.</p>
+    <p>Remember, you solved <strong>${STATE.quizScore} out of ${CONFIG.quizQuestionsShared.length + (STATE.quizCondition === 'easy' ? CONFIG.quizQuestionsEasyOnly.length : CONFIG.quizQuestionsHardOnly.length)}</strong> quiz questions correctly. Your performance is compared to others based on the 6 questions that were the same for all participants.</p>
 
     <p>Forming your best guess about your quiz performance helps you understand which payments you can expect from the Performance Manager. Your guess never changes your true chance of winning comparisons &mdash; that depends on how you actually compare to others on the quiz.</p>
 
     <p>Your previous guess is pre-selected. You can adjust it or leave as is.</p>
 
-    <p><strong>What is the percent chance you beat a randomly picked participant on the quiz?</strong></p>
+    ${renderMuConfidenceWidget(prevBelief, stake)}`;
 
-    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
-      <div class="slider-container" style="margin:0;">
-        <label>Your best guess:</label>
-        <div class="slider-row">
-          <input type="range" id="prechoice-slider" min="0" max="100" value="${prevBelief}"
-                 oninput="document.getElementById('prechoice-val').textContent = this.value + '%'; document.getElementById('prechoice-expect').textContent = Math.round(this.value / 10);">
-          <div class="slider-value" id="prechoice-val">${prevBelief}%</div>
-        </div>
-        <div class="slider-labels"><span>0%</span><span>100%</span></div>
-      </div>
-    </div>
-
-    <p style="font-size:0.88rem;color:#555;font-style:italic;">This means that under the Performance Manager, where your score is compared to 10 randomly picked participants, you would expect to beat about <strong id="prechoice-expect" style="font-size:1.1rem;color:#1e293b;background:#e0f2fe;padding:1px 6px;border-radius:4px;">${Math.round(prevBelief / 10)}</strong> out of 10.</p>
-
-    <p style="font-size:0.88rem;color:#666;">Reporting your true best guess maximizes your chance of winning the <strong>$${stake.toFixed(0)}</strong> accuracy prize.</p>
-
-    <div class="nav-row">
-      <button class="btn btn-primary" onclick="submitPreChoiceBelief()">Continue &rarr;</button>
-    </div>`;
+  // Initialize the widget after the DOM is ready
+  requestAnimationFrame(() => initMuConfidenceWidget(prevBelief));
 
   updateProgress(0.57);
 };
 
 function submitPreChoiceBelief() {
-  const slider = document.getElementById('prechoice-slider');
-  STATE.belief_preChoice = parseInt(slider.value);
+  if (_initConfSlider === null) return; // guard: can only be called from review panel
+  const mu = parseInt(document.getElementById('init-mu-slider').value);
+  const muC = Math.max(0.005, Math.min(0.995, mu / 100));
+  const kappa = sliderToKappa(_initConfSlider, muC);
+  STATE.belief_0  = mu;
+  STATE.initialConfidence = _initConfSlider;       // 0-100 slider value (was 1-7 in pilot)
+  STATE.initialAlpha      = muC * kappa;
+  STATE.initialBeta       = (1 - muC) * kappa;
   STATE.currentRound = 1;
-  showRoundScreen();
+  showScreen('round1Transition');
 }
+
+// ---- Round 1 transition (between pre-choice belief submission and Round 1) ----
+SCREENS.round1Transition = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Round 1 begins</h2></div>
+    <p>You will now choose between the <strong class="eval-performance">Performance Manager</strong> and the <strong class="eval-fixed">Fixed Manager</strong> for Round 1.</p>
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="showRoundScreen()">Begin Round 1 &rarr;</button>
+    </div>`;
+  updateProgress(0.55);
+};
 
 function renderComprehensionCheck(checkConfig, onPass, checkId) {
   const { prompt, items, backScreen } = checkConfig;
@@ -2486,7 +2643,7 @@ function renderComprehensionCheck(checkConfig, onPass, checkId) {
         </label>
       `).join('')}
     </div>
-    <div class="error-msg" id="check-error">Some answers are incorrect.${attempts === 0 ? ' Please review and try again. You may go back to re-read the instructions.' : ''}</div>
+    <div class="error-msg" id="check-error">One or more answers are incorrect. Please review the instructions and try again.</div>
     <div class="nav-row" style="justify-content:space-between;">
       <button class="btn" style="background:#e2e8f0;color:#334155;" onclick="showScreen('${backScreen}')">← Back to instructions</button>
       <button class="btn btn-primary" onclick="validateComprehension()" id="check-submit-btn">Submit</button>
@@ -2515,6 +2672,21 @@ function validateComprehension() {
   } else {
     // Track failed attempts (logged for ex-post filtering; no in-study exclusion).
     STATE.comprehensionAttempts[checkId] = (STATE.comprehensionAttempts[checkId] || 0) + 1;
+
+    // Per-item failure tracking: record which items were wrong on this attempt
+    if (!STATE.comprehensionItemFailures[checkId]) {
+      STATE.comprehensionItemFailures[checkId] = [];
+    }
+    const failureRecord = { attempt: STATE.comprehensionAttempts[checkId], items: {} };
+    items.forEach((input, i) => {
+      const correct = input.dataset.correct === 'true';
+      const checked = input.checked;
+      if (checked !== correct) {
+        failureRecord.items[i] = { checked: checked, correct: correct };
+      }
+    });
+    STATE.comprehensionItemFailures[checkId].push(failureRecord);
+
     document.getElementById('check-error').classList.add('visible');
   }
 }
@@ -2553,9 +2725,9 @@ function showRoundScreen() {
   window._pendingRound = roundData;
 
   if (isFirstRound) {
-    // Round 1: show manager choice. Use belief_preChoice (from the pre-round
-    // re-elicitation screen) if available, otherwise fall back to belief_0.
-    const initialBelief = STATE.belief_preChoice != null ? STATE.belief_preChoice : STATE.belief_0;
+    // Round 1: show manager choice. Use belief_0 (from the pre-round
+    // re-elicitation screen) if available, otherwise fall back to initial_belief.
+    const initialBelief = STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief;
     container.innerHTML = `
       <div id="round-step-choice">
         ${buildManagerChoiceHTML(r, initialBelief, 'roundInitialChoice')}
@@ -2584,7 +2756,7 @@ function showRoundScreen() {
 
 // Round 1: handle initial manager choice, then show bonuses
 function roundInitialChoice(chosenManager) {
-  // belief_preChoice is already captured on the preChoiceBelief screen
+  // belief_0 is already captured on the preChoiceBelief screen
   STATE.currentManager = chosenManager;
   const roundData = window._pendingRound;
   roundData.manager = chosenManager;
@@ -2683,7 +2855,7 @@ function roundShowGamma() {
   roundData.tsGammaShown = Date.now();
   const isFirstGammaUpdate = STATE.rounds.length === 0;
   const prevGamma = isFirstGammaUpdate
-    ? (STATE.belief_preChoice != null ? STATE.belief_preChoice : STATE.belief_0)
+    ? (STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief)
     : STATE.rounds[STATE.rounds.length - 1].belief;
   const stake = STATE.bsrStake.toFixed(0);
 
@@ -2701,13 +2873,12 @@ function roundShowGamma() {
 
     ${chosenMgr === 'performance'
       ? `<p>The ${mgrNameHTML} payment can <strong>help</strong> you form a better guess about your quiz performance. Your previous guess is pre-selected, you can adjust it or leave as is.</p>
-    <p>Your previous guess about the chance of beating a single randomly picked participant was <strong>${prevGamma}%</strong>. This means you expected to beat about <strong>${Math.round(prevGamma / 10)} out of 10</strong> participants. The comparisons show that you beat <strong>${roundData.hCount} out of 10</strong> participants.</p>`
+    <p>Your previous guess about the chance of beating a single randomly picked participant was <strong>${prevGamma}%</strong>. This means you would on average expect to beat <strong>${(prevGamma / 10).toFixed(1)} out of 10</strong> participants. The comparisons show that you beat <strong>${roundData.hCount} out of 10</strong> participants.</p>`
       : `<p>The ${mgrNameHTML} payment <strong>cannot</strong> help you form a better guess about your quiz performance. Your previous guess is pre-selected, you can adjust it or leave as is.</p>`
     }
 
-    <p>What is the percent chance you beat a randomly picked participant on the quiz?</p>
-
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
+      <p style="margin:0 0 14px;">What do you think is the percent chance that you beat a randomly picked participant on the quiz?</p>
       <div class="slider-container" style="margin:0;">
         <label>Your best guess:</label>
         <div class="slider-row">
@@ -2797,7 +2968,7 @@ SCREENS.roundsComplete = () => {
 // ---- 3.1 Risk Preferences ----
 SCREENS.riskPreferences = () => {
   container.innerHTML = `
-    <div class="screen-header"><h2>Additional Questions</h2></div>
+    <div class="screen-header"><h2>About Risk</h2></div>
     ${CONFIG.texts.riskPreferences}
 
     <div class="risk-scale">
@@ -2872,7 +3043,7 @@ SCREENS.ambiguityPreferences = () => {
   }
 
   container.innerHTML = `
-    <div class="screen-header"><h2>Additional Questions</h2></div>
+    <div class="screen-header"><h2>About Uncertainty</h2></div>
     <p>${CONFIG.texts.ambiguityPreferencesIntro}</p>
     <p><strong>${CONFIG.texts.ambiguityPreferencesBold}</strong></p>
 
@@ -3015,182 +3186,6 @@ function checkAmbiguityComplete() {
 }
 
 function submitAmbiguity() {
-  showScreen('curiosity');
-}
-
-// ---- 3.2b Curiosity (CEI-II; Kashdan, Gallagher, Silvia, Winterstein, Breen, Terhar, Steger, 2009) ----
-// 10 items, 5-point Likert (1 = Very slightly or not at all ... 5 = Extremely).
-// Subscale: Stretching (items 1,3,5,7,9); Embracing (items 2,4,6,8,10).
-// Subscale labels are hidden from participants.
-SCREENS.curiosity = () => {
-  const items = [
-    /* 1  Stretching */ "I actively seek as much information as I can in new situations.",
-    /* 2  Embracing  */ "I am the type of person who really enjoys the uncertainty of everyday life.",
-    /* 3  Stretching */ "I am at my best when doing something that is complex or challenging.",
-    /* 4  Embracing  */ "Everywhere I go, I am out looking for new things or experiences.",
-    /* 5  Stretching */ "I view challenging situations as an opportunity to grow and learn.",
-    /* 6  Embracing  */ "I like to do things that are a little frightening.",
-    /* 7  Stretching */ "I am always looking for experiences that challenge how I think about myself and the world.",
-    /* 8  Embracing  */ "I prefer jobs that are excitingly unpredictable.",
-    /* 9  Stretching */ "I frequently find myself looking for new opportunities to grow as a person (e.g., information, people, resources).",
-    /* 10 Embracing  */ "I am the kind of person who embraces unfamiliar people, events, and places."
-  ];
-  const labels = [
-    "Very slightly or not at all",
-    "A little",
-    "Moderately",
-    "Quite a bit",
-    "Extremely"
-  ];
-
-  const rows = items.map((txt, idx) => {
-    const rowIdx = idx; // 0..9
-    const opts = labels.map((lbl, v) => {
-      const val = v + 1; // 1..5
-      return `
-        <div class="cei-opt" data-row="${rowIdx}" data-val="${val}"
-             onclick="selectCuriosityRating(${rowIdx}, ${val})"
-             style="flex:1;text-align:center;padding:10px 6px;border:1px solid #ddd;cursor:pointer;background:#fff;">
-          <div class="radio-circle" style="width:16px;height:16px;border:2px solid #999;border-radius:50%;margin:0 auto 6px;background:#fff;"></div>
-          <div style="font-size:0.75rem;color:#555;line-height:1.25;">${lbl}</div>
-        </div>`;
-    }).join('');
-    return `
-      <div style="margin:14px 0;padding:10px 12px;background:#fff;border:1px solid #e3e8ef;border-radius:8px;">
-        <p style="margin:0 0 8px;font-size:0.95rem;"><strong>${rowIdx + 1}.</strong> ${txt}</p>
-        <div style="display:flex;justify-content:center;gap:0;">
-          ${opts}
-        </div>
-      </div>`;
-  }).join('');
-
-  container.innerHTML = `
-    <div class="screen-header"><h2>Additional Questions</h2></div>
-    <p>${CONFIG.texts.curiosityIntro}</p>
-    <p style="font-size:0.92rem;color:#555;">${CONFIG.texts.curiosityInstructions}</p>
-
-    ${rows}
-
-    <div class="error-msg" id="cei-error">Please rate every statement before continuing.</div>
-    <div class="nav-row">
-      <button class="btn btn-primary" id="cei-next" disabled onclick="submitCuriosity()">Next →</button>
-    </div>`;
-  updateProgress(0.95);
-};
-
-function selectCuriosityRating(rowIdx, val) {
-  STATE.curiosityAnswers[rowIdx] = val;
-  // Update visuals: highlight the selected option in this row only
-  document.querySelectorAll(`.cei-opt[data-row="${rowIdx}"]`).forEach(el => {
-    const isSel = Number(el.dataset.val) === val;
-    const circle = el.querySelector('.radio-circle');
-    el.style.background = isSel ? '#eff6ff' : '#fff';
-    if (circle) {
-      circle.style.background = isSel ? '#2563eb' : '#fff';
-      circle.style.borderColor = isSel ? '#2563eb' : '#999';
-    }
-  });
-  const allAnswered = STATE.curiosityAnswers.every(v => v !== null);
-  document.getElementById('cei-next').disabled = !allAnswered;
-  if (allAnswered) {
-    const err = document.getElementById('cei-error');
-    if (err) err.style.display = 'none';
-  }
-}
-
-function submitCuriosity() {
-  if (!STATE.curiosityAnswers.every(v => v !== null)) {
-    const err = document.getElementById('cei-error');
-    if (err) err.classList.add('visible');
-    return;
-  }
-  showScreen('boredom');
-}
-
-// ---- 3.2c Short Boredom Proneness Scale (Struk, Carriere, Cheyne, & Danckert, 2015) ----
-// 8 items, 7-point Likert (1 = Strongly disagree ... 7 = Strongly agree).
-// Unidimensional: sum of all 8 items = SBPS score. No reverse-coded items.
-SCREENS.boredom = () => {
-  const items = [
-    /* 1 */ "I often find myself at \u201Cloose ends,\u201D not knowing what to do.",
-    /* 2 */ "I find it hard to entertain myself.",
-    /* 3 */ "Many things I have to do are repetitive and monotonous.",
-    /* 4 */ "It takes more stimulation to get me going than most people.",
-    /* 5 */ "I don\u2019t feel motivated by most things that I do.",
-    /* 6 */ "In most situations, it is hard for me to find something to do or see to keep me interested.",
-    /* 7 */ "Much of the time, I just sit around doing nothing.",
-    /* 8 */ "Unless I am doing something exciting, even dangerous, I feel half-dead and dull."
-  ];
-  // 7-point Likert anchors; middle point is neutral.
-  const labels = [
-    "Strongly disagree",
-    "Disagree",
-    "Somewhat disagree",
-    "Neither agree nor disagree",
-    "Somewhat agree",
-    "Agree",
-    "Strongly agree"
-  ];
-
-  const rows = items.map((txt, idx) => {
-    const rowIdx = idx; // 0..7
-    const opts = labels.map((lbl, v) => {
-      const val = v + 1; // 1..7
-      return `
-        <div class="sbps-opt" data-row="${rowIdx}" data-val="${val}"
-             onclick="selectBoredomRating(${rowIdx}, ${val})"
-             style="flex:1;text-align:center;padding:10px 4px;border:1px solid #ddd;cursor:pointer;background:#fff;">
-          <div class="radio-circle" style="width:16px;height:16px;border:2px solid #999;border-radius:50%;margin:0 auto 6px;background:#fff;"></div>
-          <div style="font-size:0.72rem;color:#555;line-height:1.25;">${lbl}</div>
-        </div>`;
-    }).join('');
-    return `
-      <div style="margin:14px 0;padding:10px 12px;background:#fff;border:1px solid #e3e8ef;border-radius:8px;">
-        <p style="margin:0 0 8px;font-size:0.95rem;"><strong>${rowIdx + 1}.</strong> ${txt}</p>
-        <div style="display:flex;justify-content:center;gap:0;">
-          ${opts}
-        </div>
-      </div>`;
-  }).join('');
-
-  container.innerHTML = `
-    <div class="screen-header"><h2>Additional Questions</h2></div>
-    <p>${CONFIG.texts.boredomIntro}</p>
-
-    ${rows}
-
-    <div class="error-msg" id="sbps-error">Please rate every statement before continuing.</div>
-    <div class="nav-row">
-      <button class="btn btn-primary" id="sbps-next" disabled onclick="submitBoredom()">Next →</button>
-    </div>`;
-  updateProgress(0.97);
-};
-
-function selectBoredomRating(rowIdx, val) {
-  STATE.boredomAnswers[rowIdx] = val;
-  document.querySelectorAll(`.sbps-opt[data-row="${rowIdx}"]`).forEach(el => {
-    const isSel = Number(el.dataset.val) === val;
-    const circle = el.querySelector('.radio-circle');
-    el.style.background = isSel ? '#eff6ff' : '#fff';
-    if (circle) {
-      circle.style.background = isSel ? '#2563eb' : '#fff';
-      circle.style.borderColor = isSel ? '#2563eb' : '#999';
-    }
-  });
-  const allAnswered = STATE.boredomAnswers.every(v => v !== null);
-  document.getElementById('sbps-next').disabled = !allAnswered;
-  if (allAnswered) {
-    const err = document.getElementById('sbps-error');
-    if (err) err.style.display = 'none';
-  }
-}
-
-function submitBoredom() {
-  if (!STATE.boredomAnswers.every(v => v !== null)) {
-    const err = document.getElementById('sbps-error');
-    if (err) err.classList.add('visible');
-    return;
-  }
   // Compute the belief-inconsistency triggers, split by direction:
   //  A. chose Fixed while prior > rp   (belief favored Performance)
   //  B. chose Performance while prior < rp (belief favored Random)
@@ -3205,9 +3200,6 @@ function submitBoredom() {
   if (STATE.perfChoiceExplanationRounds.length > 0) {
     STATE.perfChoiceExplanationShown = true;
     showScreen('perfChoiceExplanation');
-  } else if (STATE.fixedBeliefAdjustRounds.length > 0) {
-    STATE.fixedBeliefAdjustExplanationShown = true;
-    showScreen('fixedBeliefAdjustExplanation');
   } else {
     showScreen('demographics');
   }
@@ -3226,10 +3218,10 @@ function computeChoiceExplanationTriggers() {
     const rd = rounds[i];
     if (!rd || !rd.manager) continue;
     const t = rd.roundNum;
-    // Prior belief for round t: belief_preChoice (or belief_0) if t===1, else belief from round t-1
+    // Prior belief for round t: belief_0 (or initial_belief) if t===1, else belief from round t-1
     let prior;
     if (t === 1) {
-      prior = STATE.belief_preChoice != null ? STATE.belief_preChoice : STATE.belief_0;
+      prior = STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief;
     } else {
       const prev = rounds.find(x => x && x.roundNum === (t - 1));
       prior = prev ? prev.belief : null;
@@ -3284,7 +3276,7 @@ SCREENS.perfChoiceExplanation = () => {
     </div>`;
 
   container.innerHTML = `
-    <div class="screen-header"><h2>Additional Questions</h2></div>
+    <div class="screen-header"><h2>About Your Choices</h2></div>
     ${blockA}
     ${blockB}
     <div class="error-msg" id="choice-explain-error">Please write a short answer before continuing.</div>
@@ -3323,12 +3315,7 @@ function submitChoiceExplanations() {
   if (aText) parts.push('[chose Fixed vs belief→Perf] ' + aText);
   if (bText) parts.push('[chose Perf vs belief→Random] ' + bText);
   STATE.perfChoiceExplanation = parts.join(' | ');
-  if (STATE.fixedBeliefAdjustRounds.length > 0) {
-    STATE.fixedBeliefAdjustExplanationShown = true;
-    showScreen('fixedBeliefAdjustExplanation');
-  } else {
-    showScreen('demographics');
-  }
+  showScreen('demographics');
 }
 
 // ---- 3.2e Fixed Manager belief adjustment follow-up ----
@@ -3339,10 +3326,10 @@ function computeFixedBeliefAdjustRounds() {
   for (let i = 0; i < rounds.length; i++) {
     const rd = rounds[i];
     if (!rd || rd.manager !== 'fixed') continue;
-    // Prior belief: belief_preChoice (or belief_0) if round 1, else previous round's belief
+    // Prior belief: belief_0 (or initial_belief) if round 1, else previous round's belief
     let prior;
     if (rd.roundNum === 1) {
-      prior = STATE.belief_preChoice != null ? STATE.belief_preChoice : STATE.belief_0;
+      prior = STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief;
     } else {
       const prev = rounds.find(x => x && x.roundNum === (rd.roundNum - 1));
       prior = prev ? prev.belief : null;
@@ -3353,61 +3340,20 @@ function computeFixedBeliefAdjustRounds() {
   return adjustRounds;
 }
 
-SCREENS.fixedBeliefAdjustExplanation = () => {
-  const adjRounds = STATE.fixedBeliefAdjustRounds || [];
-  function fmtRounds(rs) {
-    if (rs.length === 1) return `round ${rs[0]}`;
-    if (rs.length === 2) return `rounds ${rs[0]} and ${rs[1]}`;
-    return `rounds ${rs.slice(0,-1).join(', ')}, and ${rs[rs.length-1]}`;
-  }
-  function nStr(rs) { return rs.length === 1 ? 'one round' : `${rs.length} rounds`; }
-
-  container.innerHTML = `
-    <div class="screen-header"><h2>Additional Questions</h2></div>
-    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin:16px 0;">
-      <p style="margin:0 0 10px;">
-        In ${nStr(adjRounds)} (${fmtRounds(adjRounds)}) you chose the <strong class="eval-fixed">Fixed Manager</strong>
-        and then adjusted your quiz performance guess.
-      </p>
-      <p style="margin:0 0 10px;">The Fixed Manager payment does not provide new information about your quiz performance.
-        <strong>Why did you change your guess in ${adjRounds.length === 1 ? 'that round' : 'those rounds'}?</strong></p>
-      <textarea id="explain-fixed-adjust" rows="4"
-        placeholder="Please write at least a sentence or two..."
-        style="width:100%;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"
-        oninput="checkFixedAdjustExplanation()"></textarea>
-    </div>
-    <div class="error-msg" id="fixed-adjust-error">Please write a short answer before continuing.</div>
-    <div class="nav-row">
-      <button class="btn btn-primary" id="fixed-adjust-next" disabled onclick="submitFixedAdjustExplanation()">Next →</button>
-    </div>`;
-  updateProgress(0.97);
-};
-
-function checkFixedAdjustExplanation() {
-  const el = document.getElementById('explain-fixed-adjust');
-  const btn = document.getElementById('fixed-adjust-next');
-  const err = document.getElementById('fixed-adjust-error');
-  const ok = el && el.value.trim().length >= 3;
-  if (btn) btn.disabled = !ok;
-  if (ok && err) err.style.display = 'none';
-}
-
-function submitFixedAdjustExplanation() {
-  const el = document.getElementById('explain-fixed-adjust');
-  const text = el ? el.value.trim() : '';
-  if (text.length < 3) {
-    const err = document.getElementById('fixed-adjust-error');
-    if (err) err.classList.add('visible');
-    return;
-  }
-  STATE.fixedBeliefAdjustExplanationText = text;
-  showScreen('demographics');
-}
 
 // ---- 3.3 Demographics ----
 SCREENS.demographics = () => {
   container.innerHTML = `
-    <div class="screen-header"><h2>Additional Questions</h2></div>
+    <div class="screen-header"><h2>About You</h2></div>
+
+    <!-- HTML honeypot (AI detection): invisible input field. Real participants never see,
+         tab to, or fill this. DOM-scraping form-filler bots that auto-populate fields by
+         name will fill it. Silently logged; not used for in-study exclusion. -->
+    <div aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;">
+      <label for="hp-fullname">Full name</label>
+      <input type="text" name="fullname" id="hp-fullname" tabindex="-1" autocomplete="off"
+             aria-hidden="true" style="opacity:0;pointer-events:none;">
+    </div>
 
     <div style="margin-bottom:20px;">
       <label><strong>What is your age?</strong></label>
@@ -3457,50 +3403,11 @@ function checkDemographicsComplete() {
 
 function submitDemographics() {
   STATE.demographicAge = parseInt(document.getElementById('demo-age').value);
-  showScreen('feedback');
-}
-
-// ---- Feedback ----
-SCREENS.feedback = () => {
-  container.innerHTML = `
-    <div class="screen-header"><h2>Feedback</h2></div>
-    <p>We would appreciate your honest feedback about the study.</p>
-
-    <div style="margin-bottom:20px;">
-      <label><strong>Was anything unclear in the instructions? If so, please describe what was confusing.</strong></label>
-      <textarea id="feedback-clarity" rows="4" placeholder="e.g. I didn't understand how the managers work..."
-        style="width:100%;margin-top:8px;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"></textarea>
-    </div>
-
-    <div style="margin-bottom:20px;">
-      <label><strong>Do you have any other complaints or suggestions about the study?</strong></label>
-      <textarea id="feedback-complaints" rows="4" placeholder="e.g. The study was too long, the quiz was too difficult..."
-        style="width:100%;margin-top:8px;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"></textarea>
-    </div>
-
-    <div class="nav-row">
-      <button class="btn btn-primary" onclick="submitFeedback()">Continue →</button>
-    </div>`;
-  updateProgress(0.97);
-};
-
-function submitFeedback() {
-  STATE.feedbackClarity = document.getElementById('feedback-clarity').value.trim();
-  STATE.feedbackComplaints = document.getElementById('feedback-complaints').value.trim();
-  computePayment();
-}
-
-// ---- Rank computation (revealed at end of study) ----
-function computeRank() {
-  const scores = CONFIG.study1ScoresShared;
-  const myScore = STATE.quizScoreShared;
-  // Rank = 1 + number of people who scored strictly higher (1 = best)
-  let above = 0;
-  for (const s of scores) {
-    if (s > myScore) above++;
-  }
-  STATE.rankAmongAll = above + 1;
-  STATE.rankTotalN = scores.length;
+  // Capture HTML honeypot value (invisible to humans; DOM-scraping bots fill it).
+  const hp = document.getElementById('hp-fullname');
+  STATE.htmlHoneypotValue = hp ? (hp.value || '') : '';
+  STATE.htmlHoneypotFilled = STATE.htmlHoneypotValue !== '';
+  showScreen('visualCheck');
 }
 
 // ---- Payment computation ----
@@ -3517,7 +3424,7 @@ function computePayment() {
   STATE.selectedBeliefIndex = Math.floor(Math.random() * 6);
   {
     const selectedBelief = STATE.selectedBeliefIndex === 0
-      ? (STATE.belief_preChoice != null ? STATE.belief_preChoice : STATE.belief_0)
+      ? (STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief)
       : STATE.rounds[STATE.selectedBeliefIndex - 1].belief;
     const s1scores = CONFIG.study1ScoresShared;
     const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
@@ -3530,9 +3437,6 @@ function computePayment() {
   STATE.totalBonus = CONFIG.showUpFee
     + STATE.outcomeEarnings
     + STATE.beliefBonus_amount;
-
-  // Compute rank for end-of-study revelation
-  computeRank();
 
   // Submit data then show results
   submitData().then(() => showScreen('results'));
@@ -3547,21 +3451,13 @@ SCREENS.results = () => {
   const beliefIndex = STATE.selectedBeliefIndex;
   const beliefLabel = beliefIndex === 0 ? 'Pre-round guess' : `Round ${beliefIndex}`;
   const beliefValue = beliefIndex === 0
-    ? (STATE.belief_preChoice != null ? STATE.belief_preChoice : STATE.belief_0)
+    ? (STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief)
     : STATE.rounds[beliefIndex - 1].belief;
-
-  // Rank revelation
-  const rankPct = ((STATE.rankTotalN - STATE.rankAmongAll) / STATE.rankTotalN * 100).toFixed(0);
 
   container.innerHTML = `
     <div class="screen-header"><h2>Results</h2></div>
 
     ${CONFIG.texts.resultsReveal(payRound.roundNum, payRound.manager)}
-
-    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px 24px;margin:16px 0;">
-      <h3 style="margin:0 0 10px;color:#166534;">Your Rank</h3>
-      <p style="margin:0;font-size:1.05rem;">On the 6 shared quiz questions, you ranked <strong>#${STATE.rankAmongAll} out of ${STATE.rankTotalN}</strong> participants who previously completed this quiz. This means you scored higher than approximately <strong>${rankPct}%</strong> of participants.</p>
-    </div>
 
     <div class="results-section">
       <h3>Payment Breakdown</h3>
@@ -3632,8 +3528,8 @@ async function submitData() {
     quizAnswers: JSON.stringify(STATE.quizAnswers),
 
     // Initial beliefs (γ₀ + 7-level confidence elicitation; Beta from γ₀ + κ)
+    initial_belief: STATE.initial_belief,
     belief_0: STATE.belief_0,
-    belief_preChoice: STATE.belief_preChoice,
     initialConfidence: STATE.initialConfidence,
     initialAlpha: STATE.initialAlpha,
     initialBeta: STATE.initialBeta,
@@ -3667,29 +3563,6 @@ async function submitData() {
     ambiguityColor: STATE.ambiguityAnswers.color,
     ambiguityUrnPreference: STATE.ambiguityAnswers.urnPreference,
 
-    // CEI-II: 10 raw item ratings (1..5) + subscale sums.
-    // Stretching = items 1,3,5,7,9; Embracing = items 2,4,6,8,10.
-    ...Object.fromEntries(STATE.curiosityAnswers.map((v, i) => [`curiosityItem_${i + 1}`, v])),
-    curiosityStretching: (() => {
-      const a = STATE.curiosityAnswers;
-      return [0, 2, 4, 6, 8].every(i => a[i] != null)
-        ? [0, 2, 4, 6, 8].reduce((s, i) => s + a[i], 0)
-        : null;
-    })(),
-    curiosityEmbracing: (() => {
-      const a = STATE.curiosityAnswers;
-      return [1, 3, 5, 7, 9].every(i => a[i] != null)
-        ? [1, 3, 5, 7, 9].reduce((s, i) => s + a[i], 0)
-        : null;
-    })(),
-
-    // SBPS: 8 raw item ratings (1..7) + unidimensional total.
-    ...Object.fromEntries(STATE.boredomAnswers.map((v, i) => [`boredomItem_${i + 1}`, v])),
-    boredomTotal: (() => {
-      const a = STATE.boredomAnswers;
-      return a.every(v => v != null) ? a.reduce((s, v) => s + v, 0) : null;
-    })(),
-
     // Open-ended follow-ups for belief-inconsistent manager choices.
     // Split by direction; legacy fields populated as the union / combined text.
     perfChoiceExplanationShown: STATE.perfChoiceExplanationShown ? 1 : 0,
@@ -3706,10 +3579,6 @@ async function submitData() {
     feedbackClarity: STATE.feedbackClarity,
     feedbackComplaints: STATE.feedbackComplaints,
 
-    // Rank revelation
-    rankAmongAll: STATE.rankAmongAll,
-    rankTotalN: STATE.rankTotalN,
-
     // Payment
     selectedPaymentRound: STATE.selectedPaymentRound,
     outcomeEarnings: STATE.outcomeEarnings,
@@ -3725,6 +3594,7 @@ async function submitData() {
 
     // Comprehension-check attempts (for ex-post filtering; no in-study exclusion)
     comprehensionAttempts: JSON.stringify(STATE.comprehensionAttempts),
+    comprehensionItemFailures: JSON.stringify(STATE.comprehensionItemFailures),
     ambiguityComprehensionAttempts: STATE.ambiguityAnswers.comprehensionAttempts || 0,
     ambiguityComprehensionCorrect: STATE.ambiguityAnswers.comprehensionCorrect === true ? 1 : 0,
 
@@ -3733,6 +3603,16 @@ async function submitData() {
     totalFocusLostMs: STATE.totalFocusLostMs,
     tabSwitches: JSON.stringify(STATE.tabSwitches),
     copyAttempts: STATE.copyAttempts,
+
+    // Visual perception honeypot (Pseudo-Ebbinghaus; silent log, no in-study exclusion)
+    visualCheckTotalCorrect: STATE.visualCheck ? STATE.visualCheck.totalCorrect : null,
+    visualCheckTotalTrials:  STATE.visualCheck ? STATE.visualCheck.totalTrials  : null,
+    visualCheckDurationMs:   STATE.visualCheck ? STATE.visualCheck.totalDurationMs : null,
+    visualCheckTrials:       STATE.visualCheck ? JSON.stringify(STATE.visualCheck.trials) : '',
+
+    // HTML honeypot on demographics (silent log; flag if any non-empty value)
+    htmlHoneypotFilled: STATE.htmlHoneypotFilled ? 1 : 0,
+    htmlHoneypotValue:  STATE.htmlHoneypotValue || '',
   };
 
   // Store as backup
