@@ -418,7 +418,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwuHFGM92WitLIs_YLsr6tVWo3Aa9I6sc_GmUHZ8y9iCeIKs4HwoS5H1O4HjwvMEGzR/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbyfBqZ0r5jA6_MVmmU91FX6jcBKyLkbpWdQkcuTD3UoSC5zYPhrNVZRxXZcpdQY2RXR/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -1061,20 +1061,20 @@ const CONFIG = {
     studyRules: `<p>All instructions and information you receive in this study are <strong>true and accurate</strong>.</p>
       <p><strong>No AI tools:</strong> The use of AI tools (such as ChatGPT, Copilot, or similar) is strictly prohibited during this study. We trust you to complete this study using only your own reasoning. Please participate honestly — your responses are essential to the quality of our research.</p>`,
 
-    quizInstructions: `<p>You will begin by completing a short logic quiz with <strong>12&nbsp;questions</strong>. You will have <strong>10&nbsp;seconds</strong> to solve each question.</p>
-      <p><strong>The higher your score, the more you can earn.</strong> So please do your best.</p>
-      <p>Each question shows a 3×3 grid of shapes following a pattern. The bottom-right cell is missing (marked with ?). Select the answer that best completes the pattern.</p>`,
+    quizInstructions: `<p>You will solve a short logic quiz of <strong>12&nbsp;questions</strong>. You have <strong>10&nbsp;seconds</strong> per question.</p>
+      <p><strong>The higher your score, the more you can earn.</strong></p>
+      <p>Each question shows a 3×3 grid following a pattern. The bottom-right cell is missing (marked with ?). Pick the answer that best completes the pattern.</p>`,
 
-    sampleQuestionPrompt: `Below is a sample question. The 3×3 grid follows a pattern, and the bottom-right cell is missing. <strong>Click on the answer that you think completes the pattern.</strong>`,
+    sampleQuestionPrompt: `Here is a sample question. <strong>Click the answer that completes the pattern.</strong>`,
 
-    sampleQuestionFeedbackCorrect: `<strong style="color:#059669;">Correct!</strong> You will see questions of varying difficulty. If a question feels hard to solve, it is probably a difficult question for everyone. Do your best at all times — the better you perform, the more you can earn.`,
+    sampleQuestionFeedbackCorrect: `<strong style="color:#059669;">Correct!</strong> Questions vary in difficulty — if one feels hard, it probably is for everyone. The better you perform, the more you can earn.`,
 
-    sampleQuestionFeedbackWrong: `<strong style="color:#dc2626;">Not quite.</strong> The correct answer is now highlighted in green. You will see questions of varying difficulty. If a question feels hard to solve, it is probably a difficult question for everyone. Do your best at all times — the better you perform, the more you can earn.`,
+    sampleQuestionFeedbackWrong: `<strong style="color:#dc2626;">Not quite.</strong> The correct answer is highlighted in green. Questions vary in difficulty — if one feels hard, it probably is for everyone. The better you perform, the more you can earn.`,
 
     scoreAnnouncement: (score, total) =>
-      `You have solved <strong>${score} out of ${total}</strong> questions of the logic quiz correctly.`,
+      `You solved <strong>${score} out of ${total}</strong> logic quiz questions correctly.`,
 
-    beliefElicitationPrompt: `<p>Your score on 6 questions that were the same for all participants is compared to that of a randomly picked participant from a group of 100 previous Prolific participants (ties decided by a coin flip).</p>`,
+    beliefElicitationPrompt: `<p>Your score on 6 shared questions will be compared to other Prolific participants (ties decided by a coin flip).</p>`,
 
     transition: null, // removed — content folded into managerInstructions1
 
@@ -1090,35 +1090,27 @@ const CONFIG = {
     managerInstructions1: (fixedH) => {
       const fixedPay = (fixedH * 0.10).toFixed(2);
       return {
-        intro: `<p>Your quiz performance may now be used to determine some of your earnings. Please read the following instructions carefully. Short questions will help make sure everything is clear.</p>
-          <p>You will choose to receive payments from one of two managers: a <strong class="eval-performance">Performance Manager</strong> or a <strong class="eval-fixed">Fixed Manager</strong>. Each manager pays you, but they work differently:</p>`,
-        performance: `<ul style="margin:0;"><li><strong class="eval-performance">Performance Manager:</strong> Your score on the 6 shared questions is compared to 10 randomly picked participants from a group of 100 previous Prolific participants. You earn <strong>$0.10 for each comparison you win</strong> (ties decided by a coin flip).</li></ul>`,
-        fixed: `<ul style="margin:0;"><li><strong class="eval-fixed">Fixed Manager:</strong> Does <strong>not</strong> compare you to anyone. You receive a <strong>fixed payment of $${fixedPay}</strong> every round. This amount does not change.</li></ul>`,
+        intro: `<p>You can earn payments from one of two managers. They work differently:</p>`,
+        performance: `<p><strong class="eval-performance">Performance Manager:</strong> compares your score on the 6 shared questions to <strong>each of 10 random Prolific participants</strong>. You earn <strong>$0.10 per win</strong> (ties decided by a coin flip).</p>`,
+        fixed: `<p><strong class="eval-fixed">Fixed Manager:</strong> pays a flat <strong>$${fixedPay}</strong> every round. The amount is fixed and stays the same across all 5 rounds.</p>`,
       };
     },
 
-    hProbElicitationIntro: `<p>Let's make sure you understand how the two managers work. Answer the questions below.</p>`,
+    hProbElicitationIntro: ``,
 
     managerInstructions2a: (fixedH) => {
-      const fixedPay = (fixedH * 0.10).toFixed(2);
-      return `<p>There are <strong>5 rounds</strong>. Each round proceeds as follows:</p>
+      return `<p>There are <strong>5 rounds</strong>. Each round you:</p>
       <ol>
-        <li><strong>Choose your manager.</strong> You decide whether to receive payments from the <strong class="eval-performance">Performance Manager</strong> or the <strong class="eval-fixed">Fixed Manager</strong> for this round.</li>
-        <li><strong>Receive your payment.</strong> You receive your payment for this round.</li>
-        <li><strong>Quiz performance guess:</strong> You can keep or adjust your best guess about beating a randomly picked participant on the quiz.</li>
+        <li>Choose <strong class="eval-performance">Performance</strong> or <strong class="eval-fixed">Fixed</strong> Manager.</li>
+        <li>Receive your payment.</li>
+        <li>Update your quiz performance guess (or keep it).</li>
       </ol>
-      <p><strong>When to adjust your guess:</strong></p>
-      <ul>
-        <li>After a <strong class="eval-performance">Performance Manager</strong> round, you see how many of 10 comparisons you won. That gives you a hint about your quiz performance, so you may want to update your guess.</li>
-        <li>After a <strong class="eval-fixed">Fixed Manager</strong> round, you receive the same fixed payment of $${fixedPay} every round. You don't see anything new about your quiz performance, so your guess should stay the same.</li>
-      </ul>
-      <p><strong>Important:</strong> Your quiz performance guess never changes your true chance of winning comparisons under the Performance Manager. Your actual quiz performance is already determined &mdash; your guess is simply your best estimate of how you did.</p>
 `;
     },
 
     managerInstructions2b: (roundBsr) => `<ul>
-        <li><strong>Manager payment.</strong> The computer randomly selects <strong>one</strong> of the 5 payments you receive from the managers.</li>
-        <li><strong>Accuracy payment.</strong> Before the first round and after each round, you can adjust your quiz performance guess or leave it as is. The computer randomly selects <strong>one</strong> of your 6 guesses and scores it for a <strong>$${roundBsr.toFixed(0)} prize</strong>: the more accurate your guess, the higher your chance of winning. Reporting your true best guess maximizes your chance of winning.</li>
+        <li><strong>Manager payment:</strong> the computer randomly picks one of your 5 manager payments.</li>
+        <li><strong>Accuracy payment:</strong> the computer randomly picks one of your 6 guesses for the <strong>$${roundBsr.toFixed(0)} accuracy payment</strong>. We use a payment rule that gives you the highest chance of winning when you honestly report your best guess.</li>
       </ul>
 
 `,
@@ -1129,9 +1121,9 @@ const CONFIG = {
         prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
         backScreen: 'managerInstructions1',
         items: [
-          { text: "The Performance Manager compares my score to 10 randomly picked participants from a group of 100 previous Prolific participants. I earn $0.10 per comparison I win.", correct: true },
-          { text: `The Fixed Manager always pays me a fixed payment of $${fixedPay} every round. This amount does not change.`, correct: true },
-          { text: "Both managers pay an amount that depends on whether I perform better than 10 randomly picked participants from a group of 100 previous Prolific participants.", correct: false },
+          { text: "The Performance Manager compares me to 10 random participants and pays $0.10 per win.", correct: true },
+          { text: `The Fixed Manager always pays the same $${fixedPay} every round.`, correct: true },
+          { text: "Each round, both managers run new comparisons against 10 random participants.", correct: false },
         ],
       };
     },
@@ -1203,8 +1195,8 @@ const STATE = {
   fixedBonusDisplayPct: null, // fixedBonusH * 10 (integer percentage shown on Fixed card)
 
   // Initial beliefs (post-quiz, μ + 7-level confidence elicitation)
-  initial_belief: null,        // Pre-instructions baseline guess (0–100 integer; before BSR / manager instructions)
-  belief_0: null,              // Best guess γ₀ at t=0 (0–100 integer; mean of Beta prior; post-instructions, pre-Round-1)
+  initial_belief: null,        // Pre-instructions baseline guess (0.0–10.0 float; COUNT out of 10; before BSR / manager instructions)
+  belief_0: null,              // Best guess γ₀ at t=0 (0.0–10.0 float; COUNT out of 10; mean of Beta prior; post-instructions, pre-Round-1)
   initialConfidence: null,     // Continuous confidence slider value (0–100; was 1–7 level in pilot)
   initialBeliefEdits: [],      // [{ timestamp, field: 'mu'|'confidence', oldValue, newValue, trigger }]
   initialKappa: null,          // Beta concentration κ = α + β (mapped from initialConfidence via sliderToKappa)
@@ -1221,7 +1213,7 @@ const STATE = {
   // Each round: { roundNum (1-5), manager ('performance'|'fixed'),
   //   transferred (bool, null for round 1), outcomes: ['H'|'L',...] (internal),
   //   opponentScores: [int,...], earnings: float,
-  //   belief: int (0-100) }
+  //   belief: float (0.0-10.0; COUNT out of 10) }
 
   currentManager: null, // 'performance' or 'fixed'
   currentRound: 1,        // 1-5
@@ -1365,9 +1357,11 @@ function bsrWinProbability(p, eventOccurred) {
   }
 }
 
-// Resolve BSR for a given belief
-function resolveBSR(beliefPercent, eventOccurred, maxPrize) {
-  const p = beliefPercent / 100;
+// Resolve BSR for a given belief.
+// beliefCount is in 0.0-10.0 (count of 10) — matches the new count-based elicitation.
+// Internally converts to probability p = beliefCount / 10 for the BSR formula.
+function resolveBSR(beliefCount, eventOccurred, maxPrize) {
+  const p = beliefCount / 10;
   const winProb = bsrWinProbability(p, eventOccurred);
   const won = Math.random() < winProb;
   return { winProb, won, amount: won ? maxPrize : 0 };
@@ -1417,10 +1411,11 @@ function buildManagerChoiceHTML(round, belief, onChoose) {
   const badge = (text) => `<span style="display:inline-block;background:#f1f5f9;color:#1e293b;border:1px solid #cbd5e1;border-radius:4px;padding:1px 6px;font-weight:700;">${text}</span>`;
 
   const fixedPay = (fixedH * CONFIG.payPerH).toFixed(2);
-  const expectedWins = (belief / 10).toFixed(1);
-  const expectedPay = (belief / 10 * CONFIG.payPerH).toFixed(2);
+  // belief is in COUNT units (0.0 to 10.0).
+  const expectedWins = Number(belief).toFixed(1);
+  const expectedPay = (Number(belief) * CONFIG.payPerH).toFixed(2);
 
-  const perfContext = `Your current quiz performance guess is ${badge(belief + '%')}, which means you would on average expect to beat ${badge(expectedWins + ' out of 10')} randomly picked participants and earn ${badge('$' + expectedPay)}.`;
+  const perfContext = `The Performance Manager would on average pay you ${badge('$' + expectedPay)} (based on your guess of ${badge(expectedWins + ' of 10')}).`;
   const fixedContext = `The Fixed Manager pays you ${badge('$' + fixedPay)}.`;
 
   function cardHTML(mgr) {
@@ -1439,11 +1434,7 @@ function buildManagerChoiceHTML(round, belief, onChoose) {
   }
 
   return `
-    <div class="screen-header">
-      <h2>Which manager would you like for Round ${round}?</h2>
-      <span class="round-info">Round ${round} of ${CONFIG.numChoiceRounds}</span>
-    </div>
-
+    <p style="margin:6px 0 14px;">Which manager would you like for this round?</p>
     <div style="display:flex;gap:16px;margin:18px 0;">
       ${cardHTML('performance')}
       ${cardHTML('fixed')}
@@ -1589,27 +1580,29 @@ let _initConfTouched = false;
 let _initReviewShown = false;
 
 function renderMuConfidenceWidget(defaultMu, stake) {
-  const mu0 = defaultMu == null ? 50 : defaultMu;
+  // defaultMu is in count units (0.0 to 10.0). Default = 5.0 (midpoint).
+  const mu0 = defaultMu == null ? 5.0 : Number(defaultMu);
+  const mu0Display = mu0.toFixed(1);
   const stakeStr = stake != null ? stake.toFixed(0) : '1';
   return `
     <div id="mu-conf-widget">
 
-      <!-- Step 1: μ slider -->
+      <!-- Step 1: μ slider (count-based: 0-10 of 10, step 0.1) -->
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 22px;margin:16px 0;">
-        <p style="margin:0 0 14px;">What do you think is the percent chance that you beat a randomly picked participant on the quiz?</p>
-        <label style="font-weight:500;">Your best guess:</label>
+        <p style="margin:0 0 14px;">How many of 10 random participants would you typically beat on the quiz?</p>
         <div class="slider-row">
-          <input type="range" id="init-mu-slider" min="0" max="100" value="${mu0}" data-touched="1"
+          <input type="range" id="init-mu-slider" min="0" max="10" step="0.1" value="${mu0}" data-touched="1"
+                 style="width:100%;"
                  oninput="onInitMuChange(this.value)">
-          <div class="slider-value" id="init-mu-val">${mu0}%</div>
         </div>
         <div class="slider-labels">
-          <span>0%</span>
-          <span>100%</span>
+          <span>0 of 10</span>
+          <span>10 of 10</span>
         </div>
+        <p style="margin:14px 0 0;text-align:center;font-size:1rem;">I typically beat <strong id="init-mu-val">${mu0Display}</strong> out of 10.</p>
       </div>
 
-      <p style="font-size:0.88rem;color:#666;">Reporting your true best guess maximizes your chance of winning the <strong>$${stakeStr}</strong> accuracy prize.</p>
+      <p style="font-size:0.88rem;color:#666;">Reporting your true best guess maximizes your chance of winning the <strong>$${stakeStr}</strong> accuracy payment.</p>
 
       <div id="init-mu-confirm-row" style="margin-top:14px;text-align:right;">
         <button class="btn btn-primary" onclick="confirmInitMu()">Confirm best guess &rarr;</button>
@@ -1617,7 +1610,6 @@ function renderMuConfidenceWidget(defaultMu, stake) {
 
       <!-- Step 2: continuous confidence slider (hidden until μ confirmed) -->
       <div id="init-conf-wrap" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 22px;margin:16px 0;">
-        <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;font-weight:700;margin-bottom:8px;">Step 2 — How sure are you?</div>
         <p style="margin:0 0 12px;font-size:0.97rem;">How sure are you about your best guess?</p>
         <div class="slider-row">
           <input type="range" id="init-conf-slider" min="0" max="100" value="50"
@@ -1643,7 +1635,7 @@ function renderMuConfidenceWidget(defaultMu, stake) {
           <h3 style="font-size:0.97rem;font-weight:700;color:#1e293b;margin:0 0 8px;">Does this match what you think?</h3>
           <p style="font-size:0.92rem;color:#475569;margin:0 0 14px;">
             Given your best guess and how sure you are, you would on average expect to beat
-            <strong id="init-expect-out-of-10" style="font-size:1.05rem;color:#1e293b;background:#e0f2fe;padding:1px 6px;border-radius:4px;">${(mu0 / 10).toFixed(1)}</strong>
+            <strong id="init-expect-out-of-10" style="font-size:1.05rem;color:#1e293b;background:#e0f2fe;padding:1px 6px;border-radius:4px;">${mu0Display}</strong>
             out of 10 randomly picked participants when you choose the Performance Manager. Here's how likely each outcome would be:
           </p>
           <table style="width:100%;border-collapse:collapse;font-size:0.92rem;margin-top:4px;">
@@ -1677,9 +1669,11 @@ function initMuConfidenceWidget(defaultMu) {
 }
 
 function onInitMuChange(val) {
-  const prev = parseInt(document.getElementById('init-mu-val').textContent);
-  const now = parseInt(val);
-  document.getElementById('init-mu-val').textContent = now + '%';
+  // val is in count units (0.0 to 10.0). Display the numeric value only — surrounding sentence is in HTML.
+  const valEl = document.getElementById('init-mu-val');
+  const prev = parseFloat(valEl.textContent);
+  const now = parseFloat(val);
+  valEl.textContent = now.toFixed(1);
 
   if (_initReviewShown) {
     STATE.initialBeliefEdits.push({
@@ -1735,8 +1729,9 @@ function confirmInitConf() {
 }
 
 function getInitParams() {
-  const muRaw = parseInt(document.getElementById('init-mu-slider').value);
-  const muClamped = Math.max(0.005, Math.min(0.995, muRaw / 100));
+  // muRaw is the count (0.0 to 10.0). Convert to probability for Beta math.
+  const muRaw = parseFloat(document.getElementById('init-mu-slider').value);
+  const muClamped = Math.max(0.005, Math.min(0.995, muRaw / 10));
   const sliderVal = _initConfSlider !== null ? _initConfSlider : 50;
   const kappa = sliderToKappa(sliderVal, muClamped);
   return { muRaw, mu: muClamped, alpha: muClamped * kappa, beta: (1 - muClamped) * kappa, kappa, sliderVal };
@@ -1746,7 +1741,8 @@ function updateInitReview() {
   if (_initConfSlider === null) return;
   const { muRaw, alpha, beta } = getInitParams();
   const expectEl = document.getElementById('init-expect-out-of-10');
-  if (expectEl) expectEl.textContent = (muRaw / 10).toFixed(1);
+  // muRaw is already in count units (0-10), display as-is.
+  if (expectEl) expectEl.textContent = muRaw.toFixed(1);
   renderOutcomeTable(alpha, beta, 10);
 }
 
@@ -2400,17 +2396,16 @@ SCREENS.scoreAndBelief = () => {
     ${CONFIG.texts.beliefElicitationPrompt}
 
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
-      <p style="margin:0 0 8px;">Suppose we randomly pick a participant from this group of 100. What do you think is the percent chance that you beat a randomly picked participant on the quiz?</p>
-      <p style="margin:0 0 14px;"><strong>Your score is shown above. Please consider it carefully before making your guess.</strong></p>
+      <p style="margin:0 0 14px;"><strong>How many of 10 random participants would you typically beat on the quiz?</strong></p>
       <div class="slider-container" style="margin:0;">
-        <label>Your best guess:</label>
         <div class="slider-row">
-          <input type="range" id="init-mu-slider" min="0" max="100" value="50" class="slider-hidden-thumb"
-                 onpointerdown="markSliderTouched(this); const v=document.getElementById('init-mu-val'); v.classList.remove('slider-value-placeholder'); v.textContent = this.value + '%'; document.getElementById('init-mu-submit-row').style.display = '';"
-                 oninput="markSliderTouched(this); const v=document.getElementById('init-mu-val'); v.classList.remove('slider-value-placeholder'); v.textContent = this.value + '%'; document.getElementById('init-mu-submit-row').style.display = '';">
-          <div class="slider-value slider-value-placeholder" id="init-mu-val">—</div>
+          <input type="range" id="init-mu-slider" min="0" max="10" step="0.1" value="5" class="slider-hidden-thumb"
+                 style="width:100%;"
+                 onpointerdown="markSliderTouched(this); const v=document.getElementById('init-mu-val'); v.classList.remove('slider-value-placeholder'); v.innerHTML = '<strong>' + parseFloat(this.value).toFixed(1) + '</strong>'; document.getElementById('init-mu-readout').style.display = ''; document.getElementById('init-mu-submit-row').style.display = '';"
+                 oninput="markSliderTouched(this); const v=document.getElementById('init-mu-val'); v.classList.remove('slider-value-placeholder'); v.innerHTML = '<strong>' + parseFloat(this.value).toFixed(1) + '</strong>'; document.getElementById('init-mu-readout').style.display = ''; document.getElementById('init-mu-submit-row').style.display = '';">
         </div>
-        <div class="slider-labels"><span>0%</span><span>100%</span></div>
+        <div class="slider-labels"><span>0 of 10</span><span>10 of 10</span></div>
+        <p id="init-mu-readout" style="display:none;margin:14px 0 0;text-align:center;font-size:1rem;">I typically beat <span id="init-mu-val">—</span> out of 10.</p>
       </div>
     </div>
 
@@ -2422,7 +2417,8 @@ SCREENS.scoreAndBelief = () => {
 };
 
 function submitInitialBeliefs() {
-  const mu = parseInt(document.getElementById('init-mu-slider').value);
+  // STORED AS COUNT (0.0 to 10.0)
+  const mu = parseFloat(document.getElementById('init-mu-slider').value);
   STATE.initial_belief = mu;
   showScreen('managerInstructions1');
 }
@@ -2431,12 +2427,12 @@ function submitInitialBeliefs() {
 SCREENS.managerInstructions1 = () => {
   const t = CONFIG.texts.managerInstructions1(STATE.fixedBonusH);
   container.innerHTML = `
-    <div class="screen-header"><h2>Instructions — The Managers</h2></div>
+    <div class="screen-header"><h2>The Two Managers</h2></div>
     ${t.intro}
     ${t.performance}
 
     <div class="info-panel" style="margin:14px 0;">
-      <p style="margin:0;"><strong>Reminder:</strong> You guessed a <strong>${STATE.initial_belief}%</strong> chance of beating a randomly picked participant. This means you would on average expect to beat <strong>${(STATE.initial_belief / 10).toFixed(1)} out of 10</strong> randomly picked participants (<strong>$${(STATE.initial_belief / 10 * 0.10).toFixed(2)}</strong>).</p>
+      <p style="margin:0;">Based on your guess (<strong>${Number(STATE.initial_belief).toFixed(1)} of 10</strong>), the Performance Manager would on average pay you <strong>$${(Number(STATE.initial_belief) * 0.10).toFixed(2)}</strong>.</p>
     </div>
 
     ${t.fixed}
@@ -2454,7 +2450,7 @@ SCREENS.hProbElicitation = () => {
     ${CONFIG.texts.hProbElicitationIntro}
 
     <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
-      <p style="margin:0 0 12px;"><strong>1.</strong> According to your guess about your quiz performance, which payment do you expect to receive from the <strong class="eval-performance">Performance Manager</strong>?</p>
+      <p style="margin:0 0 12px;"><strong>1.</strong> Based on your guess (<strong>${Number(STATE.initial_belief).toFixed(1)} of 10</strong>), what payment do you expect from the <strong class="eval-performance">Performance Manager</strong>?</p>
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:1rem;color:#333;">$</span>
         <input type="number" id="perf-h-input" min="0" max="1" step="0.01" placeholder="0.00" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
@@ -2470,7 +2466,7 @@ SCREENS.hProbElicitation = () => {
     </div>
 
     <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
-      <p style="margin:0 0 12px;"><strong>3.</strong> Based on your answers above, which manager do you expect to pay you a <strong>higher payment</strong>?</p>
+      <p style="margin:0 0 12px;"><strong>3.</strong> Which manager do you expect to pay <strong>more</strong>?</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn btn-choice" id="better-perf-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
                 onclick="selectBetterManager('performance')"><span class="eval-performance">Performance Manager</span></button>
@@ -2534,8 +2530,8 @@ function submitHProbElicitation() {
   STATE.elicitedFixedHCount = randVal;     // now: dollar amount from Fixed
   STATE.elicitedBetterManager = window._selectedBetterManager;
 
-  // Q1 correct answer: (initial_belief / 10) wins × $0.10 (decimal expected wins)
-  const correctPerfPay = +(STATE.initial_belief / 10 * 0.10).toFixed(2);
+  // Q1 correct answer: initial_belief (count out of 10) × $0.10 per win
+  const correctPerfPay = +(STATE.initial_belief * 0.10).toFixed(2);
   // Q2 correct answer: fixedBonusH × $0.10
   const correctFixedPay = +(STATE.fixedBonusH * 0.10).toFixed(2);
   // "Better manager" comparison
@@ -2564,7 +2560,7 @@ SCREENS.comprehensionCheck1 = () => {
 // ---- Instructions Page 2a: The Rounds ----
 SCREENS.managerInstructions2a = () => {
   container.innerHTML = `
-    <div class="screen-header"><h2>Instructions — The Rounds</h2></div>
+    <div class="screen-header"><h2>The 5 Rounds</h2></div>
     ${CONFIG.texts.managerInstructions2a(STATE.fixedBonusH)}
     <div class="nav-row" style="justify-content:space-between;">
       <button class="btn" onclick="showScreen('comprehensionCheck1')">← Back</button>
@@ -2573,14 +2569,26 @@ SCREENS.managerInstructions2a = () => {
   updateProgress(0.44);
 };
 
+// ---- Important note about the managers — last screen before Round 1 ----
+SCREENS.managerNote = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>An Important Note</h2></div>
+    <p><strong class="eval-performance">Performance Manager</strong> — <strong>rethink your best guess.</strong> A new random pool of 10 participants is drawn each time you pick it. Sometimes the pool is stronger, sometimes weaker; your own quiz performance is fixed, but your wins can vary. Each round is just one such draw, so rethink your best estimate of how many you would <strong>typically</strong> beat — not how many you beat in this one round.</p>
+    <p><strong class="eval-fixed">Fixed Manager</strong> — <strong>leave your best guess as it is.</strong> Picking the Fixed Manager tells you nothing new about how many you would typically beat.</p>
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="showRoundScreen()">Begin Round 1 &rarr;</button>
+    </div>`;
+  updateProgress(0.55);
+};
+
 // ---- Instructions Page 2b: Payment & Informativeness ----
 SCREENS.managerInstructions2b = () => {
   container.innerHTML = `
-    <div class="screen-header"><h2>Instructions — Payment</h2></div>
+    <div class="screen-header"><h2>Your Payments</h2></div>
     ${CONFIG.texts.managerInstructions2b(STATE.bsrStake)}
     <div class="nav-row" style="justify-content:space-between;">
       <button class="btn" onclick="showScreen('managerInstructions2a')">← Back</button>
-      <button class="btn btn-primary" onclick="showScreen('comprehensionCheck2')">Next →</button>
+      <button class="btn btn-primary" onclick="showScreen('preChoiceBelief')">Next →</button>
     </div>`;
   updateProgress(0.48);
 };
@@ -2601,13 +2609,9 @@ SCREENS.preChoiceBelief = () => {
   container.innerHTML = `
     <div class="screen-header"><h2>Your Best Guess</h2></div>
 
-    <p>Now that you understand how the managers work, please review your quiz performance guess before we begin with the first round.</p>
+    <p>Before the rounds begin, please review your guess.</p>
 
-    <p>Remember, you solved <strong>${STATE.quizScore} out of ${CONFIG.quizQuestionsShared.length + (STATE.quizCondition === 'easy' ? CONFIG.quizQuestionsEasyOnly.length : CONFIG.quizQuestionsHardOnly.length)}</strong> quiz questions correctly. Your performance is compared to others based on the 6 questions that were the same for all participants.</p>
-
-    <p>Forming your best guess about your quiz performance helps you understand which payments you can expect from the Performance Manager. Your guess never changes your true chance of winning comparisons &mdash; that depends on how you actually compare to others on the quiz.</p>
-
-    <p>Your previous guess is pre-selected. You can adjust it or leave as is.</p>
+    <p style="font-style:italic;color:#475569;">Reminder: you solved <strong>${STATE.quizScore} out of ${CONFIG.quizQuestionsShared.length + (STATE.quizCondition === 'easy' ? CONFIG.quizQuestionsEasyOnly.length : CONFIG.quizQuestionsHardOnly.length)}</strong> logic quiz questions correctly.</p>
 
     ${renderMuConfidenceWidget(prevBelief, stake)}`;
 
@@ -2619,23 +2623,24 @@ SCREENS.preChoiceBelief = () => {
 
 function submitPreChoiceBelief() {
   if (_initConfSlider === null) return; // guard: can only be called from review panel
-  const mu = parseInt(document.getElementById('init-mu-slider').value);
-  const muC = Math.max(0.005, Math.min(0.995, mu / 100));
+  // mu is in COUNT units (0.0 to 10.0). Convert to probability for Beta math.
+  const mu = parseFloat(document.getElementById('init-mu-slider').value);
+  const muC = Math.max(0.005, Math.min(0.995, mu / 10));
   const kappa = sliderToKappa(_initConfSlider, muC);
-  STATE.belief_0  = mu;
-  STATE.initialConfidence = _initConfSlider;       // 0-100 slider value (was 1-7 in pilot)
+  STATE.belief_0  = mu;                            // STORED AS COUNT (0.0 to 10.0)
+  STATE.initialConfidence = _initConfSlider;       // 0-100 slider value
   STATE.initialKappa      = kappa;
   STATE.initialAlpha      = muC * kappa;
   STATE.initialBeta       = (1 - muC) * kappa;
   STATE.currentRound = 1;
-  showScreen('round1Transition');
+  showScreen('managerNote');
 }
 
 // ---- Round 1 transition (between pre-choice belief submission and Round 1) ----
 SCREENS.round1Transition = () => {
   container.innerHTML = `
-    <div class="screen-header"><h2>Round 1 begins</h2></div>
-    <p>You will now choose between the <strong class="eval-performance">Performance Manager</strong> and the <strong class="eval-fixed">Fixed Manager</strong> for Round 1.</p>
+    <div class="screen-header"><h2>Round 1</h2></div>
+    <p>You will now choose between the <strong class="eval-performance">Performance Manager</strong> and the <strong class="eval-fixed">Fixed Manager</strong>.</p>
     <div class="nav-row">
       <button class="btn btn-primary" onclick="showRoundScreen()">Begin Round 1 &rarr;</button>
     </div>`;
@@ -2743,6 +2748,10 @@ function showRoundScreen() {
     // re-elicitation screen) if available, otherwise fall back to initial_belief.
     const initialBelief = STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief;
     container.innerHTML = `
+      <div class="screen-header">
+        <h2>Round ${r} of ${CONFIG.numChoiceRounds}</h2>
+      </div>
+
       <div id="round-step-choice">
         ${buildManagerChoiceHTML(r, initialBelief, 'roundInitialChoice')}
       </div>
@@ -2755,7 +2764,6 @@ function showRoundScreen() {
     container.innerHTML = `
       <div class="screen-header">
         <h2>Round ${r} of ${CONFIG.numChoiceRounds}</h2>
-        <div class="round-info">Manager: ${managerLabel(mgr)}</div>
       </div>
 
       <div id="round-step-outcomes"></div>
@@ -2776,11 +2784,8 @@ function roundInitialChoice(chosenManager) {
   roundData.manager = chosenManager;
   roundData.transferred = false;
 
-  // Hide choice, update header
+  // Hide choice (header stays as-is — just "Round 1 of 5")
   document.getElementById('round-step-choice').style.display = 'none';
-  const header = container.querySelector('.screen-header');
-  header.innerHTML = `<h2>Round 1 of ${CONFIG.numChoiceRounds}</h2>
-    <div class="round-info">Manager: ${managerLabel(chosenManager)}</div>`;
 
   // Show bonuses
   document.getElementById('round-step-outcomes').style.display = '';
@@ -2825,15 +2830,15 @@ function roundShowBonuses() {
   if (mgr === 'performance') {
     // Performance Manager: show a reveal button so it feels like new information
     outcomesDiv.innerHTML = `
-      <h3 class="step-heading"><span class="${mgrClass}">${mgrNameStr}</span> Payment</h3>
-      <p style="margin:14px 0 10px;">You chose the <strong class="${mgrClass}">${mgrNameStr}</strong>. Your quiz score was compared to 10 randomly picked participants.</p>
+      <h3 class="step-heading">Payment</h3>
+      <p style="margin:14px 0 10px;">You chose the <strong>${mgrNameStr}</strong>. Your quiz score was compared to 10 randomly picked participants.</p>
       <div id="perf-reveal-container" style="text-align:center;margin:16px 0;">
         <button class="btn btn-primary" id="perf-reveal-btn" style="font-size:1.05rem;padding:12px 32px;" onclick="revealPerformanceResult()">Reveal my results →</button>
       </div>
       <div id="perf-result-box" style="display:none;">
         <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:20px;text-align:center;margin:12px 0;">
-          <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">You beat <span style="font-size:1.5rem;font-weight:800;color:#1e293b;">${hCount} out of 10</span> randomly picked participants</p>
-          <p style="margin:8px 0 0;font-size:1rem;font-weight:400;color:#64748b;">Your payment this round: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings.toFixed(2)}</span></p>
+          <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">You beat <span style="font-size:1.5rem;font-weight:800;color:#1e293b;">${hCount} of 10</span> randomly picked participants</p>
+          <p style="margin:8px 0 0;font-size:1rem;font-weight:400;color:#64748b;">Your performance payment: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings.toFixed(2)}</span></p>
         </div>
         <div class="nav-row">
           <button class="btn btn-primary" onclick="roundShowGamma()">Continue →</button>
@@ -2842,8 +2847,8 @@ function roundShowBonuses() {
   } else {
     // Fixed Manager: show dollar amount directly — no reveal needed, no new info
     outcomesDiv.innerHTML = `
-      <h3 class="step-heading"><span class="${mgrClass}">${mgrNameStr}</span> Payment</h3>
-      <p style="margin:14px 0 10px;">You chose the <strong class="${mgrClass}">${mgrNameStr}</strong>.</p>
+      <h3 class="step-heading">Payment</h3>
+      <p style="margin:14px 0 10px;">You chose the <strong>${mgrNameStr}</strong>.</p>
       <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:20px;text-align:center;margin:12px 0;">
         <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">Your fixed payment: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings.toFixed(2)}</span></p>
       </div>
@@ -2855,6 +2860,24 @@ function roundShowBonuses() {
   outcomesDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// Time-gate: disable the outcome→belief Continue button for 3 seconds
+function startOutcomeTimeGate() {
+  let secs = 3;
+  const btn = document.getElementById('outcome-continue-btn');
+  const cd = document.getElementById('outcome-cd');
+  if (!btn || !cd) return;
+  const tick = setInterval(() => {
+    secs--;
+    if (secs <= 0) {
+      btn.disabled = false;
+      cd.textContent = '';
+      clearInterval(tick);
+    } else {
+      cd.textContent = ` (wait ${secs}s)`;
+    }
+  }, 1000);
+}
+
 // Reveal performance results (adds anticipation / makes it feel like new info)
 function revealPerformanceResult() {
   const roundData = window._pendingRound;
@@ -2863,65 +2886,66 @@ function revealPerformanceResult() {
   document.getElementById('perf-result-box').style.display = '';
 }
 
-// Bonuses → γ slider
+// Bonuses → γ slider (now renders a FRESH SCREEN, not appended to outcome screen)
 function roundShowGamma() {
   const roundData = window._pendingRound;
   roundData.tsGammaShown = Date.now();
+
   const isFirstGammaUpdate = STATE.rounds.length === 0;
   const prevGamma = isFirstGammaUpdate
     ? (STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief)
     : STATE.rounds[STATE.rounds.length - 1].belief;
   const stake = STATE.bsrStake.toFixed(0);
-
+  const r = roundData.roundNum;
   const chosenMgr = roundData.manager;
-  const mgrNameHTML = chosenMgr === 'performance'
-    ? '<strong class="eval-performance">Performance Manager</strong>'
-    : '<strong class="eval-fixed">Fixed Manager</strong>';
 
-  const gammaDiv = document.getElementById('round-step-gamma');
-  gammaDiv.style.display = '';
-  gammaDiv.innerHTML = `
-    <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
+  // Reminder of what just happened (shows on the belief screen for memory)
+  const reminderText = chosenMgr === 'performance'
+    ? `Your previous guess was that you typically beat ${Number(prevGamma).toFixed(1)} out of 10.<br><br>In this round, you beat <strong>${roundData.hCount} out of 10</strong>. How does this change your guess about how many you would typically beat?`
+    : `Your previous guess was that you typically beat ${Number(prevGamma).toFixed(1)} out of 10.`;
 
-    <h3 class="step-heading">Quiz Performance Guess</h3>
+  // Transition sentence — folded into reminderText for Perf rounds; nothing extra needed
+  const transitionText = ``;
 
-    ${chosenMgr === 'performance'
-      ? `<p>The ${mgrNameHTML} payment can <strong>help</strong> you form a better guess about your quiz performance.</p>
-    <p>Your previous guess was <strong>${prevGamma}%</strong>, so you expected to beat <strong>${(prevGamma / 10).toFixed(1)} out of 10</strong> participants on average. You actually beat <strong>${roundData.hCount} out of 10</strong>.</p>`
-      : `<p>The ${mgrNameHTML} payment <strong>cannot</strong> help you form a better guess about your quiz performance.</p>
-    <p>Your previous guess was <strong>${prevGamma}%</strong>, so you expected to beat <strong>${(prevGamma / 10).toFixed(1)} out of 10</strong> participants on average.</p>`
-    }
+  // SCREEN 2: belief elicitation only (fresh container, replaces outcome screen)
+  container.innerHTML = `
+    <div class="screen-header">
+      <h2>Round ${r} of ${CONFIG.numChoiceRounds}</h2>
+    </div>
+
+    <p style="margin:6px 0 14px;">${reminderText}</p>
+    ${transitionText}
 
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
-      <p style="margin:0 0 14px;">What do you think is the percent chance that you beat a randomly picked participant on the quiz?</p>
+      <p style="margin:0 0 14px;">How many of 10 random participants would you typically beat on the quiz?</p>
       <div class="slider-container" style="margin:0;">
-        <label>Your best guess:</label>
         <div class="slider-row">
-          <input type="range" id="gamma-round-slider" min="0" max="100" value="${prevGamma}" data-touched=""
-                 onpointerdown="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'; document.getElementById('gamma-nav').style.display = '';"
-                 oninput="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = this.value + '%'; document.getElementById('gamma-nav').style.display = '';">
-          <div class="slider-value" id="gamma-round-val">${prevGamma}%</div>
+          <input type="range" id="gamma-round-slider" min="0" max="10" step="0.1" value="${prevGamma}" data-touched=""
+                 style="width:100%;"
+                 onpointerdown="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = parseFloat(this.value).toFixed(1);"
+                 oninput="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = parseFloat(this.value).toFixed(1);">
         </div>
-        <div class="slider-labels"><span>0%</span><span>100%</span></div>
-        <p style="font-size:0.82rem;color:#94a3b8;font-style:italic;margin:10px 0 0;">Click the slider once to confirm or move it to revise.</p>
+        <div class="slider-labels"><span>0 of 10</span><span>10 of 10</span></div>
+        <p style="margin:14px 0 0;text-align:center;font-size:1rem;">I typically beat <strong id="gamma-round-val">${Number(prevGamma).toFixed(1)}</strong> out of 10.</p>
       </div>
     </div>
 
-    <p style="font-size:0.88rem; color:#666;">Reporting your true best guess maximizes your chance of winning the <strong>$${stake}</strong> accuracy prize.</p>
+    <p style="font-size:0.88rem; color:#666;">Reporting your true best guess maximizes your chance of winning the <strong>$${stake}</strong> accuracy payment.</p>
 
     <div id="gamma-slider-warning" class="slider-warning"></div>
-    <div class="nav-row" id="gamma-nav" style="display:none;">
+    <div class="nav-row" id="gamma-nav">
       <button class="btn btn-primary" onclick="roundSubmitGamma()">Next →</button>
     </div>`;
 
-  gammaDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
 // Step 3 → Step 4: lock γ, show evaluator choice (or finish)
 function roundSubmitGamma() {
   const roundData = window._pendingRound;
   const slider = document.getElementById('gamma-round-slider');
-  roundData.belief = parseInt(slider.value);
+  // STORED AS COUNT (0.0 to 10.0)
+  roundData.belief = parseFloat(slider.value);
   roundData.beliefSliderTouched = slider.dataset.touched === '1';
   roundData.beliefKeptButton = !roundData.beliefSliderTouched;
   roundData.tsGammaSubmit = Date.now();
@@ -3479,7 +3503,7 @@ SCREENS.results = () => {
       <h3>Payment Breakdown</h3>
       <div class="payment-line"><span>Show-up fee</span><span>$${CONFIG.showUpFee.toFixed(2)}</span></div>
       <div class="payment-line"><span>Manager payment (selected: ${roundLabel}, ${payRound.hCount} wins × $0.10)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Accuracy payment (selected: ${beliefLabel}, your guess: ${beliefValue}%)</span><span>$${STATE.beliefBonus_amount.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Accuracy payment (selected: ${beliefLabel}, your guess: ${Number(beliefValue).toFixed(1)} of 10)</span><span>$${STATE.beliefBonus_amount.toFixed(2)}</span></div>
       <div class="payment-total"><span>Total payment</span><span>$${STATE.totalBonus.toFixed(2)}</span></div>
     </div>
 
