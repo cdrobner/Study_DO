@@ -418,13 +418,14 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbyfBqZ0r5jA6_MVmmU91FX6jcBKyLkbpWdQkcuTD3UoSC5zYPhrNVZRxXZcpdQY2RXR/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzKQ1JGU3lyl9WG6VY-BCnXFpZpOJLzAD5P1GveNPF1CZqE9seaT8jrYRmdhwgS_ZSu/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
 
   // ---- Study parameters ----
   numChoiceRounds: 5,
+  numForcedRounds: 2,       // Forced Performance Manager rounds after the choice rounds
   outcomesPerRound: 10,
   payPerH: 0.10,           // $ per comparison won
   showUpFee: 2.00,         // $ flat fee
@@ -1072,9 +1073,7 @@ const CONFIG = {
     sampleQuestionFeedbackWrong: `<strong style="color:#dc2626;">Not quite.</strong> The correct answer is highlighted in green. Questions vary in difficulty — if one feels hard, it probably is for everyone. The better you perform, the more you can earn.`,
 
     scoreAnnouncement: (score, total) =>
-      `You solved <strong>${score} out of ${total}</strong> logic quiz questions correctly.`,
-
-    beliefElicitationPrompt: `<p>Your score on 6 shared questions will be compared to other Prolific participants (ties decided by a coin flip).</p>`,
+      `In the entire quiz, you solved <strong>${score} out of ${total}</strong> questions correctly.`,
 
     transition: null, // removed — content folded into managerInstructions1
 
@@ -1090,27 +1089,35 @@ const CONFIG = {
     managerInstructions1: (fixedH) => {
       const fixedPay = (fixedH * 0.10).toFixed(2);
       return {
-        intro: `<p>You can earn payments from one of two managers. They work differently:</p>`,
-        performance: `<p><strong class="eval-performance">Performance Manager:</strong> compares your score on the 6 shared questions to <strong>each of 10 random Prolific participants</strong>. You earn <strong>$0.10 per win</strong> (ties decided by a coin flip).</p>`,
-        fixed: `<p><strong class="eval-fixed">Fixed Manager:</strong> pays a flat <strong>$${fixedPay}</strong> every round. The amount is fixed and stays the same across all 5 rounds.</p>`,
+        intro: `<p>Over the next 5 rounds, you'll choose between two managers to determine how much you earn each round. Here's how each one pays.</p>`,
+        performance: `<p><strong class="eval-performance">Performance Manager:</strong> each round, compares your score on the 6 shared questions to <strong>a new random draw of 10 Prolific participants</strong>. You earn <strong>$0.10 per win</strong> (ties decided by a coin flip).</p>`,
+        fixed: `<p><strong class="eval-fixed">Fixed Manager:</strong> pays a flat <strong>$${fixedPay}</strong> in every round.</p>`,
       };
     },
 
     hProbElicitationIntro: ``,
 
     managerInstructions2a: (fixedH) => {
-      return `<p>There are <strong>5 rounds</strong>. Each round you:</p>
+      return `<p>Over the next <strong>${CONFIG.numChoiceRounds} rounds</strong>, each round looks the same:</p>
       <ol>
-        <li>Choose <strong class="eval-performance">Performance</strong> or <strong class="eval-fixed">Fixed</strong> Manager.</li>
-        <li>Receive your payment.</li>
-        <li>Update your quiz performance guess (or keep it).</li>
+        <li>Pick <strong class="eval-performance">Performance</strong> or <strong class="eval-fixed">Fixed</strong> Manager.</li>
+        <li>See your payment.</li>
+        <li>Update your guess about your quiz performance if the round told you something new — otherwise, keep it.</li>
       </ol>
+      <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:14px 16px;margin:18px 0 4px;">
+        <p style="margin:0;"><strong>After the ${CONFIG.numChoiceRounds} rounds, you'll do ${CONFIG.numForcedRounds} rounds with the Performance Manager without choice.</strong> Therefore, please pick the manager you actually prefer in each choice round — don't choose Performance just out of curiosity about your result.</p>
+      </div>
 `;
     },
 
-    managerInstructions2b: (roundBsr) => `<ul>
-        <li><strong>Manager payment:</strong> the computer randomly picks one of your 5 manager payments.</li>
-        <li><strong>Accuracy payment:</strong> the computer randomly picks one of your 6 guesses for the <strong>$${roundBsr.toFixed(0)} accuracy payment</strong>. We use a payment rule that gives you the highest chance of winning when you honestly report your best guess.</li>
+    managerInstructions2b: () => `<p><strong class="eval-performance">Performance Manager.</strong> Each round is a new comparison against 10 fresh participants. The number of wins is a hint about your quiz performance — so a Performance round can change what you'd guess.</p>
+      <p><strong class="eval-fixed">Fixed Manager.</strong> A Fixed round doesn't tell you anything new about your quiz performance, so you should keep your best guess.</p>
+`,
+
+    managerInstructions2c: (roundBsr) => `<p>When the rounds are done, the computer determines your bonus payments:</p>
+      <ul>
+        <li><strong>Manager payment:</strong> one of your ${CONFIG.numChoiceRounds + CONFIG.numForcedRounds} manager payments is picked at random.</li>
+        <li><strong>Accuracy payment:</strong> you'll make ${CONFIG.numChoiceRounds + CONFIG.numForcedRounds + 1} best guesses about your quiz performance — one before round 1, plus one each round. The computer picks one at random and scores it. The <strong>$${roundBsr.toFixed(0)} accuracy payment</strong> uses a rule that gives you the highest chance of winning when you report your honest best guess.</li>
       </ul>
 
 `,
@@ -1118,10 +1125,11 @@ const CONFIG = {
     comprehensionCheck1: (fixedH) => {
       const fixedPay = (fixedH * 0.10).toFixed(2);
       return {
-        prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
+        title: 'One more check',
+        prompt: 'Which of these match what you just read? <span style="font-weight:normal;color:#64748b;">Select all that are true.</span>',
         backScreen: 'managerInstructions1',
         items: [
-          { text: "The Performance Manager compares me to 10 random participants and pays $0.10 per win.", correct: true },
+          { text: "The Performance Manager compares my score on the 6 shared questions to a new draw of 10 Prolific participants, and pays $0.10 per win.", correct: true },
           { text: `The Fixed Manager always pays the same $${fixedPay} every round.`, correct: true },
           { text: "Each round, both managers run new comparisons against 10 random participants.", correct: false },
         ],
@@ -1129,12 +1137,13 @@ const CONFIG = {
     },
 
     comprehensionCheck2: (roundBsr) => ({
-      prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
-      backScreen: 'managerInstructions2b',
+      title: 'Last check',
+      prompt: 'Which of these match what you just read? <span style="font-weight:normal;color:#64748b;">Select all that are true.</span>',
+      backScreen: 'managerInstructions2c',
       items: [
-        { text: "After a Performance Manager round, I should adjust my best guess because the number of comparisons I won is a hint about my quiz performance.", correct: true },
-        { text: "After a Fixed Manager round, I should keep my best guess because the fixed payment is not a hint about my quiz performance.", correct: true },
-        { text: "After a Fixed Manager round, I should adjust my best guess because the fixed payment is a hint about my quiz performance.", correct: false },
+        { text: "The number of wins in a Performance Manager round is a hint about my quiz performance.", correct: true },
+        { text: "A Fixed Manager round doesn't tell me anything new about my quiz performance.", correct: true },
+        { text: "A Fixed Manager round tells me something new about my quiz performance.", correct: false },
       ],
     }),
 
@@ -1415,7 +1424,7 @@ function buildManagerChoiceHTML(round, belief, onChoose) {
   const expectedWins = Number(belief).toFixed(1);
   const expectedPay = (Number(belief) * CONFIG.payPerH).toFixed(2);
 
-  const perfContext = `The Performance Manager would on average pay you ${badge('$' + expectedPay)} (based on your guess of ${badge(expectedWins + ' of 10')}).`;
+  const perfContext = `Based on your current guess, you expect to beat ${badge(expectedWins + ' out of 10')} randomly picked participants and earn ${badge('$' + expectedPay)}.`;
   const fixedContext = `The Fixed Manager pays you ${badge('$' + fixedPay)}.`;
 
   function cardHTML(mgr) {
@@ -1579,17 +1588,16 @@ let _initConfSlider = null;   // 0–100 slider value, null until touched
 let _initConfTouched = false;
 let _initReviewShown = false;
 
-function renderMuConfidenceWidget(defaultMu, stake) {
+function renderMuConfidenceWidget(defaultMu) {
   // defaultMu is in count units (0.0 to 10.0). Default = 5.0 (midpoint).
   const mu0 = defaultMu == null ? 5.0 : Number(defaultMu);
   const mu0Display = mu0.toFixed(1);
-  const stakeStr = stake != null ? stake.toFixed(0) : '1';
   return `
     <div id="mu-conf-widget">
 
       <!-- Step 1: μ slider (count-based: 0-10 of 10, step 0.1) -->
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 22px;margin:16px 0;">
-        <p style="margin:0 0 14px;">How many of 10 random participants would you typically beat on the quiz?</p>
+        <p style="margin:0 0 14px;">How many of 10 random Prolific participants who took this quiz would you expect to beat?</p>
         <div class="slider-row">
           <input type="range" id="init-mu-slider" min="0" max="10" step="0.1" value="${mu0}" data-touched="1"
                  style="width:100%;"
@@ -1599,10 +1607,8 @@ function renderMuConfidenceWidget(defaultMu, stake) {
           <span>0 of 10</span>
           <span>10 of 10</span>
         </div>
-        <p style="margin:14px 0 0;text-align:center;font-size:1rem;">I typically beat <strong id="init-mu-val">${mu0Display}</strong> out of 10.</p>
+        <p style="margin:14px 0 0;text-align:center;font-size:1rem;">I expect to beat <strong id="init-mu-val">${mu0Display}</strong> out of 10.</p>
       </div>
-
-      <p style="font-size:0.88rem;color:#666;">Reporting your true best guess maximizes your chance of winning the <strong>$${stakeStr}</strong> accuracy payment.</p>
 
       <div id="init-mu-confirm-row" style="margin-top:14px;text-align:right;">
         <button class="btn btn-primary" onclick="confirmInitMu()">Confirm best guess &rarr;</button>
@@ -1612,7 +1618,7 @@ function renderMuConfidenceWidget(defaultMu, stake) {
       <div id="init-conf-wrap" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 22px;margin:16px 0;">
         <p style="margin:0 0 12px;font-size:0.97rem;">How sure are you about your best guess?</p>
         <div class="slider-row">
-          <input type="range" id="init-conf-slider" min="0" max="100" value="50"
+          <input type="range" id="init-conf-slider" min="0" max="100" value="50" class="slider-hidden-thumb"
                  oninput="onInitConfChange(this.value)">
         </div>
         <div style="position:relative;margin:8px 0 0;height:50px;font-size:0.74rem;color:#64748b;">
@@ -1708,9 +1714,10 @@ function onInitConfChange(val) {
     });
   }
 
-  // First touch: reveal confirm button (review stays hidden until click)
+  // First touch: reveal thumb and confirm button (review stays hidden until click)
   if (!_initConfTouched) {
     _initConfTouched = true;
+    document.getElementById('init-conf-slider').classList.remove('slider-hidden-thumb');
     document.getElementById('init-conf-confirm-row').style.display = '';
   }
 
@@ -2041,7 +2048,7 @@ SCREENS.visualCheck = () => {
 SCREENS.quizInstructions = () => {
   armTabSwitchDetection();
   container.innerHTML = `
-    <div class="screen-header"><h2>Getting Started</h2></div>
+    <div class="screen-header"><h2>How the quiz works</h2></div>
     ${CONFIG.texts.quizInstructions}
     <div class="nav-row">
       <button class="btn btn-primary" onclick="showScreen('quizComprehension')">Next →</button>
@@ -2391,12 +2398,13 @@ function finishQuiz() {
 // ---- 1.18 Score and Belief Elicitation (point belief only; confidence moved to pre-choice) ----
 SCREENS.scoreAndBelief = () => {
   container.innerHTML = `
-    <div class="screen-header"><h2>Your Score</h2></div>
+    <div class="screen-header"><h2>How did you do?</h2></div>
+    <p>Take a moment to think about how you'd compare to others on the quiz.</p>
+    <p>Half of the quiz questions were the same for every participant in this study. The comparisons in this study are based on those shared questions.</p>
     <p>${CONFIG.texts.scoreAnnouncement(STATE.quizScore, CONFIG.numQuizQuestions)}</p>
-    ${CONFIG.texts.beliefElicitationPrompt}
 
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
-      <p style="margin:0 0 14px;"><strong>How many of 10 random participants would you typically beat on the quiz?</strong></p>
+      <p style="margin:0 0 14px;"><strong>Based on this score, how many of 10 random Prolific participants would you expect to beat?</strong></p>
       <div class="slider-container" style="margin:0;">
         <div class="slider-row">
           <input type="range" id="init-mu-slider" min="0" max="10" step="0.1" value="5" class="slider-hidden-thumb"
@@ -2405,7 +2413,7 @@ SCREENS.scoreAndBelief = () => {
                  oninput="markSliderTouched(this); const v=document.getElementById('init-mu-val'); v.classList.remove('slider-value-placeholder'); v.innerHTML = '<strong>' + parseFloat(this.value).toFixed(1) + '</strong>'; document.getElementById('init-mu-readout').style.display = ''; document.getElementById('init-mu-submit-row').style.display = '';">
         </div>
         <div class="slider-labels"><span>0 of 10</span><span>10 of 10</span></div>
-        <p id="init-mu-readout" style="display:none;margin:14px 0 0;text-align:center;font-size:1rem;">I typically beat <span id="init-mu-val">—</span> out of 10.</p>
+        <p id="init-mu-readout" style="display:none;margin:14px 0 0;text-align:center;font-size:1rem;">I expect to beat <span id="init-mu-val">—</span> out of 10.</p>
       </div>
     </div>
 
@@ -2427,18 +2435,18 @@ function submitInitialBeliefs() {
 SCREENS.managerInstructions1 = () => {
   const t = CONFIG.texts.managerInstructions1(STATE.fixedBonusH);
   container.innerHTML = `
-    <div class="screen-header"><h2>The Two Managers</h2></div>
+    <div class="screen-header"><h2>How you'll earn your bonus</h2></div>
     ${t.intro}
     ${t.performance}
 
     <div class="info-panel" style="margin:14px 0;">
-      <p style="margin:0;">Based on your guess (<strong>${Number(STATE.initial_belief).toFixed(1)} of 10</strong>), the Performance Manager would on average pay you <strong>$${(Number(STATE.initial_belief) * 0.10).toFixed(2)}</strong>.</p>
+      <p style="margin:0;">Given that you expect to beat <strong>${Number(STATE.initial_belief).toFixed(1)} out of 10</strong> random participants, the Performance Manager would pay you <strong>$${(Number(STATE.initial_belief) * 0.10).toFixed(2)} per round on average</strong>.</p>
     </div>
 
     ${t.fixed}
 
     <div class="nav-row" style="margin-top:18px;">
-      <button class="btn btn-primary" onclick="showScreen('hProbElicitation')">Next →</button>
+      <button class="btn btn-primary" onclick="showScreen('hProbElicitation')">Next: a quick check →</button>
     </div>`;
   updateProgress(0.36);
 };
@@ -2446,11 +2454,11 @@ SCREENS.managerInstructions1 = () => {
 // ---- H-Probability Elicitation ----
 SCREENS.hProbElicitation = () => {
   container.innerHTML = `
-    <div class="screen-header"><h2>Check Your Understanding</h2></div>
-    ${CONFIG.texts.hProbElicitationIntro}
+    <div class="screen-header"><h2>Quick check</h2></div>
+    <p>Based on what you just read, fill in the numbers below.</p>
 
     <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
-      <p style="margin:0 0 12px;"><strong>1.</strong> Based on your guess (<strong>${Number(STATE.initial_belief).toFixed(1)} of 10</strong>), what payment do you expect from the <strong class="eval-performance">Performance Manager</strong>?</p>
+      <p style="margin:0 0 12px;"><strong>1.</strong> Given that you expect to beat <strong>${Number(STATE.initial_belief).toFixed(1)} out of 10</strong> random participants, what payment would you expect from the <strong class="eval-performance">Performance Manager</strong> each round?</p>
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:1rem;color:#333;">$</span>
         <input type="number" id="perf-h-input" min="0" max="1" step="0.01" placeholder="0.00" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
@@ -2458,7 +2466,7 @@ SCREENS.hProbElicitation = () => {
     </div>
 
     <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
-      <p style="margin:0 0 12px;"><strong>2.</strong> What is the <strong class="eval-fixed">Fixed Manager's</strong> payment each round?</p>
+      <p style="margin:0 0 12px;"><strong>2.</strong> What does the <strong class="eval-fixed">Fixed Manager</strong> pay each round?</p>
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:1rem;color:#333;">$</span>
         <input type="number" id="rand-h-input" min="0" max="1" step="0.10" placeholder="0.00" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
@@ -2466,7 +2474,7 @@ SCREENS.hProbElicitation = () => {
     </div>
 
     <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
-      <p style="margin:0 0 12px;"><strong>3.</strong> Which manager do you expect to pay <strong>more</strong>?</p>
+      <p style="margin:0 0 12px;"><strong>3.</strong> Which manager would you expect to pay more on average?</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn btn-choice" id="better-perf-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
                 onclick="selectBetterManager('performance')"><span class="eval-performance">Performance Manager</span></button>
@@ -2479,7 +2487,7 @@ SCREENS.hProbElicitation = () => {
 
     <div class="nav-row" style="justify-content:space-between;">
       <button class="btn" onclick="showScreen('managerInstructions1')">← Back</button>
-      <button class="btn btn-primary" id="mgr-prob-next-btn" disabled onclick="submitHProbElicitation()">Next →</button>
+      <button class="btn btn-primary" id="mgr-prob-next-btn" disabled onclick="submitHProbElicitation()">Next: one more check →</button>
     </div>`;
 
   const perfIn = document.getElementById('perf-h-input');
@@ -2560,37 +2568,37 @@ SCREENS.comprehensionCheck1 = () => {
 // ---- Instructions Page 2a: The Rounds ----
 SCREENS.managerInstructions2a = () => {
   container.innerHTML = `
-    <div class="screen-header"><h2>The 5 Rounds</h2></div>
+    <div class="screen-header"><h2>Here's how each round works</h2></div>
     ${CONFIG.texts.managerInstructions2a(STATE.fixedBonusH)}
     <div class="nav-row" style="justify-content:space-between;">
       <button class="btn" onclick="showScreen('comprehensionCheck1')">← Back</button>
-      <button class="btn btn-primary" onclick="showScreen('managerInstructions2b')">Next →</button>
+      <button class="btn btn-primary" onclick="showScreen('managerInstructions2b')">Next: what each round tells you →</button>
     </div>`;
   updateProgress(0.44);
 };
 
-// ---- Important note about the managers — last screen before Round 1 ----
-SCREENS.managerNote = () => {
-  container.innerHTML = `
-    <div class="screen-header"><h2>An Important Note</h2></div>
-    <p><strong class="eval-performance">Performance Manager</strong> — <strong>rethink your best guess.</strong> A new random pool of 10 participants is drawn each time you pick it. Sometimes the pool is stronger, sometimes weaker; your own quiz performance is fixed, but your wins can vary. Each round is just one such draw, so rethink your best estimate of how many you would <strong>typically</strong> beat — not how many you beat in this one round.</p>
-    <p><strong class="eval-fixed">Fixed Manager</strong> — <strong>leave your best guess as it is.</strong> Picking the Fixed Manager tells you nothing new about how many you would typically beat.</p>
-    <div class="nav-row">
-      <button class="btn btn-primary" onclick="showRoundScreen()">Begin Round 1 &rarr;</button>
-    </div>`;
-  updateProgress(0.55);
-};
-
-// ---- Instructions Page 2b: Payment & Informativeness ----
+// ---- Instructions Page 2b: Informativeness ----
 SCREENS.managerInstructions2b = () => {
   container.innerHTML = `
-    <div class="screen-header"><h2>Your Payments</h2></div>
-    ${CONFIG.texts.managerInstructions2b(STATE.bsrStake)}
+    <div class="screen-header"><h2>What each round tells you</h2></div>
+    ${CONFIG.texts.managerInstructions2b()}
     <div class="nav-row" style="justify-content:space-between;">
       <button class="btn" onclick="showScreen('managerInstructions2a')">← Back</button>
-      <button class="btn btn-primary" onclick="showScreen('preChoiceBelief')">Next →</button>
+      <button class="btn btn-primary" onclick="showScreen('managerInstructions2c')">Next: your payments →</button>
     </div>`;
   updateProgress(0.48);
+};
+
+// ---- Instructions Page 2c: Payments ----
+SCREENS.managerInstructions2c = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>How you'll get paid</h2></div>
+    ${CONFIG.texts.managerInstructions2c(STATE.bsrStake)}
+    <div class="nav-row" style="justify-content:space-between;">
+      <button class="btn" onclick="showScreen('managerInstructions2b')">← Back</button>
+      <button class="btn btn-primary" onclick="showScreen('comprehensionCheck2')">Next: last check →</button>
+    </div>`;
+  updateProgress(0.50);
 };
 
 // ---- Comprehension Check 2: Payment & Updating ----
@@ -2604,16 +2612,15 @@ SCREENS.comprehensionCheck2 = () => {
 // ---- Pre-Choice Belief Re-Elicitation + Confidence (before Round 1) ----
 SCREENS.preChoiceBelief = () => {
   const prevBelief = STATE.initial_belief;
-  const stake = CONFIG.beliefBonusStake;
 
   container.innerHTML = `
-    <div class="screen-header"><h2>Your Best Guess</h2></div>
+    <div class="screen-header"><h2>Your best guess before round 1</h2></div>
 
-    <p>Before the rounds begin, please review your guess.</p>
+    <p>This is the first guess that counts toward your accuracy payment.</p>
 
     <p style="font-style:italic;color:#475569;">Reminder: you solved <strong>${STATE.quizScore} out of ${CONFIG.quizQuestionsShared.length + (STATE.quizCondition === 'easy' ? CONFIG.quizQuestionsEasyOnly.length : CONFIG.quizQuestionsHardOnly.length)}</strong> logic quiz questions correctly.</p>
 
-    ${renderMuConfidenceWidget(prevBelief, stake)}`;
+    ${renderMuConfidenceWidget(prevBelief)}`;
 
   // Initialize the widget after the DOM is ready
   requestAnimationFrame(() => initMuConfidenceWidget(prevBelief));
@@ -2633,7 +2640,7 @@ function submitPreChoiceBelief() {
   STATE.initialAlpha      = muC * kappa;
   STATE.initialBeta       = (1 - muC) * kappa;
   STATE.currentRound = 1;
-  showScreen('managerNote');
+  showRoundScreen();
 }
 
 // ---- Round 1 transition (between pre-choice belief submission and Round 1) ----
@@ -2648,11 +2655,11 @@ SCREENS.round1Transition = () => {
 };
 
 function renderComprehensionCheck(checkConfig, onPass, checkId) {
-  const { prompt, items, backScreen } = checkConfig;
+  const { prompt, items, backScreen, title = 'Comprehension Check' } = checkConfig;
   const attempts = STATE.comprehensionAttempts[checkId] || 0;
 
   container.innerHTML = `
-    <div class="screen-header"><h2>Comprehension Check</h2></div>
+    <div class="screen-header"><h2>${title}</h2></div>
     <p>${prompt}</p>
     <div id="check-items">
       ${items.map((item, i) => `
@@ -2719,14 +2726,24 @@ function validateComprehension() {
 function showRoundScreen() {
   const r = STATE.currentRound;
   const isFirstRound = (r === 1);
+  const isForcedRound = r > CONFIG.numChoiceRounds;
+  // Forced rounds always use the Performance Manager — pre-set if needed
+  if (isForcedRound) STATE.currentManager = 'performance';
   const mgr = STATE.currentManager; // null in Round 1 before choice
-  const progressFrac = 0.58 + (r / CONFIG.numChoiceRounds) * 0.30;
+  const totalRounds = CONFIG.numChoiceRounds + CONFIG.numForcedRounds;
+  const progressFrac = 0.58 + (r / totalRounds) * 0.30;
+
+  // Header text differs for forced vs. choice rounds
+  const headerText = isForcedRound
+    ? `Extra round ${r - CONFIG.numChoiceRounds} of ${CONFIG.numForcedRounds}`
+    : `Choice round ${r} of ${CONFIG.numChoiceRounds}`;
 
   // Initialize round data
   const didTransfer = STATE._pendingTransfer != null ? STATE._pendingTransfer : null;
   STATE._pendingTransfer = undefined;
   const roundData = {
     roundNum: r,
+    forced: isForcedRound,
     manager: mgr,
     transferred: didTransfer,
     outcomes: null,
@@ -2749,7 +2766,7 @@ function showRoundScreen() {
     const initialBelief = STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief;
     container.innerHTML = `
       <div class="screen-header">
-        <h2>Round ${r} of ${CONFIG.numChoiceRounds}</h2>
+        <h2>${headerText}</h2>
       </div>
 
       <div id="round-step-choice">
@@ -2760,10 +2777,10 @@ function showRoundScreen() {
       <div id="round-step-gamma" style="display:none;"></div>
       <div id="round-step-next-choice" style="display:none;"></div>`;
   } else {
-    // Rounds 2–N: manager already known; show bonuses immediately
+    // Rounds 2+ (including forced rounds): manager already known; show bonuses immediately
     container.innerHTML = `
       <div class="screen-header">
-        <h2>Round ${r} of ${CONFIG.numChoiceRounds}</h2>
+        <h2>${headerText}</h2>
       </div>
 
       <div id="round-step-outcomes"></div>
@@ -2828,19 +2845,23 @@ function roundShowBonuses() {
   const mgrClass = mgr === 'performance' ? 'eval-performance' : 'eval-fixed';
 
   if (mgr === 'performance') {
-    // Performance Manager: show a reveal button so it feels like new information
+    // Performance Manager: show a reveal button so it feels like new information.
+    // Forced rounds get a "this round uses..." phrasing instead of "you chose..."
+    const choicePhrase = roundData.forced
+      ? `This round uses the <strong>${mgrNameStr}</strong>.`
+      : `You chose the <strong>${mgrNameStr}</strong>.`;
     outcomesDiv.innerHTML = `
       <h3 class="step-heading">Payment</h3>
-      <p style="margin:14px 0 10px;">You chose the <strong>${mgrNameStr}</strong>. Your quiz score was compared to 10 randomly picked participants.</p>
+      <p style="margin:14px 0 10px;">${choicePhrase} Your quiz score was compared to 10 newly drawn Prolific participants who took this quiz.</p>
       <div id="perf-reveal-container" style="text-align:center;margin:16px 0;">
         <button class="btn btn-primary" id="perf-reveal-btn" style="font-size:1.05rem;padding:12px 32px;" onclick="revealPerformanceResult()">Reveal my results →</button>
       </div>
       <div id="perf-result-box" style="display:none;">
         <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:20px;text-align:center;margin:12px 0;">
-          <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">You beat <span style="font-size:1.5rem;font-weight:800;color:#1e293b;">${hCount} of 10</span> randomly picked participants</p>
-          <p style="margin:8px 0 0;font-size:1rem;font-weight:400;color:#64748b;">Your performance payment: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings.toFixed(2)}</span></p>
+          <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">You beat <span style="font-size:1.5rem;font-weight:800;color:#1e293b;">${hCount} out of 10</span>.</p>
+          <p style="margin:8px 0 0;font-size:1rem;font-weight:400;color:#64748b;">Your payment in this round: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings.toFixed(2)}</span></p>
         </div>
-        <div class="nav-row">
+        <div class="nav-row" id="perf-continue-row">
           <button class="btn btn-primary" onclick="roundShowGamma()">Continue →</button>
         </div>
       </div>`;
@@ -2850,11 +2871,10 @@ function roundShowBonuses() {
       <h3 class="step-heading">Payment</h3>
       <p style="margin:14px 0 10px;">You chose the <strong>${mgrNameStr}</strong>.</p>
       <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:20px;text-align:center;margin:12px 0;">
-        <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">Your fixed payment: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings.toFixed(2)}</span></p>
-      </div>
-      <div class="nav-row">
-        <button class="btn btn-primary" onclick="roundShowGamma()">Continue →</button>
+        <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">Your payment in this round: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings.toFixed(2)}</span></p>
       </div>`;
+    // Merged round design: render belief slider on the same page directly below.
+    roundShowGamma();
   }
 
   outcomesDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2878,7 +2898,9 @@ function startOutcomeTimeGate() {
   }, 1000);
 }
 
-// Reveal performance results (adds anticipation / makes it feel like new info)
+// Reveal performance results (adds anticipation / makes it feel like new info).
+// Result box has its own Continue button so participants get a beat to absorb
+// the outcome before being asked to update their guess.
 function revealPerformanceResult() {
   const roundData = window._pendingRound;
   roundData.tsResultRevealed = Date.now();
@@ -2886,7 +2908,7 @@ function revealPerformanceResult() {
   document.getElementById('perf-result-box').style.display = '';
 }
 
-// Bonuses → γ slider (now renders a FRESH SCREEN, not appended to outcome screen)
+// Bonuses → γ slider (now populates the in-page gamma section, NOT a fresh screen)
 function roundShowGamma() {
   const roundData = window._pendingRound;
   roundData.tsGammaShown = Date.now();
@@ -2895,29 +2917,23 @@ function roundShowGamma() {
   const prevGamma = isFirstGammaUpdate
     ? (STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief)
     : STATE.rounds[STATE.rounds.length - 1].belief;
-  const stake = STATE.bsrStake.toFixed(0);
-  const r = roundData.roundNum;
   const chosenMgr = roundData.manager;
 
-  // Reminder of what just happened (shows on the belief screen for memory)
+  // Inline prompt for the belief update. For Performance rounds, surface the
+  // gap between the previous guess and the round's result so OC participants
+  // are confronted with disconfirming evidence directly. For Fixed rounds,
+  // explicitly cue no-update behavior (goal #2 lever).
   const reminderText = chosenMgr === 'performance'
-    ? `Your previous guess was that you typically beat ${Number(prevGamma).toFixed(1)} out of 10.<br><br>In this round, you beat <strong>${roundData.hCount} out of 10</strong>. How does this change your guess about how many you would typically beat?`
-    : `Your previous guess was that you typically beat ${Number(prevGamma).toFixed(1)} out of 10.`;
+    ? `Your previous guess: <strong>${Number(prevGamma).toFixed(1)} out of 10</strong>. This round: <strong>${roundData.hCount} out of 10</strong>. What's your new best guess for a new draw of 10?`
+    : `You received no new information. Your best guess stays as it is.`;
 
-  // Transition sentence — folded into reminderText for Perf rounds; nothing extra needed
-  const transitionText = ``;
-
-  // SCREEN 2: belief elicitation only (fresh container, replaces outcome screen)
-  container.innerHTML = `
-    <div class="screen-header">
-      <h2>Round ${r} of ${CONFIG.numChoiceRounds}</h2>
-    </div>
-
+  const gammaDiv = document.getElementById('round-step-gamma');
+  gammaDiv.innerHTML = `
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 18px;">
     <p style="margin:6px 0 14px;">${reminderText}</p>
-    ${transitionText}
 
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
-      <p style="margin:0 0 14px;">How many of 10 random participants would you typically beat on the quiz?</p>
+      <p style="margin:0 0 14px;">How many of 10 random Prolific participants who took this quiz would you expect to beat?</p>
       <div class="slider-container" style="margin:0;">
         <div class="slider-row">
           <input type="range" id="gamma-round-slider" min="0" max="10" step="0.1" value="${prevGamma}" data-touched=""
@@ -2926,18 +2942,20 @@ function roundShowGamma() {
                  oninput="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = parseFloat(this.value).toFixed(1);">
         </div>
         <div class="slider-labels"><span>0 of 10</span><span>10 of 10</span></div>
-        <p style="margin:14px 0 0;text-align:center;font-size:1rem;">I typically beat <strong id="gamma-round-val">${Number(prevGamma).toFixed(1)}</strong> out of 10.</p>
+        <p style="margin:14px 0 0;text-align:center;font-size:1rem;">I expect to beat <strong id="gamma-round-val">${Number(prevGamma).toFixed(1)}</strong> out of 10.</p>
       </div>
     </div>
-
-    <p style="font-size:0.88rem; color:#666;">Reporting your true best guess maximizes your chance of winning the <strong>$${stake}</strong> accuracy payment.</p>
 
     <div id="gamma-slider-warning" class="slider-warning"></div>
     <div class="nav-row" id="gamma-nav">
       <button class="btn btn-primary" onclick="roundSubmitGamma()">Next →</button>
     </div>`;
 
-  window.scrollTo({ top: 0, behavior: 'auto' });
+  gammaDiv.style.display = '';
+  // On Performance rounds, hide the result-box Continue button now that gamma is shown
+  const continueRow = document.getElementById('perf-continue-row');
+  if (continueRow) continueRow.style.display = 'none';
+  gammaDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // Step 3 → Step 4: lock γ, show evaluator choice (or finish)
@@ -2959,13 +2977,26 @@ function roundSubmitGamma() {
 
   STATE.currentRound++;
 
-  if (STATE.currentRound > CONFIG.numChoiceRounds) {
-    // After Round 5: done
+  // After all choice + forced rounds: done
+  if (STATE.currentRound > CONFIG.numChoiceRounds + CONFIG.numForcedRounds) {
     showScreen('roundsComplete');
     return;
   }
 
-  // Show manager choice on a separate screen
+  // Entering forced-rounds territory
+  if (STATE.currentRound > CONFIG.numChoiceRounds) {
+    if (STATE.currentRound === CONFIG.numChoiceRounds + 1) {
+      // First forced round: show transition screen
+      showScreen('forcedRoundsTransition');
+    } else {
+      // Subsequent forced rounds: go directly into the next forced round
+      STATE.currentManager = 'performance';
+      showRoundScreen();
+    }
+    return;
+  }
+
+  // Choice rounds: show manager choice on a separate screen
   showManagerChoiceScreen();
 }
 
@@ -2993,12 +3024,28 @@ function roundMakeChoiceByMgr(chosenMgr) {
   showRoundScreen();
 }
 
+// ---- 2.10b Transition into the forced Performance Manager rounds ----
+SCREENS.forcedRoundsTransition = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Your ${CONFIG.numChoiceRounds} choice rounds are done</h2></div>
+    <p>Now: ${CONFIG.numForcedRounds} rounds with the Performance Manager without choice.</p>
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="beginForcedRounds()">Begin extra round 1 →</button>
+    </div>`;
+};
+
+function beginForcedRounds() {
+  STATE.currentManager = 'performance';
+  showRoundScreen();
+}
+
 // ---- 2.11 Rounds Complete Transition ----
 SCREENS.roundsComplete = () => {
+  const totalRounds = CONFIG.numChoiceRounds + CONFIG.numForcedRounds;
   container.innerHTML = `
-    <div class="screen-header"><h2>Rounds Complete</h2></div>
-    <p>You have completed all 5 rounds. Thank you!</p>
-    <p>Next, we have a few short additional questions. Please answer them carefully.</p>
+    <div class="screen-header"><h2>All rounds done</h2></div>
+    <p>You've finished all ${totalRounds} rounds.</p>
+    <p>Next: a few short follow-up questions.</p>
     <div class="nav-row">
       <button class="btn btn-primary" onclick="showScreen('riskPreferences')">Continue →</button>
     </div>`;
@@ -3586,6 +3633,7 @@ async function submitData() {
       const i = r.roundNum;
       return [
         [`manager_${i}`,       r.manager],
+        [`forced_${i}`,        r.forced ? 1 : 0],                     // 1 for forced Performance rounds (post-choice), 0 for choice rounds
         [`transferred_${i}`,   r.transferred],
         [`hCount_${i}`,        r.hCount],
         [`earnings_${i}`,      r.earnings],
