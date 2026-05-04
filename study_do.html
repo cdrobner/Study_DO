@@ -1111,7 +1111,7 @@ const CONFIG = {
         // The intro DOES introduce the shared-questions concept since it is referenced below.
         intro: `<p>You will choose <strong>once</strong> between two managers. The manager you end up with decides how much you earn.</p>`,
         performance: `<p><strong class="eval-performance">Performance Manager:</strong> randomly picks <strong>50 of the 100 Prolific participants</strong> and compares your score on the shared questions to theirs. You earn <strong>$0.01 for each one you beat</strong> (ties decided by a coin flip).</p>`,
-        fixed: `<p><strong class="eval-fixed">Fixed Manager:</strong> pays a flat <strong>$${fixedPay}</strong>.</p>`,
+        fixed: `<p><strong class="eval-fixed">Fixed Manager:</strong> pays a set <strong>$${fixedPay}</strong>.</p>`,
         // The override block is shown alongside the manager descriptions so the
         // randomization mechanism does not appear "out of nowhere" later.
         override: `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:14px 16px;margin:18px 0 4px;">
@@ -1164,7 +1164,7 @@ const CONFIG = {
         backScreen: 'managerInstructions1',
         items: [
           { text: "The Performance Manager picks 50 of the 100 Prolific participants and pays me $0.01 for each one I beat on the shared questions.", correct: true },
-          { text: `The Fixed Manager pays a flat $${fixedPay}.`, correct: true },
+          { text: `The Fixed Manager pays a set $${fixedPay}.`, correct: true },
           { text: `With ${overrideOther}% probability, I get the manager I did NOT pick instead of the one I choose.`, correct: true },
           { text: "Both managers pay $0.01 for each participant I beat.", correct: false },
         ],
@@ -1457,7 +1457,7 @@ function buildManagerChoiceHTML(belief, onChoose) {
   const expectedPay = (beliefN / 200).toFixed(2);
 
   const perfContext = `Based on your guess, you expect the Performance Manager to pay ${badge('$' + expectedPay)} on average.`;
-  const fixedContext = `The Fixed Manager pays a flat ${badge('$' + fixedPay)}.`;
+  const fixedContext = `The Fixed Manager pays a set ${badge('$' + fixedPay)}.`;
 
   function cardHTML(mgr) {
     const isPerf = mgr === 'performance';
@@ -1688,7 +1688,7 @@ function renderMuConfidenceWidget(_unused) {
             <div style="flex:1;padding:14px 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;text-align:center;">
               <p style="margin:0 0 8px;font-size:0.85rem;font-weight:700;" class="eval-fixed">Fixed Manager</p>
               <p style="margin:0;font-size:1.6rem;font-weight:800;color:#1e293b;">$${fixedPay}</p>
-              <p style="margin:6px 0 0;font-size:0.78rem;color:#64748b;">flat</p>
+              <p style="margin:6px 0 0;font-size:0.78rem;color:#64748b;">set</p>
             </div>
           </div>
         </div>
@@ -2874,7 +2874,7 @@ SCREENS.payoffResults = () => {
   // Posterior section — shared by both branches; revealed by showPosterior().
   const posteriorSection = `
     <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
-    <p style="margin:14px 0;font-size:1rem;">We will now give you the opportunity to review your guess about how you compared to others. Your earlier guess was that you would beat <strong>${prior} out of 100</strong>.</p>
+    <p style="margin:14px 0;font-size:1rem;">Your earlier guess was that you would beat <strong>${prior} out of 100</strong>. Do you want to keep this guess, or revise it?</p>
     <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:14px 16px;margin:6px 0 14px;">
       <p style="margin:0;">Your <strong>$${stake} accuracy payment</strong> depends on whichever guess you submit on this screen — your earlier one or a new one.</p>
     </div>
@@ -3414,7 +3414,7 @@ SCREENS.results = () => {
     : '';
   const payDescription = implemented === 'performance'
     ? `${STATE.roundHCount} wins × $0.01`
-    : `Fixed flat $${Number(STATE.fixedPayDollars).toFixed(2)}`;
+    : `Set $${Number(STATE.fixedPayDollars).toFixed(2)}`;
 
   const beliefLabel = STATE.posteriorChanged ? 'Final guess (revised)' : 'Final guess (kept prior)';
   const beliefValue = STATE.finalScoredBelief != null ? STATE.finalScoredBelief : STATE.belief_0;
