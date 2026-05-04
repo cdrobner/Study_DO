@@ -4,6 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Decision-Making Study</title>
+<!-- ============================================================
+     MINIMAL-PEDAGOGY VARIANT
+     This is study_do_single.html stripped of features that nudge
+     subjects toward a particular evaluator choice or belief update:
+       - No expected-payoff calculation in manager-choice cards
+       - No belief-implies-pay panel in managerInstructions1
+       - No "Performance is informative / Fixed is not" framing
+         (managerInstructions2b removed)
+       - No comprehension question forcing belief × payoff calculation
+         or "which manager pays more on average" comparison
+         (hProbElicitation removed)
+       - No teaching of how to interpret the Performance signal on the
+         posterior screen (no rhetorical "ask yourself", no "literally
+         half" framing, no "you can update / you can keep" instruction)
+     The strong n=50 signal does the work; behavior reveals beliefs.
+     ============================================================ -->
 <style>
 /* ============================================================
    STYLES — edit colors/fonts here if needed
@@ -417,26 +433,24 @@ const CONFIG = {
   prolificCompletionURL: 'https://app.prolific.com/submissions/complete?cc=C1FZIOGC',
 
   // ---- Google Sheets endpoint ----
-  // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzKQ1JGU3lyl9WG6VY-BCnXFpZpOJLzAD5P1GveNPF1CZqE9seaT8jrYRmdhwgS_ZSu/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  // After setting up the Google Apps Script, paste the URL here.
+  // NOTE: this minimal variant should ideally point at its own sheet so its data
+  // stays separate from the pedagogy-on variant. Until you set that up, leaving
+  // the same endpoint is fine — the schema is identical and rows can be filtered
+  // post-hoc by studyId.
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbyKI-ATtdDSHnc22u8J8ptJJKqRW9iOD22t62iZSEMi5ocsq2nu7cUWV-SF3f5zZu96nw/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
 
-  // ---- Study parameters ----
-  numChoiceRounds: 5,
-  numForcedRounds: 2,       // Forced Performance Manager rounds after the choice rounds
-  outcomesPerRound: 10,
-  payPerH: 0.10,           // $ per comparison won
+  // ---- Study parameters (single-choice variant) ----
+  outcomesPerRound: 50,
+  payPerH: 0.01,           // $ per comparison won (Performance Manager); n=50 → max $0.50
   showUpFee: 2.00,         // $ flat fee
-  beliefBonusStake: 1.00,     // $ BSR stake — one randomly selected guess from all 6
+  beliefBonusStake: 1.00,  // $ BSR stake on the final scored belief
+  overrideProb: 0.20,      // 20% probability that the OTHER manager is implemented
   quizTimePerQuestion: 10, // seconds
   numQuizQuestions: 12,
-
-  // ---- Fixed Manager probability display ----
-  // Set to null to use participant's γ* (computed from Study 1 data).
-  // Set to a number (e.g. 40) to show a fixed value to all participants.
-  fixedProbDisplay: null,
 
   // ---- Prior score distribution (for computing γ* and drawing opponents) ----
   // γ* is based on the 6 SHARED questions (SE1, SX1, SX2, SH2, H1, H2),
@@ -1086,66 +1100,81 @@ const CONFIG = {
       ],
     },
 
-    managerInstructions1: (fixedH) => {
-      const fixedPay = (fixedH * 0.10).toFixed(2);
+    managerInstructions1: (fixedPayDollars) => {
+      const fixedPay = Number(fixedPayDollars).toFixed(2);
+      const overrideMain = Math.round((1 - CONFIG.overrideProb) * 100);
+      const overrideOther = Math.round(CONFIG.overrideProb * 100);
       return {
-        intro: `<p>Over the next 5 rounds, you'll choose between two managers to determine how much you earn each round. Here's how each one pays.</p>`,
-        performance: `<p><strong class="eval-performance">Performance Manager:</strong> each round, compares your score on the 6 shared questions to <strong>a new random draw of 10 Prolific participants</strong>. You earn <strong>$0.10 per win</strong> (ties decided by a coin flip).</p>`,
-        fixed: `<p><strong class="eval-fixed">Fixed Manager:</strong> pays a flat <strong>$${fixedPay}</strong> in every round.</p>`,
+        // MINIMAL VARIANT: the intro does not announce a "final guess at the end".
+        // The posterior is a surprise elicitation; pre-announcing it would tip subjects off
+        // and let them strategically anchor their pre-choice belief.
+        // The intro DOES introduce the shared-questions concept since it is referenced below.
+        intro: `<p>You will choose <strong>once</strong> between two managers. The manager you end up with decides how much you earn.</p>`,
+        performance: `<p><strong class="eval-performance">Performance Manager:</strong> randomly picks <strong>50 of the 100 Prolific participants</strong> and compares your score on the shared questions to theirs. You earn <strong>$0.01 for each one you beat</strong> (ties decided by a coin flip).</p>`,
+        fixed: `<p><strong class="eval-fixed">Fixed Manager:</strong> pays a flat <strong>$${fixedPay}</strong>.</p>`,
+        // The override block is shown alongside the manager descriptions so the
+        // randomization mechanism does not appear "out of nowhere" later.
+        override: `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:14px 16px;margin:18px 0 4px;">
+          <p style="margin:0 0 8px;"><strong>One twist — your pick is not always the manager you get:</strong></p>
+          <ul style="margin:0;padding-left:20px;">
+            <li><strong>${overrideMain}% of the time</strong>, you get the manager you picked.</li>
+            <li><strong>${overrideOther}% of the time</strong>, you get the other manager instead.</li>
+          </ul>
+          <p style="margin:10px 0 0;">So you should pick the manager you actually prefer — that one is much more likely to be the one you end up with.</p>
+        </div>`,
       };
     },
 
     hProbElicitationIntro: ``,
 
-    managerInstructions2a: (fixedH) => {
-      return `<p>Over the next <strong>${CONFIG.numChoiceRounds} rounds</strong>, each round looks the same:</p>
-      <ol>
-        <li>Pick <strong class="eval-performance">Performance</strong> or <strong class="eval-fixed">Fixed</strong> Manager.</li>
-        <li>See your payment.</li>
-        <li>Update your guess about your quiz performance if the round told you something new — otherwise, keep it.</li>
-      </ol>
-      <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:14px 16px;margin:18px 0 4px;">
-        <p style="margin:0;"><strong>After the ${CONFIG.numChoiceRounds} rounds, you'll do ${CONFIG.numForcedRounds} rounds with the Performance Manager without choice.</strong> Therefore, please pick the manager you actually prefer in each choice round — don't choose Performance just out of curiosity about your result.</p>
-      </div>
-`;
-    },
+    // MINIMAL VARIANT: managerInstructions2a text empty — the override block is now
+    // rendered inside managerInstructions1 via the `override` key.
+    managerInstructions2a: () => ``,
 
-    managerInstructions2b: () => `<p><strong class="eval-performance">Performance Manager.</strong> Each round is a new comparison against 10 fresh participants. The number of wins is a hint about your quiz performance — so a Performance round can change what you'd guess.</p>
-      <p><strong class="eval-fixed">Fixed Manager.</strong> A Fixed round doesn't tell you anything new about your quiz performance, so you should keep your best guess.</p>
-`,
+    // MINIMAL VARIANT: managerInstructions2b text removed (screen no longer rendered).
+    // The original framed Performance as informative and Fixed as uninformative.
+    managerInstructions2b: () => ``,
 
-    managerInstructions2c: (roundBsr) => `<p>When the rounds are done, the computer determines your bonus payments:</p>
-      <ul>
-        <li><strong>Manager payment:</strong> one of your ${CONFIG.numChoiceRounds + CONFIG.numForcedRounds} manager payments is picked at random.</li>
-        <li><strong>Accuracy payment:</strong> you'll make ${CONFIG.numChoiceRounds + CONFIG.numForcedRounds + 1} best guesses about your quiz performance — one before round 1, plus one each round. The computer picks one at random and scores it. The <strong>$${roundBsr.toFixed(0)} accuracy payment</strong> uses a rule that gives you the highest chance of winning when you report your honest best guess.</li>
-      </ul>
-
-`,
-
-    comprehensionCheck1: (fixedH) => {
-      const fixedPay = (fixedH * 0.10).toFixed(2);
+    // REVISED (Option C): managerInstructions2c is now a COMBINED screen that motivates
+    // the upcoming belief elicitation, introduces the BSR accuracy payment, and runs a
+    // 2-item comprehension check inline. Replaces the old separate intro screen + the
+    // separate comprehensionCheck2 screen.
+    managerInstructions2c: (roundBsr) => {
+      const stake = Number(roundBsr).toFixed(0);
       return {
-        title: 'One more check',
-        prompt: 'Which of these match what you just read? <span style="font-weight:normal;color:#64748b;">Select all that are true.</span>',
+        title: 'Before your manager choice',
+        prompt: `<p>Which manager is better for you depends on how you think you compared to other Prolific participants on the shared questions. So before you choose a manager, we will ask you to form your best guess.</p>
+        <p>The guess we will ask for: <strong>out of 100 random Prolific participants who took this quiz, how many do you think you would beat on the shared questions?</strong></p>
+        <p>Your guess can earn you an <strong>accuracy payment of $${stake}</strong>, on top of whatever the manager pays. This payment uses a rule that pays you the most on average when you report what you actually believe — so reporting anything other than your honest best guess makes you worse off on average.</p>
+        <p style="margin-top:18px;"><strong>Quick check — which of the following is true?</strong> <span style="font-weight:normal;color:#64748b;">Select all that apply.</span></p>`,
         backScreen: 'managerInstructions1',
         items: [
-          { text: "The Performance Manager compares my score on the 6 shared questions to a new draw of 10 Prolific participants, and pays $0.10 per win.", correct: true },
-          { text: `The Fixed Manager always pays the same $${fixedPay} every round.`, correct: true },
-          { text: "Each round, both managers run new comparisons against 10 random participants.", correct: false },
+          { text: 'To earn the highest accuracy payment on average, I should report my honest best guess.', correct: true },
+          { text: 'I have to report a guess close to 50 out of 100 to earn the accuracy payment.', correct: false },
         ],
       };
     },
 
-    comprehensionCheck2: (roundBsr) => ({
-      title: 'Last check',
-      prompt: 'Which of these match what you just read? <span style="font-weight:normal;color:#64748b;">Select all that are true.</span>',
-      backScreen: 'managerInstructions2c',
-      items: [
-        { text: "The number of wins in a Performance Manager round is a hint about my quiz performance.", correct: true },
-        { text: "A Fixed Manager round doesn't tell me anything new about my quiz performance.", correct: true },
-        { text: "A Fixed Manager round tells me something new about my quiz performance.", correct: false },
-      ],
-    }),
+    comprehensionCheck1: (fixedPayDollars) => {
+      const fixedPay = Number(fixedPayDollars).toFixed(2);
+      const overrideOther = Math.round(CONFIG.overrideProb * 100);
+      return {
+        title: 'Comprehension check',
+        prompt: 'Which of the following statements are <strong>true</strong>? <span style="font-weight:normal;color:#64748b;">Select all that apply.</span>',
+        backScreen: 'managerInstructions1',
+        items: [
+          { text: "The Performance Manager picks 50 of the 100 Prolific participants and pays me $0.01 for each one I beat on the shared questions.", correct: true },
+          { text: `The Fixed Manager pays a flat $${fixedPay}.`, correct: true },
+          { text: `With ${overrideOther}% probability, I get the manager I did NOT pick instead of the one I choose.`, correct: true },
+          { text: "Both managers pay $0.01 for each participant I beat.", correct: false },
+        ],
+      };
+    },
+
+    // REVISED (Option C): comprehensionCheck2 was folded into managerInstructions2c, which
+    // is now a combined intro + 2-item check screen. This entry is retained as a no-op
+    // stub for back-compat with any older references.
+    comprehensionCheck2: () => null,
 
     riskPreferences: `<p>How do you see yourself: are you a person who is generally willing to take risks, or do you try to avoid taking risks?</p>
       <p>Please use a scale from 0 to 10, where 0 means you are "completely unwilling to take risks" and 10 means you are "very willing to take risks." You can also use the values in-between to indicate where you fall on the scale.</p>`,
@@ -1162,10 +1191,7 @@ const CONFIG = {
     ambiguityQuestion: `From which urn would you prefer to draw your ball?`,
 
 
-    resultsReveal: (payRoundNum, payRoundMgrId) => {
-      const mgrLabel = payRoundMgrId === 'performance'
-        ? '<span class="eval-performance">Performance Manager</span>'
-        : '<span class="eval-fixed">Fixed Manager</span>';
+    resultsReveal: (implementedMgrId, overrideTriggered) => {
       return `<p>Thank you for completing the study! Here are your results.</p>`;
     },
 
@@ -1196,16 +1222,12 @@ const STATE = {
   quizScore: 0,        // total score across all 12 questions
   quizScoreShared: 0,  // score on the 6 shared questions (SE1, SX1, SX2, SH2, H1, H2) — used for γ*
   gammaStar: null,     // true ability (percentile from Study 1, based on shared-6 score)
-  fixedProbShown: null, // the [XX]% shown to participant (kept for display-percentage context)
-  fixedBonusH: null,      // integer 0–10: # of comparisons won (= Fixed Manager bonus / $0.10)
-  fixedBonusFloor: null,  // floor(γ*/10) — lower rounding option
-  fixedBonusCeil: null,   // ceil(γ*/10) — upper rounding option
-  roundingDirection: null, // 'up' or 'down' — between-subjects proportional rounding IV
-  fixedBonusDisplayPct: null, // fixedBonusH * 10 (integer percentage shown on Fixed card)
+  fixedPayDollars: null,  // Fixed Manager flat payment in dollars (= γ*/100 directly, e.g. 0.47)
+  trueWinsOf100: null,  // Number of the 100 fixed reference opponents the participant beats (ties counted as 0.5). Deterministic per shared score. The reference 100 is CONFIG.study1ScoresShared — same for all participants.
 
   // Initial beliefs (post-quiz, μ + 7-level confidence elicitation)
-  initial_belief: null,        // Pre-instructions baseline guess (0.0–10.0 float; COUNT out of 10; before BSR / manager instructions)
-  belief_0: null,              // Best guess γ₀ at t=0 (0.0–10.0 float; COUNT out of 10; mean of Beta prior; post-instructions, pre-Round-1)
+  initial_belief: null,        // Pre-instructions baseline guess (0–100 integer; COUNT out of 100; before BSR / manager instructions)
+  belief_0: null,              // Best guess γ₀ at t=0 (0–100 integer; COUNT out of 100; mean of Beta prior; post-instructions, pre-choice; BSR-incentivized)
   initialConfidence: null,     // Continuous confidence slider value (0–100; was 1–7 level in pilot)
   initialBeliefEdits: [],      // [{ timestamp, field: 'mu'|'confidence', oldValue, newValue, trigger }]
   initialKappa: null,          // Beta concentration κ = α + β (mapped from initialConfidence via sliderToKappa)
@@ -1217,44 +1239,49 @@ const STATE = {
   elicitedFixedHCount: null,
   elicitedBetterManager: null,   // 'performance' | 'fixed'
 
-  // Rounds data: array of round objects
-  rounds: [],
-  // Each round: { roundNum (1-5), manager ('performance'|'fixed'),
-  //   transferred (bool, null for round 1), outcomes: ['H'|'L',...] (internal),
-  //   opponentScores: [int,...], earnings: float,
-  //   belief: float (0.0-10.0; COUNT out of 10) }
+  // ---- Single manager round ----
+  chosenManager: null,            // 'performance' | 'fixed' (what participant picked)
+  overrideTriggered: null,        // true if 20% override fired
+  implementedManager: null,       // what actually got implemented after override
+  overrideDraw: null,             // raw uniform draw used for override resolution
+  roundOutcomes: null,            // ['H'/'L', ...] of length 10 (Performance only; null on Fixed)
+  roundOpponentScores: null,      // [int, ...] of length 10 (Performance only; null on Fixed)
+  roundOpponentIndices: null,     // [int, ...] of length 50 — indices into CONFIG.study1ScoresShared (the fixed reference 100) of the 50 opponents the participant was compared to (Performance only)
+  roundHCount: null,              // 0–50 wins (Performance only; null on Fixed)
+  roundEarnings: null,            // dollar earnings from the implemented manager
+  tsChoiceMade: null,
+  tsAssignmentShown: null,        // payoffReveal entry (Screen A — override decision)
+  tsAssignmentRevealed: null,     // when subject clicks "Reveal what the program decided"
+  tsResultsShown: null,           // payoffResults entry (Screen B — results + posterior)
+  tsPayoffShown: null,            // legacy alias (kept for back-compat)
+  tsPayoffRevealed: null,         // when Performance reveal button was clicked
+  tsImplicationRevealed: null,    // when subject clicks "What would this imply?" on preChoiceBelief
+  tsPosteriorShown: null,
+  tsPosteriorSubmit: null,
 
-  currentManager: null, // 'performance' or 'fixed'
-  currentRound: 1,        // 1-5
+  // ---- Surprise posterior elicitation ----
+  posteriorBelief: null,          // 0.0–10.0 count, null if participant kept prior
+  posteriorChanged: null,         // true if they overrode prior; false if kept prior
+  posteriorConfidence: null,      // continuous confidence slider value (0–100)
+  posteriorKappa: null,
+  posteriorAlpha: null,
+  posteriorBeta: null,
+  finalScoredBelief: null,        // belief that BSR uses: posteriorBelief if changed, else belief_0
 
   // Post-experiment
   riskPreference: null,
   ambiguityAnswers: { comprehensionAttempts: 0 },
-  // Open-ended follow-ups: triggered when the chosen manager is NOT the one the
-  // participant's PRIOR belief γ_{t-1} (or γ₀ for t=1) implied had the higher
-  // H-probability. Split into TWO questions by direction of inconsistency.
-  perfChoiceExplanationShown: false,         // did we show the screen (either Q)?
-  perfChoiceExplanationRounds: [],           // UNION of rounds across both Qs (legacy)
-  perfChoiceExplanation: '',                 // combined text (legacy; joined for back-compat)
-  // Direction A: chose Fixed but prior belief > rp (belief favored Performance)
-  choseFixedAgainstBeliefRounds: [],
-  choseFixedAgainstBeliefText: '',
-  // Direction B: chose Performance but prior belief < rp (belief favored Random)
-  chosePerfAgainstBeliefRounds: [],
-  chosePerfAgainstBeliefText: '',
-  // Belief adjustment after Fixed Manager rounds
-  fixedBeliefAdjustRounds: [],           // rounds where participant chose Fixed AND changed guess
-  fixedBeliefAdjustExplanationShown: false,
-  fixedBeliefAdjustExplanationText: '',
+  // Open-ended follow-up: triggered if chosen manager disagreed with prior belief math
+  choiceExplanationShown: false,
+  choiceExplanationText: '',
   demographicAge: null,
   demographicGender: null,
   feedbackClarity: '',
   feedbackComplaints: '',
 
-  // Payment resolution
-  selectedPaymentRound: null,
-  // Accuracy payment (BSR on one randomly selected guess from all 6: pre-choice + rounds 1–5)
-  selectedBeliefIndex: null,   // 0 = pre-choice, 1–5 = rounds
+  // Payment resolution (single round)
+  beliefBonusEventOccurred: null,   // BSR realized event (true if participant's shared score beat the random opponent)
+  beliefBonusOpponent: null,        // random opponent score drawn from study1 distribution
   beliefBonus_won: false,
   beliefBonus_amount: 0,
   outcomeEarnings: 0,
@@ -1367,10 +1394,10 @@ function bsrWinProbability(p, eventOccurred) {
 }
 
 // Resolve BSR for a given belief.
-// beliefCount is in 0.0-10.0 (count of 10) — matches the new count-based elicitation.
-// Internally converts to probability p = beliefCount / 10 for the BSR formula.
+// beliefCount is 0-100 (count out of 100) — matches the count-based elicitation.
+// Internally converts to probability p = beliefCount / 100 for the BSR formula.
 function resolveBSR(beliefCount, eventOccurred, maxPrize) {
-  const p = beliefCount / 10;
+  const p = beliefCount / 100;
   const winProb = bsrWinProbability(p, eventOccurred);
   const won = Math.random() < winProb;
   return { winProb, won, amount: won ? maxPrize : 0 };
@@ -1410,22 +1437,27 @@ function managerClass(mgr_id) {
 function managerLabel(mgr_id) {
   return `<span class="${managerClass(mgr_id)}">${managerName(mgr_id)}</span>`;
 }
-// Unified manager-choice screen used for ALL rounds (including round 1).
-// `belief` is the participant's current γ estimate; `round` is the upcoming round number.
-// `onChoose` is the JS function name to call: 'roundInitialChoice' (round 1) or 'roundMakeChoiceByMgr' (rounds 2+).
-function buildManagerChoiceHTML(round, belief, onChoose) {
-  const fixedH = STATE.fixedBonusH;  // deterministic integer count
+// Single-choice manager screen.
+// `belief` is the participant's current γ estimate (count out of 100).
+// Cards surface the implied expected wins / expected pay under each manager so
+// subjects can compare directly. The "demand-effect-reduced" elements are on the
+// posterior screen (no interpretive framing of what the signal means), not here.
+// `onChoose` is the JS function name to call when a card is clicked.
+function buildManagerChoiceHTML(belief, onChoose) {
+  const fixedPayDollars = STATE.fixedPayDollars;
 
   // Badge helper for inline number display
   const badge = (text) => `<span style="display:inline-block;background:#f1f5f9;color:#1e293b;border:1px solid #cbd5e1;border-radius:4px;padding:1px 6px;font-weight:700;">${text}</span>`;
 
-  const fixedPay = (fixedH * CONFIG.payPerH).toFixed(2);
-  // belief is in COUNT units (0.0 to 10.0).
-  const expectedWins = Number(belief).toFixed(1);
-  const expectedPay = (Number(belief) * CONFIG.payPerH).toFixed(2);
+  const fixedPay = Number(fixedPayDollars).toFixed(2);
+  // belief is COUNT out of 100. Expected wins out of 50 = belief/2.
+  // E[Performance pay] = belief/100 × 50 × $0.01 = belief/200 dollars.
+  const beliefN = Number(belief);
+  const expectedWins50 = (beliefN / 2).toFixed(1);
+  const expectedPay = (beliefN / 200).toFixed(2);
 
-  const perfContext = `Based on your current guess, you expect to beat ${badge(expectedWins + ' out of 10')} randomly picked participants and earn ${badge('$' + expectedPay)}.`;
-  const fixedContext = `The Fixed Manager pays you ${badge('$' + fixedPay)}.`;
+  const perfContext = `Based on your guess, you expect the Performance Manager to pay ${badge('$' + expectedPay)} on average.`;
+  const fixedContext = `The Fixed Manager pays a flat ${badge('$' + fixedPay)}.`;
 
   function cardHTML(mgr) {
     const isPerf = mgr === 'performance';
@@ -1433,17 +1465,17 @@ function buildManagerChoiceHTML(round, belief, onChoose) {
     const context = isPerf ? perfContext : fixedContext;
 
     return `
-      <div style="flex:1;border:2px solid #e2e8f0;border-radius:12px;padding:18px 16px 14px;display:flex;flex-direction:column;gap:12px;">
+      <div style="flex:1;border:2px solid #e2e8f0;border-radius:12px;padding:18px 16px 14px;display:flex;flex-direction:column;gap:12px;align-items:stretch;">
         <h3 style="margin:0;text-align:center;" class="${colorClass}">${managerName(mgr)}</h3>
         <p style="margin:0;font-size:0.9rem;line-height:1.45;color:#475569;">${context}</p>
-        <button class="btn btn-choice" style="margin-top:auto;width:100%;" onclick="${onChoose}('${mgr}')">
+        <button class="btn btn-choice" style="width:100%;margin-top:0;" onclick="${onChoose}('${mgr}')">
           Choose<br>${managerLabel(mgr)}
         </button>
       </div>`;
   }
 
   return `
-    <p style="margin:6px 0 14px;">Which manager would you like for this round?</p>
+    <p style="margin:6px 0 14px;">Which manager do you choose?</p>
     <div style="display:flex;gap:16px;margin:18px 0;">
       ${cardHTML('performance')}
       ${cardHTML('fixed')}
@@ -1566,7 +1598,7 @@ function requireSliders(sliderIds, warningId) {
  */
 function sliderToKappa(v, mu) {
   // Clamp μ to [0.05, 0.95] for the κ_min floor calculation so that
-  // extreme μ doesn't push κ_min above κ_max (would invert the slider).
+  // extreme μ does not push κ_min above κ_max (would invert the slider).
   // The recorded μ itself is unchanged elsewhere.
   const muC = Math.max(0.05, Math.min(0.95, mu));
   const kMin = Math.max(2, 1 / muC + 0.5, 1 / (1 - muC) + 0.5);
@@ -1588,35 +1620,88 @@ let _initConfSlider = null;   // 0–100 slider value, null until touched
 let _initConfTouched = false;
 let _initReviewShown = false;
 
-function renderMuConfidenceWidget(defaultMu) {
-  // defaultMu is in count units (0.0 to 10.0). Default = 5.0 (midpoint).
-  const mu0 = defaultMu == null ? 5.0 : Number(defaultMu);
-  const mu0Display = mu0.toFixed(1);
+// MINIMAL VARIANT widget:
+//   Big score reveal at the top (anchors hard/easy treatment), then μ slider
+//   with live "Performance Manager would pay about $X" feedback that updates as
+//   the slider moves. Confidence slider appears once μ is confirmed.
+//   No outcome-distribution review panel — the live $ display does the same job.
+function renderMuConfidenceWidget(_unused) {
+  const fixedPay = Number(STATE.fixedPayDollars).toFixed(2);
+  const totalQ = CONFIG.numQuizQuestions;
+  const score = STATE.quizScore;
   return `
     <div id="mu-conf-widget">
 
-      <!-- Step 1: μ slider (count-based: 0-10 of 10, step 0.1) -->
+      <p style="margin:0 0 14px;font-size:1rem;color:#1e293b;">
+        Before you make your guess about how you compare to others, we show you how many questions you solved correctly on the entire quiz.
+      </p>
+
+      <!-- BIG SCORE REVEAL — anchors the hard/easy manipulation -->
+      <div style="background:#f0f9ff;border:2px solid #0284c7;border-radius:12px;padding:26px 24px;margin:18px 0;text-align:center;">
+        <p style="margin:0 0 6px;font-size:0.92rem;color:#0c4a6e;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Your quiz score</p>
+        <p style="margin:0;font-size:3.4rem;font-weight:800;color:#0c4a6e;line-height:1.1;">
+          ${score} <span style="font-size:1.8rem;color:#64748b;font-weight:600;">/ ${totalQ}</span>
+        </p>
+        <p style="margin:8px 0 0;font-size:0.95rem;color:#0c4a6e;">questions correct</p>
+      </div>
+
+      <p style="margin:0 0 18px;font-size:1rem;color:#1e293b;">
+        Take a moment to think about how you compared to others based on this score.
+      </p>
+
+      <!-- BELIEF SLIDER -->
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 22px;margin:16px 0;">
-        <p style="margin:0 0 14px;">How many of 10 random Prolific participants who took this quiz would you expect to beat?</p>
+        <p style="margin:0 0 16px;font-weight:600;font-size:1rem;">
+          Out of the 100 Prolific participants, how many do you think you would beat on the shared questions?
+        </p>
+
         <div class="slider-row">
-          <input type="range" id="init-mu-slider" min="0" max="10" step="0.1" value="${mu0}" data-touched="1"
+          <input type="range" id="init-mu-slider" min="0" max="100" step="1" value="50" class="slider-hidden-thumb"
                  style="width:100%;"
                  oninput="onInitMuChange(this.value)">
         </div>
-        <div class="slider-labels">
-          <span>0 of 10</span>
-          <span>10 of 10</span>
+        <div class="slider-labels"><span>0 of 100</span><span>100 of 100</span></div>
+
+        <p id="init-mu-readout" style="display:none;margin:14px 0 0;text-align:center;font-size:1.05rem;">
+          I expect to beat <strong id="init-mu-val">—</strong> out of 100.
+        </p>
+
+        <!-- "What would this imply for the managers?" button — appears on first slider touch.
+             Gates reveal of the live pay panel + Continue button so subjects commit to a
+             guess BEFORE seeing the implication for manager pay. -->
+        <div id="init-imply-row" style="display:none;margin-top:14px;text-align:right;">
+          <button class="btn btn-primary" onclick="revealManagerImplication()">What would this imply for the managers? &rarr;</button>
         </div>
-        <p style="margin:14px 0 0;text-align:center;font-size:1rem;">I expect to beat <strong id="init-mu-val">${mu0Display}</strong> out of 10.</p>
+
+        <!-- Live expected-pay feedback (visible once user clicks the imply button).
+             Side-by-side layout to emphasize the comparison between the two managers'
+             implied payoffs. Only the manager names use brand colors; the rest is
+             neutral grey, with dollar amounts emphasized by weight + size. -->
+        <div id="init-pay-display" style="display:none;margin-top:14px;">
+          <p style="margin:0 0 10px;font-size:0.95rem;color:#475569;text-align:center;">Based on this guess, you would expect:</p>
+          <div style="display:flex;gap:12px;">
+            <div style="flex:1;padding:14px 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;text-align:center;">
+              <p style="margin:0 0 8px;font-size:0.85rem;font-weight:700;" class="eval-performance">Performance Manager</p>
+              <p style="margin:0;font-size:1.6rem;font-weight:800;color:#1e293b;">$<span id="init-perf-pay">—</span></p>
+              <p style="margin:6px 0 0;font-size:0.78rem;color:#64748b;">on average</p>
+            </div>
+            <div style="flex:1;padding:14px 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;text-align:center;">
+              <p style="margin:0 0 8px;font-size:0.85rem;font-weight:700;" class="eval-fixed">Fixed Manager</p>
+              <p style="margin:0;font-size:1.6rem;font-weight:800;color:#1e293b;">$${fixedPay}</p>
+              <p style="margin:6px 0 0;font-size:0.78rem;color:#64748b;">flat</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div id="init-mu-confirm-row" style="margin-top:14px;text-align:right;">
-        <button class="btn btn-primary" onclick="confirmInitMu()">Confirm best guess &rarr;</button>
+      <!-- Confirm μ → reveal confidence slider -->
+      <div id="init-mu-confirm-row" style="display:none;margin-top:14px;text-align:right;">
+        <button class="btn btn-primary" onclick="confirmInitMu()">Continue &rarr;</button>
       </div>
 
-      <!-- Step 2: continuous confidence slider (hidden until μ confirmed) -->
+      <!-- CONFIDENCE SLIDER (hidden until μ confirmed) -->
       <div id="init-conf-wrap" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 22px;margin:16px 0;">
-        <p style="margin:0 0 12px;font-size:0.97rem;">How sure are you about your best guess?</p>
+        <p style="margin:0 0 12px;font-size:0.97rem;">How sure are you about your guess?</p>
         <div class="slider-row">
           <input type="range" id="init-conf-slider" min="0" max="100" value="50" class="slider-hidden-thumb"
                  oninput="onInitConfChange(this.value)">
@@ -1634,15 +1719,17 @@ function renderMuConfidenceWidget(defaultMu) {
         </div>
       </div>
 
-      <!-- Review panel (hidden until confidence confirm clicked) -->
+      <!-- Review panel: shows the implied outcome distribution given μ and confidence.
+           This lets subjects verify their reported uncertainty matches what they actually
+           think, which is essential for κ (used in the Bayesian benchmark for updating). -->
       <div id="init-review-wrap" style="display:none;margin:16px 0;">
         <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:22px 24px;">
           <h3 style="font-size:0.97rem;font-weight:700;color:#1e293b;margin:0 0 8px;">Does this match what you think?</h3>
           <p style="font-size:0.92rem;color:#475569;margin:0 0 14px;">
-            Given your best guess and how sure you are, you would on average expect to beat
-            <strong id="init-expect-out-of-10" style="font-size:1.05rem;color:#1e293b;background:#e0f2fe;padding:1px 6px;border-radius:4px;">${mu0Display}</strong>
-            out of 10 randomly picked participants when you choose the Performance Manager. Here's how likely each outcome would be:
+            If you are paid by the Performance Manager, you would expect to beat about
+            <strong id="init-expect-out-of-10" style="font-size:1.05rem;color:#1e293b;background:#e0f2fe;padding:1px 6px;border-radius:4px;">—</strong>
+            of the 50 it picks, with these chances of beating different numbers:
           </p>
           <table style="width:100%;border-collapse:collapse;font-size:0.92rem;margin-top:4px;">
             <thead>
@@ -1656,7 +1743,7 @@ function renderMuConfidenceWidget(defaultMu) {
           </table>
           <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;" id="init-confirm-row">
             <button class="btn btn-primary" onclick="submitPreChoiceBelief()">This matches what I think</button>
-            <button class="btn btn-secondary" onclick="reviseInitialBeliefs()">Let me revise this</button>
+            <button class="btn btn-primary" onclick="reviseInitialBeliefs()">Let me revise this</button>
           </div>
         </div>
       </div>
@@ -1675,28 +1762,54 @@ function initMuConfidenceWidget(defaultMu) {
 }
 
 function onInitMuChange(val) {
-  // val is in count units (0.0 to 10.0). Display the numeric value only — surrounding sentence is in HTML.
+  // val is count out of 100 (integer).
+  const slider = document.getElementById('init-mu-slider');
+  if (slider) slider.classList.remove('slider-hidden-thumb');
   const valEl = document.getElementById('init-mu-val');
   const prev = parseFloat(valEl.textContent);
   const now = parseFloat(val);
-  valEl.textContent = now.toFixed(1);
+  valEl.textContent = Math.round(now).toString();
 
-  if (_initReviewShown) {
+  // Live expected-pay update: E[Performance pay] = belief/100 × 50 × $0.01 = belief/200 dollars
+  const perfPayEl = document.getElementById('init-perf-pay');
+  if (perfPayEl) perfPayEl.textContent = (now / 200).toFixed(2);
+
+  // On first slider touch: reveal the readout ("I expect to beat N out of 100.")
+  // and the "What would this imply?" button. The pay panel and Continue button
+  // are gated behind that imply button (see revealManagerImplication) so subjects
+  // commit to a guess before seeing what it implies for manager pay.
+  if (!_initMuTouched) {
+    _initMuTouched = true;
+    document.getElementById('init-mu-readout').style.display = '';
+    document.getElementById('init-imply-row').style.display = '';
+  }
+
+  // Track edits for analysis
+  if (!isNaN(prev) && prev !== now) {
     STATE.initialBeliefEdits.push({
       timestamp: Date.now(), field: 'mu',
       oldValue: prev, newValue: now, trigger: 'live',
     });
-    updateInitReview();
   }
 
-  if (!_initMuTouched) {
-    _initMuTouched = true;
-    document.getElementById('init-mu-confirm-row').style.display = '';
-  }
+  // If subject is revising μ after the review panel is shown, keep the table live-updated
+  if (_initReviewShown) updateInitReview();
+}
+
+function revealManagerImplication() {
+  // Subject has committed to a guess and asked to see what it implies for the managers.
+  // Hide the imply button, show the live pay panel + Continue button.
+  // The pay panel value is already up-to-date (onInitMuChange updates #init-perf-pay
+  // continuously, regardless of panel visibility); subsequent slider movements
+  // continue to update it live.
+  STATE.tsImplicationRevealed = Date.now();
+  document.getElementById('init-imply-row').style.display = 'none';
+  document.getElementById('init-pay-display').style.display = '';
+  document.getElementById('init-mu-confirm-row').style.display = '';
 }
 
 function confirmInitMu() {
-  // Hide confirm button, reveal Step 2
+  // Hide μ confirm button; reveal confidence slider
   document.getElementById('init-mu-confirm-row').style.display = 'none';
   document.getElementById('init-conf-wrap').style.display = '';
   document.getElementById('init-conf-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1707,24 +1820,22 @@ function onInitConfChange(val) {
   const now = parseInt(val);
   _initConfSlider = now;
 
-  if (_initReviewShown && prev !== null) {
-    STATE.initialBeliefEdits.push({
-      timestamp: Date.now(), field: 'confidence',
-      oldValue: prev, newValue: now, trigger: 'live',
-    });
-  }
-
-  // First touch: reveal thumb and confirm button (review stays hidden until click)
+  // First touch: reveal thumb and the "See what this means" button
   if (!_initConfTouched) {
     _initConfTouched = true;
     document.getElementById('init-conf-slider').classList.remove('slider-hidden-thumb');
     document.getElementById('init-conf-confirm-row').style.display = '';
   }
 
-  // Once review is shown (after confirm click), keep it live-updated
-  if (_initReviewShown) {
-    updateInitReview();
+  if (prev !== null && prev !== now) {
+    STATE.initialBeliefEdits.push({
+      timestamp: Date.now(), field: 'confidence',
+      oldValue: prev, newValue: now, trigger: 'live',
+    });
   }
+
+  // If review panel is already shown, keep the outcome table live-updated
+  if (_initReviewShown) updateInitReview();
 }
 
 function confirmInitConf() {
@@ -1736,9 +1847,9 @@ function confirmInitConf() {
 }
 
 function getInitParams() {
-  // muRaw is the count (0.0 to 10.0). Convert to probability for Beta math.
+  // muRaw is the count out of 100 (integer). Convert to probability for Beta math.
   const muRaw = parseFloat(document.getElementById('init-mu-slider').value);
-  const muClamped = Math.max(0.005, Math.min(0.995, muRaw / 10));
+  const muClamped = Math.max(0.005, Math.min(0.995, muRaw / 100));
   const sliderVal = _initConfSlider !== null ? _initConfSlider : 50;
   const kappa = sliderToKappa(sliderVal, muClamped);
   return { muRaw, mu: muClamped, alpha: muClamped * kappa, beta: (1 - muClamped) * kappa, kappa, sliderVal };
@@ -1748,27 +1859,90 @@ function updateInitReview() {
   if (_initConfSlider === null) return;
   const { muRaw, alpha, beta } = getInitParams();
   const expectEl = document.getElementById('init-expect-out-of-10');
-  // muRaw is already in count units (0-10), display as-is.
-  if (expectEl) expectEl.textContent = muRaw.toFixed(1);
-  renderOutcomeTable(alpha, beta, 10);
+  // Display expected wins out of 50 = belief/100 × 50 = belief/2
+  if (expectEl) expectEl.textContent = (muRaw / 2).toFixed(1);
+  renderOutcomeTable(alpha, beta, 50);
 }
 
 function renderOutcomeTable(alpha, beta, n) {
   const probs = [];
   for (let k = 0; k <= n; k++) probs.push(betaBinomialPMF(k, n, alpha, beta));
-  const maxP = Math.max(...probs);
+
+  // Bin probabilities in groups of 5. For n=50: [0-4], [5-9], ..., [40-44], [45-50]
+  // (the trailing partial bin [50-50] gets merged into [45-49] → [45-50]).
+  const binSize = 5;
+  const bins = [];
+  for (let lo = 0; lo <= n; lo += binSize) {
+    const hi = Math.min(lo + binSize - 1, n);
+    let mass = 0;
+    for (let k = lo; k <= hi; k++) mass += probs[k];
+    bins.push({ lo, hi, mass });
+  }
+  if (bins.length >= 2) {
+    const last = bins[bins.length - 1];
+    if (last.hi - last.lo < binSize - 1) {
+      const prev = bins[bins.length - 2];
+      prev.hi = last.hi;
+      prev.mass += last.mass;
+      bins.pop();
+    }
+  }
+
+  const numBins = bins.length;
+  const maxP = Math.max(...bins.map(b => b.mass));
   const tbody = document.getElementById('init-outcome-tbody');
   if (!tbody) return;
+
+  // Tail collapse: focus on the credible range. Find a contiguous window of
+  // bins around the mode that captures >=98% of mass.
+  let bMin = 0, bMax = numBins - 1;
+  if (numBins > 6) {
+    let modeBin = 0;
+    for (let i = 1; i < numBins; i++) if (bins[i].mass > bins[modeBin].mass) modeBin = i;
+    bMin = modeBin; bMax = modeBin;
+    let mass = bins[modeBin].mass;
+    while (mass < 0.98 && (bMin > 0 || bMax < numBins - 1)) {
+      const left  = bMin > 0 ? bins[bMin - 1].mass : -1;
+      const right = bMax < numBins - 1 ? bins[bMax + 1].mass : -1;
+      if (right >= left) { bMax++; mass += bins[bMax].mass; }
+      else               { bMin--; mass += bins[bMin].mass; }
+    }
+  }
+
   let html = '';
-  for (let k = 0; k <= n; k++) {
-    const pct = probs[k] * 100;
-    const barW = maxP > 0 ? (probs[k] / maxP) * 100 : 0;
-    const pctStr = pct < 0.5 ? '<1%' : pct.toFixed(0) + '%';
+  if (bMin > 0) {
+    let tailMass = 0;
+    for (let i = 0; i < bMin; i++) tailMass += bins[i].mass;
+    const pctStr = tailMass * 100 < 0.5 ? '<1%' : (tailMass * 100).toFixed(0) + '%';
     html += `
       <tr>
-        <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;color:#475569;width:130px;">${k} of ${n}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;color:#94a3b8;width:130px;font-style:italic;">fewer than ${bins[bMin].lo}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;"></td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right;color:#94a3b8;font-variant-numeric:tabular-nums;font-style:italic;width:50px;">${pctStr}</td>
+      </tr>`;
+  }
+  for (let i = bMin; i <= bMax; i++) {
+    const bin = bins[i];
+    const pct = bin.mass * 100;
+    const barW = maxP > 0 ? (bin.mass / maxP) * 100 : 0;
+    const pctStr = pct < 0.5 ? '<1%' : pct.toFixed(0) + '%';
+    const label = bin.lo === bin.hi ? `${bin.lo} of ${n}` : `${bin.lo}–${bin.hi} of ${n}`;
+    html += `
+      <tr>
+        <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;color:#475569;width:130px;">${label}</td>
         <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;"><div style="height:14px;background:#2563eb;border-radius:3px;min-width:1px;width:${barW}%;"></div></td>
         <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right;color:#1e293b;font-variant-numeric:tabular-nums;font-weight:600;width:50px;">${pctStr}</td>
+      </tr>`;
+  }
+  if (bMax < numBins - 1) {
+    let tailMass = 0;
+    for (let i = bMax + 1; i < numBins; i++) tailMass += bins[i].mass;
+    const pctStr = tailMass * 100 < 0.5 ? '<1%' : (tailMass * 100).toFixed(0) + '%';
+    html += `
+      <tr>
+        <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;color:#94a3b8;width:130px;font-style:italic;">more than ${bins[bMax].hi}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;"></td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right;color:#94a3b8;font-variant-numeric:tabular-nums;font-style:italic;width:50px;">${pctStr}</td>
       </tr>`;
   }
   tbody.innerHTML = html;
@@ -1779,11 +1953,11 @@ function updateInitStats(mu, p10, p90, pAbove50) {
   const el = document.getElementById('init-stats-block');
   if (!el) return;
   el.innerHTML = `
-    <p>Your best guess: there's a <strong>${pct(mu)}%</strong> chance you would beat a randomly picked participant.</p>
+    <p>Your best guess: there is a <strong>${pct(mu)}%</strong> chance you would beat a randomly picked participant.</p>
     <p style="margin-top:8px;">Given your confidence, you think:</p>
     <ul style="margin:4px 0 0 20px;line-height:2;">
-      <li>There's about a <strong>${pct(pAbove50)}%</strong> chance you would beat at least half of participants.</li>
-      <li>You're <strong>80%</strong> sure your true chance is between <strong>${pct(p10)}%</strong> and <strong>${pct(p90)}%</strong>: there's only a 10% chance your true chance is below <strong>${pct(p10)}%</strong>, and only a 10% chance it's above <strong>${pct(p90)}%</strong>.</li>
+      <li>There is about a <strong>${pct(pAbove50)}%</strong> chance you would beat at least half of participants.</li>
+      <li>You are <strong>80%</strong> sure your true chance is between <strong>${pct(p10)}%</strong> and <strong>${pct(p90)}%</strong>: there is only a 10% chance your true chance is below <strong>${pct(p10)}%</strong>, and only a 10% chance it is above <strong>${pct(p90)}%</strong>.</li>
     </ul>`;
 }
 
@@ -2353,306 +2527,143 @@ function finishQuiz() {
   STATE.quizScoreShared = computeSharedScore();
   STATE.gammaStar = computeGammaStar(STATE.quizScoreShared);
 
-  // ---- Proportional between-subjects rounding IV ----
-  // γ* is a percentage (0–100 float). The Fixed Manager pays a deterministic
-  // amount equivalent to an integer number of wins out of 10. We round γ*/10
-  // up or down with probabilities that make E[Fixed payment] = γ* × $0.10 exactly.
-  const gammaFrac = STATE.gammaStar / 100;         // e.g. 0.47
-  const exactH = gammaFrac * 10;                   // e.g. 4.7
-  const floorH = Math.floor(exactH);               // e.g. 4
-  const ceilH  = Math.ceil(exactH);                // e.g. 5
+  // Fixed Manager pays γ*/100 directly as a dollar amount (e.g., γ* = 47 → $0.47)
+  // No more probabilistic rounding — the Fixed Manager pays the exact participant-specific value.
+  STATE.fixedPayDollars = STATE.gammaStar / 100;
 
-  if (floorH === ceilH) {
-    // γ* is an exact multiple of 10 — no rounding needed
-    STATE.fixedBonusFloor = floorH;
-    STATE.fixedBonusCeil  = ceilH;
-    STATE.roundingDirection = 'exact';
-    STATE.fixedBonusH = floorH;
-  } else {
-    STATE.fixedBonusFloor = floorH;
-    STATE.fixedBonusCeil  = ceilH;
-    // P(round up) = exactH - floor = fractional part, so E[H] = exactH
-    const pUp = exactH - floorH;  // e.g. 0.7
-    const draw = Math.random();
-    if (draw < pUp) {
-      STATE.roundingDirection = 'up';
-      STATE.fixedBonusH = ceilH;
-    } else {
-      STATE.roundingDirection = 'down';
-      STATE.fixedBonusH = floorH;
-    }
+  // The reference 100 is hardcoded in CONFIG.study1ScoresShared (exactly 100 fixed scores
+  // representative of the Study 1 distribution). Same 100 for every participant.
+  // Performance round samples 50 of these 100 (without replacement); the belief question
+  // asks about all 100. The 50 sampled are therefore a literal subset of the 100.
+  // Ground truth (for analysis only — never shown to participant):
+  // exact number of the 100 reference opponents the participant beats, with ties counted as 0.5.
+  // Deterministic per shared score (since the 100 is fixed across participants).
+  let wins = 0, ties = 0;
+  for (const op of CONFIG.study1ScoresShared) {
+    if (STATE.quizScoreShared > op) wins++;
+    else if (STATE.quizScoreShared === op) ties++;
   }
+  STATE.trueWinsOf100 = wins + 0.5 * ties;
 
-  STATE.fixedBonusDisplayPct = STATE.fixedBonusH * 10; // integer percentage for display
-
-  // Determine the Fixed Manager probability to show (kept for legacy/display compatibility)
-  if (CONFIG.fixedProbDisplay !== null) {
-    STATE.fixedProbShown = CONFIG.fixedProbDisplay;
-  } else {
-    STATE.fixedProbShown = STATE.fixedBonusDisplayPct;
-  }
-
-  showScreen('scoreAndBelief');
+  showScreen('quizComplete');
 }
 
-// ---- 1.18 Score and Belief Elicitation (point belief only; confidence moved to pre-choice) ----
-SCREENS.scoreAndBelief = () => {
+// MINIMAL VARIANT: scoreAndBelief (the early uncontaminated belief elicitation) is removed.
+// Only one belief is now elicited — on preChoiceBelief — alongside the prominent score
+// reveal that anchors the hard/easy treatment effect. STATE.initial_belief stays null.
+
+// ---- 1.18 Quiz → Managers transition ----
+// Brief screen so subjects do not get whiplash from the timed quiz directly into instructions.
+// Deliberately DOES NOT reveal the quiz score — that comes later on preChoiceBelief, where
+// it functions as the anchor for the belief elicitation.
+SCREENS.quizComplete = () => {
   container.innerHTML = `
-    <div class="screen-header"><h2>How did you do?</h2></div>
-    <p>Take a moment to think about how you'd compare to others on the quiz.</p>
-    <p>Half of the quiz questions were the same for every participant in this study. The comparisons in this study are based on those shared questions.</p>
-    <p>${CONFIG.texts.scoreAnnouncement(STATE.quizScore, CONFIG.numQuizQuestions)}</p>
-
-    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
-      <p style="margin:0 0 14px;"><strong>Based on this score, how many of 10 random Prolific participants would you expect to beat?</strong></p>
-      <div class="slider-container" style="margin:0;">
-        <div class="slider-row">
-          <input type="range" id="init-mu-slider" min="0" max="10" step="0.1" value="5" class="slider-hidden-thumb"
-                 style="width:100%;"
-                 onpointerdown="markSliderTouched(this); const v=document.getElementById('init-mu-val'); v.classList.remove('slider-value-placeholder'); v.innerHTML = '<strong>' + parseFloat(this.value).toFixed(1) + '</strong>'; document.getElementById('init-mu-readout').style.display = ''; document.getElementById('init-mu-submit-row').style.display = '';"
-                 oninput="markSliderTouched(this); const v=document.getElementById('init-mu-val'); v.classList.remove('slider-value-placeholder'); v.innerHTML = '<strong>' + parseFloat(this.value).toFixed(1) + '</strong>'; document.getElementById('init-mu-readout').style.display = ''; document.getElementById('init-mu-submit-row').style.display = '';">
-        </div>
-        <div class="slider-labels"><span>0 of 10</span><span>10 of 10</span></div>
-        <p id="init-mu-readout" style="display:none;margin:14px 0 0;text-align:center;font-size:1rem;">I expect to beat <span id="init-mu-val">—</span> out of 10.</p>
-      </div>
-    </div>
-
-    <div class="nav-row" id="init-mu-submit-row" style="display:none;">
-      <button class="btn btn-primary" onclick="submitInitialBeliefs()">Submit &rarr;</button>
+    <div class="screen-header"><h2>Quiz complete</h2></div>
+    <p>You have finished all 12 questions.</p>
+    <p>In the next part, we will explain how your bonus from this study is calculated. Part of it will depend on how your score on this quiz compares to other Prolific participants who also took it.</p>
+    <p>Two details to keep in mind:</p>
+    <ul>
+      <li>You will be compared to <strong>100 Prolific participants</strong> who took this quiz.</li>
+      <li>Some of the quiz questions varied across participants. Comparisons are based only on the half of the 12 questions that were the same for every participant — the <strong>shared questions</strong>.</li>
+    </ul>
+    <div class="nav-row" style="margin-top:24px;">
+      <button class="btn btn-primary" onclick="showScreen('managerInstructions1')">Continue →</button>
     </div>`;
-
-  updateProgress(0.32);
+  updateProgress(0.34);
 };
 
-function submitInitialBeliefs() {
-  // STORED AS COUNT (0.0 to 10.0)
-  const mu = parseFloat(document.getElementById('init-mu-slider').value);
-  STATE.initial_belief = mu;
-  showScreen('managerInstructions1');
-}
-
-// ---- Instructions Page 1: Your New Job ----
+// ---- Instructions Page 1: Your manager choice ----
+// MINIMAL VARIANT: no personalized info-panel here (no belief has been elicited yet).
+// The choice trade-off is shown live on the preChoiceBelief screen via the slider.
 SCREENS.managerInstructions1 = () => {
-  const t = CONFIG.texts.managerInstructions1(STATE.fixedBonusH);
+  const t = CONFIG.texts.managerInstructions1(STATE.fixedPayDollars);
   container.innerHTML = `
-    <div class="screen-header"><h2>How you'll earn your bonus</h2></div>
+    <div class="screen-header"><h2>Your manager choice</h2></div>
     ${t.intro}
     ${t.performance}
-
-    <div class="info-panel" style="margin:14px 0;">
-      <p style="margin:0;">Given that you expect to beat <strong>${Number(STATE.initial_belief).toFixed(1)} out of 10</strong> random participants, the Performance Manager would pay you <strong>$${(Number(STATE.initial_belief) * 0.10).toFixed(2)} per round on average</strong>.</p>
-    </div>
-
     ${t.fixed}
+    ${t.override}
 
     <div class="nav-row" style="margin-top:18px;">
-      <button class="btn btn-primary" onclick="showScreen('hProbElicitation')">Next: a quick check →</button>
+      <button class="btn btn-primary" onclick="showScreen('comprehensionCheck1')">Next: comprehension check →</button>
     </div>`;
   updateProgress(0.36);
 };
 
-// ---- H-Probability Elicitation ----
-SCREENS.hProbElicitation = () => {
-  container.innerHTML = `
-    <div class="screen-header"><h2>Quick check</h2></div>
-    <p>Based on what you just read, fill in the numbers below.</p>
+// MINIMAL VARIANT: hProbElicitation removed.
+// The original forced subjects to compute E[Performance pay] and pick "which manager
+// pays more on average". Both teach subjects what to think before they decide. The
+// trade-off is now revealed live on the preChoiceBelief slider — subjects see
+// E[Performance pay] update as they move the belief slider, and the static Fixed
+// amount sits next to it. They form their own conclusion.
 
-    <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
-      <p style="margin:0 0 12px;"><strong>1.</strong> Given that you expect to beat <strong>${Number(STATE.initial_belief).toFixed(1)} out of 10</strong> random participants, what payment would you expect from the <strong class="eval-performance">Performance Manager</strong> each round?</p>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:1rem;color:#333;">$</span>
-        <input type="number" id="perf-h-input" min="0" max="1" step="0.01" placeholder="0.00" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
-      </div>
-    </div>
-
-    <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
-      <p style="margin:0 0 12px;"><strong>2.</strong> What does the <strong class="eval-fixed">Fixed Manager</strong> pay each round?</p>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:1rem;color:#333;">$</span>
-        <input type="number" id="rand-h-input" min="0" max="1" step="0.10" placeholder="0.00" style="width:120px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:1rem;">
-      </div>
-    </div>
-
-    <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:16px 0;">
-      <p style="margin:0 0 12px;"><strong>3.</strong> Which manager would you expect to pay more on average?</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-choice" id="better-perf-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
-                onclick="selectBetterManager('performance')"><span class="eval-performance">Performance Manager</span></button>
-        <button class="btn btn-choice" id="better-rand-btn" style="min-width:180px;padding:10px 20px;font-size:0.95rem;"
-                onclick="selectBetterManager('fixed')"><span class="eval-fixed">Fixed Manager</span></button>
-      </div>
-    </div>
-
-    <div class="error-msg" id="mgr-prob-error">One or more answers are incorrect. Please review the instructions and try again.</div>
-
-    <div class="nav-row" style="justify-content:space-between;">
-      <button class="btn" onclick="showScreen('managerInstructions1')">← Back</button>
-      <button class="btn btn-primary" id="mgr-prob-next-btn" disabled onclick="submitHProbElicitation()">Next: one more check →</button>
-    </div>`;
-
-  const perfIn = document.getElementById('perf-h-input');
-  const randIn = document.getElementById('rand-h-input');
-  const nextBtn = document.getElementById('mgr-prob-next-btn');
-  const errBox = document.getElementById('mgr-prob-error');
-
-  // Track which "better manager" button is selected
-  window._selectedBetterManager = null;
-
-  function checkComplete() {
-    const p = parseFloat(perfIn.value);
-    const r = parseFloat(randIn.value);
-    const numsOk = !isNaN(p) && p >= 0 && p <= 1.00 && !isNaN(r) && r >= 0 && r <= 1.00;
-    const betterOk = window._selectedBetterManager != null;
-    nextBtn.disabled = !(numsOk && betterOk);
-    errBox.style.display = 'none';
-  }
-  perfIn.addEventListener('input', checkComplete);
-  randIn.addEventListener('input', checkComplete);
-
-  updateProgress(0.38);
-};
-
-function selectBetterManager(choice) {
-  window._selectedBetterManager = choice;
-  // Update button styling
-  ['better-perf-btn', 'better-rand-btn'].forEach(id => {
-    document.getElementById(id).classList.remove('selected');
-  });
-  const btnId = choice === 'performance' ? 'better-perf-btn' : 'better-rand-btn';
-  document.getElementById(btnId).classList.add('selected');
-
-  // Re-check if form is complete
-  const perfIn = document.getElementById('perf-h-input');
-  const randIn = document.getElementById('rand-h-input');
-  const p = parseFloat(perfIn.value);
-  const r = parseFloat(randIn.value);
-  const numsOk = !isNaN(p) && p >= 0 && p <= 1.00 && !isNaN(r) && r >= 0 && r <= 1.00;
-  document.getElementById('mgr-prob-next-btn').disabled = !numsOk;
-  document.getElementById('mgr-prob-error').style.display = 'none';
-}
-
-function submitHProbElicitation() {
-  const perfVal = parseFloat(document.getElementById('perf-h-input').value);
-  const randVal = parseFloat(document.getElementById('rand-h-input').value);
-  STATE.elicitedPerfHProb = perfVal;       // now: expected dollar bonus from Performance
-  STATE.elicitedFixedHCount = randVal;     // now: dollar amount from Fixed
-  STATE.elicitedBetterManager = window._selectedBetterManager;
-
-  // Q1 correct answer: initial_belief (count out of 10) × $0.10 per win
-  const correctPerfPay = +(STATE.initial_belief * 0.10).toFixed(2);
-  // Q2 correct answer: fixedBonusH × $0.10
-  const correctFixedPay = +(STATE.fixedBonusH * 0.10).toFixed(2);
-  // "Better manager" comparison
-  let betterOk;
-  if (correctPerfPay > correctFixedPay)      betterOk = window._selectedBetterManager === 'performance';
-  else if (correctPerfPay < correctFixedPay) betterOk = window._selectedBetterManager === 'fixed';
-  else                                       betterOk = (window._selectedBetterManager === 'performance'
-                                                        || window._selectedBetterManager === 'fixed');
-  const perfValRounded = +perfVal.toFixed(2);
-  const randValRounded = +randVal.toFixed(2);
-  if (perfValRounded !== correctPerfPay || randValRounded !== correctFixedPay || !betterOk) {
-    document.getElementById('mgr-prob-error').style.display = 'block';
-    return;
-  }
-  showScreen('comprehensionCheck1');
-}
-
-// ---- Comprehension Check 1: Manager Structure ----
+// ---- Comprehension Check 1: Manager Structure (incl. override) ----
 SCREENS.comprehensionCheck1 = () => {
-  renderComprehensionCheck(CONFIG.texts.comprehensionCheck1(STATE.fixedBonusH), () => {
-    showScreen('managerInstructions2a');
+  renderComprehensionCheck(CONFIG.texts.comprehensionCheck1(STATE.fixedPayDollars), () => {
+    showScreen('managerInstructions2c');
   }, 'check1');
-  updateProgress(0.42);
-};
-
-// ---- Instructions Page 2a: The Rounds ----
-SCREENS.managerInstructions2a = () => {
-  container.innerHTML = `
-    <div class="screen-header"><h2>Here's how each round works</h2></div>
-    ${CONFIG.texts.managerInstructions2a(STATE.fixedBonusH)}
-    <div class="nav-row" style="justify-content:space-between;">
-      <button class="btn" onclick="showScreen('comprehensionCheck1')">← Back</button>
-      <button class="btn btn-primary" onclick="showScreen('managerInstructions2b')">Next: what each round tells you →</button>
-    </div>`;
   updateProgress(0.44);
 };
 
-// ---- Instructions Page 2b: Informativeness ----
-SCREENS.managerInstructions2b = () => {
-  container.innerHTML = `
-    <div class="screen-header"><h2>What each round tells you</h2></div>
-    ${CONFIG.texts.managerInstructions2b()}
-    <div class="nav-row" style="justify-content:space-between;">
-      <button class="btn" onclick="showScreen('managerInstructions2a')">← Back</button>
-      <button class="btn btn-primary" onclick="showScreen('managerInstructions2c')">Next: your payments →</button>
-    </div>`;
-  updateProgress(0.48);
-};
+// MINIMAL VARIANT: managerInstructions2a removed.
+// The override box used to live on this separate "procedure" screen, which made it
+// appear out of nowhere after subjects had already learned the manager mechanisms.
+// We have moved the override into managerInstructions1 so it sits next to the manager
+// descriptions where subjects can naturally factor it into their choice.
 
-// ---- Instructions Page 2c: Payments ----
+// MINIMAL VARIANT: managerInstructions2b removed.
+// The original screen ("What each manager tells you") explicitly told subjects that the
+// Performance Manager's wins are "a strong hint" about their score and that the Fixed
+// payment "does not tell you anything new". This is exactly the kind of belief-updating
+// instruction we want to remove; the n=50 signal speaks for itself.
+
+// ---- Instructions Page 2c (REVISED, Option C): combined BSR motivation + 2-item check ----
+// Replaces the old separate managerInstructions2c intro screen + comprehensionCheck2 screen.
+// Frames the elicitation as motivated by the manager choice (your belief is the relevant
+// input), introduces the accuracy payment in-context, and runs a lean comprehension check
+// targeting only the two load-bearing claims (honesty maximizes pay; no "magic 50").
 SCREENS.managerInstructions2c = () => {
-  container.innerHTML = `
-    <div class="screen-header"><h2>How you'll get paid</h2></div>
-    ${CONFIG.texts.managerInstructions2c(STATE.bsrStake)}
-    <div class="nav-row" style="justify-content:space-between;">
-      <button class="btn" onclick="showScreen('managerInstructions2b')">← Back</button>
-      <button class="btn btn-primary" onclick="showScreen('comprehensionCheck2')">Next: last check →</button>
-    </div>`;
-  updateProgress(0.50);
-};
-
-// ---- Comprehension Check 2: Payment & Updating ----
-SCREENS.comprehensionCheck2 = () => {
-  renderComprehensionCheck(CONFIG.texts.comprehensionCheck2(STATE.bsrStake), () => {
+  renderComprehensionCheck(CONFIG.texts.managerInstructions2c(STATE.bsrStake), () => {
     showScreen('preChoiceBelief');
   }, 'check2');
-  updateProgress(0.52);
+  updateProgress(0.51);
 };
 
-// ---- Pre-Choice Belief Re-Elicitation + Confidence (before Round 1) ----
+// ---- Comprehension Check 2 (REVISED, Option C): folded into managerInstructions2c ----
+// Stub that redirects in case any older flow lands here.
+SCREENS.comprehensionCheck2 = () => {
+  showScreen('managerInstructions2c');
+};
+
+// ---- Pre-Choice Belief Elicitation: prominent score reveal + μ + live E[Perf pay] + confidence ----
+// MINIMAL VARIANT: single belief elicitation, anchored on the quiz score visually
+// rather than via instruction. The widget renders the score, the slider, and a live
+// "Performance Manager would pay you about $X" feedback panel that updates as the
+// slider moves.
 SCREENS.preChoiceBelief = () => {
-  const prevBelief = STATE.initial_belief;
-
   container.innerHTML = `
-    <div class="screen-header"><h2>Your best guess before round 1</h2></div>
-
-    <p>This is the first guess that counts toward your accuracy payment.</p>
-
-    <p style="font-style:italic;color:#475569;">Reminder: you solved <strong>${STATE.quizScore} out of ${CONFIG.quizQuestionsShared.length + (STATE.quizCondition === 'easy' ? CONFIG.quizQuestionsEasyOnly.length : CONFIG.quizQuestionsHardOnly.length)}</strong> logic quiz questions correctly.</p>
-
-    ${renderMuConfidenceWidget(prevBelief)}`;
+    <div class="screen-header"><h2>Your performance</h2></div>
+    ${renderMuConfidenceWidget(null)}`;
 
   // Initialize the widget after the DOM is ready
-  requestAnimationFrame(() => initMuConfidenceWidget(prevBelief));
+  requestAnimationFrame(() => initMuConfidenceWidget(null));
 
   updateProgress(0.57);
 };
 
 function submitPreChoiceBelief() {
-  if (_initConfSlider === null) return; // guard: can only be called from review panel
-  // mu is in COUNT units (0.0 to 10.0). Convert to probability for Beta math.
+  if (_initConfSlider === null) return; // guard: confidence slider must have been touched
+  // mu is COUNT out of 100. Convert to probability for Beta math.
   const mu = parseFloat(document.getElementById('init-mu-slider').value);
-  const muC = Math.max(0.005, Math.min(0.995, mu / 10));
+  const muC = Math.max(0.005, Math.min(0.995, mu / 100));
   const kappa = sliderToKappa(_initConfSlider, muC);
-  STATE.belief_0  = mu;                            // STORED AS COUNT (0.0 to 10.0)
+  STATE.belief_0  = mu;                            // STORED AS COUNT OUT OF 100 (0 to 100)
   STATE.initialConfidence = _initConfSlider;       // 0-100 slider value
   STATE.initialKappa      = kappa;
   STATE.initialAlpha      = muC * kappa;
   STATE.initialBeta       = (1 - muC) * kappa;
-  STATE.currentRound = 1;
-  showRoundScreen();
+  showScreen('managerChoice');
 }
-
-// ---- Round 1 transition (between pre-choice belief submission and Round 1) ----
-SCREENS.round1Transition = () => {
-  container.innerHTML = `
-    <div class="screen-header"><h2>Round 1</h2></div>
-    <p>You will now choose between the <strong class="eval-performance">Performance Manager</strong> and the <strong class="eval-fixed">Fixed Manager</strong>.</p>
-    <div class="nav-row">
-      <button class="btn btn-primary" onclick="showRoundScreen()">Begin Round 1 &rarr;</button>
-    </div>`;
-  updateProgress(0.55);
-};
 
 function renderComprehensionCheck(checkConfig, onPass, checkId) {
   const { prompt, items, backScreen, title = 'Comprehension Check' } = checkConfig;
@@ -2660,7 +2671,7 @@ function renderComprehensionCheck(checkConfig, onPass, checkId) {
 
   container.innerHTML = `
     <div class="screen-header"><h2>${title}</h2></div>
-    <p>${prompt}</p>
+    <div style="margin:0 0 14px;">${prompt}</div>
     <div id="check-items">
       ${items.map((item, i) => `
         <label class="check-item" id="check-item-${i}">
@@ -2717,340 +2728,294 @@ function validateComprehension() {
   }
 }
 
-// ---- 2.10 Single-Screen Round Flow (disclosed-types design) ----
-// Each round flow:
-//   Round 1: Manager choice → Bonuses → γ guess → Next-round choice (or finish)
-//   Rounds 2–N: Bonuses → γ guess → Next-round choice (or finish)
-// Manager type is disclosed throughout — no θ̂ inference step.
 
-function showRoundScreen() {
-  const r = STATE.currentRound;
-  const isFirstRound = (r === 1);
-  const isForcedRound = r > CONFIG.numChoiceRounds;
-  // Forced rounds always use the Performance Manager — pre-set if needed
-  if (isForcedRound) STATE.currentManager = 'performance';
-  const mgr = STATE.currentManager; // null in Round 1 before choice
-  const totalRounds = CONFIG.numChoiceRounds + CONFIG.numForcedRounds;
-  const progressFrac = 0.58 + (r / totalRounds) * 0.30;
+// ============================================================
+// 2.10  Single-Choice Manager Flow (single-choice design)
+//
+// Flow:
+//   preChoiceBelief → managerChoice → payoffReveal → posteriorBelief
+//                                                     → riskPreferences
+//
+// Key mechanisms:
+//  - Override: with CONFIG.overrideProb (=0.20) probability, the OTHER
+//    manager is implemented instead of the participant's choice.
+//  - Posterior: SURPRISE elicitation after payoff. Participant can keep
+//    their incentivized prior (belief_0) or revise it. The final scored
+//    belief (used for BSR) is whichever they end on.
+// ============================================================
 
-  // Header text differs for forced vs. choice rounds
-  const headerText = isForcedRound
-    ? `Extra round ${r - CONFIG.numChoiceRounds} of ${CONFIG.numForcedRounds}`
-    : `Choice round ${r} of ${CONFIG.numChoiceRounds}`;
+// ---- 2.10.1 Manager Choice (single, with override disclosure) ----
+SCREENS.managerChoice = () => {
+  container.innerHTML = `
+    <div class="screen-header"><h2>Choose your manager</h2></div>
+    ${buildManagerChoiceHTML(STATE.belief_0, 'submitManagerChoice')}`;
+  updateProgress(0.60);
+};
 
-  // Initialize round data
-  const didTransfer = STATE._pendingTransfer != null ? STATE._pendingTransfer : null;
-  STATE._pendingTransfer = undefined;
-  const roundData = {
-    roundNum: r,
-    forced: isForcedRound,
-    manager: mgr,
-    transferred: didTransfer,
-    outcomes: null,
-    opponentScores: null,
-    hCount: null,
-    earnings: null,
-    belief: null,
-    beliefSliderTouched: false,
-    tsRoundStart: Date.now(),
-    tsBonusesShown: null,
-    tsGammaShown: null,
-    tsGammaSubmit: null,
-    tsChoiceMade: null,
-  };
-  window._pendingRound = roundData;
+function submitManagerChoice(chosenMgr) {
+  STATE.chosenManager = chosenMgr;
+  STATE.tsChoiceMade = Date.now();
 
-  if (isFirstRound) {
-    // Round 1: show manager choice. Use belief_0 (from the pre-round
-    // re-elicitation screen) if available, otherwise fall back to initial_belief.
-    const initialBelief = STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief;
-    container.innerHTML = `
-      <div class="screen-header">
-        <h2>${headerText}</h2>
-      </div>
+  // Resolve the override
+  const draw = Math.random();
+  STATE.overrideDraw = draw;
+  STATE.overrideTriggered = draw < CONFIG.overrideProb;
+  STATE.implementedManager = STATE.overrideTriggered
+    ? (chosenMgr === 'performance' ? 'fixed' : 'performance')
+    : chosenMgr;
 
-      <div id="round-step-choice">
-        ${buildManagerChoiceHTML(r, initialBelief, 'roundInitialChoice')}
-      </div>
-
-      <div id="round-step-outcomes" style="display:none;"></div>
-      <div id="round-step-gamma" style="display:none;"></div>
-      <div id="round-step-next-choice" style="display:none;"></div>`;
-  } else {
-    // Rounds 2+ (including forced rounds): manager already known; show bonuses immediately
-    container.innerHTML = `
-      <div class="screen-header">
-        <h2>${headerText}</h2>
-      </div>
-
-      <div id="round-step-outcomes"></div>
-      <div id="round-step-gamma" style="display:none;"></div>
-      <div id="round-step-next-choice" style="display:none;"></div>`;
-
-    roundShowBonuses();
-  }
-
-  updateProgress(progressFrac);
-}
-
-// Round 1: handle initial manager choice, then show bonuses
-function roundInitialChoice(chosenManager) {
-  // belief_0 is already captured on the preChoiceBelief screen
-  STATE.currentManager = chosenManager;
-  const roundData = window._pendingRound;
-  roundData.manager = chosenManager;
-  roundData.transferred = false;
-
-  // Hide choice (header stays as-is — just "Round 1 of 5")
-  document.getElementById('round-step-choice').style.display = 'none';
-
-  // Show bonuses
-  document.getElementById('round-step-outcomes').style.display = '';
-  roundShowBonuses();
-}
-
-// Generate & show bonuses (sequential reveal: click each box to reveal)
-function roundShowBonuses() {
-  const roundData = window._pendingRound;
-  roundData.tsBonusesShown = Date.now();
-
-  // Generate outcomes depending on manager type
-  let outcomes, opponents;
-  const mgr = roundData.manager;
+  // Generate manager outcomes for the implemented manager
+  const mgr = STATE.implementedManager;
   if (mgr === 'performance') {
-    // Performance Manager: compare against random opponents
-    const result = generateOutcomes(STATE.quizScoreShared);
-    outcomes = result.outcomes;
-    opponents = result.opponents;
-  } else {
-    // Fixed Manager: deterministic — always exactly fixedBonusH wins
-    const fixedH = STATE.fixedBonusH;
-    outcomes = [];
-    opponents = [];
-    for (let i = 0; i < CONFIG.outcomesPerRound; i++) {
-      outcomes.push(i < fixedH ? 'H' : 'L');
-      opponents.push(null);
+    // Sample 50 of the 100 fixed reference opponents (CONFIG.study1ScoresShared)
+    // without replacement. Indices are recorded so the analyst knows exactly which
+    // 50 of the 100 each participant saw.
+    const N = CONFIG.study1ScoresShared.length; // 100
+    const idxs = Array.from({length: N}, (_, i) => i);
+    for (let i = idxs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
     }
-  }
-  const hCount = outcomes.filter(o => o === 'H').length;
-  const earnings = hCount * CONFIG.payPerH;
-  roundData.outcomes = outcomes;
-  roundData.opponentScores = opponents;
-  roundData.hCount = hCount;
-  roundData.earnings = earnings;
-
-  const outcomesDiv = document.getElementById('round-step-outcomes');
-  outcomesDiv.style.display = '';
-  const mgrNameStr = mgr === 'performance' ? 'Performance Manager' : 'Fixed Manager';
-  const mgrClass = mgr === 'performance' ? 'eval-performance' : 'eval-fixed';
-
-  if (mgr === 'performance') {
-    // Performance Manager: show a reveal button so it feels like new information.
-    // Forced rounds get a "this round uses..." phrasing instead of "you chose..."
-    const choicePhrase = roundData.forced
-      ? `This round uses the <strong>${mgrNameStr}</strong>.`
-      : `You chose the <strong>${mgrNameStr}</strong>.`;
-    outcomesDiv.innerHTML = `
-      <h3 class="step-heading">Payment</h3>
-      <p style="margin:14px 0 10px;">${choicePhrase} Your quiz score was compared to 10 newly drawn Prolific participants who took this quiz.</p>
-      <div id="perf-reveal-container" style="text-align:center;margin:16px 0;">
-        <button class="btn btn-primary" id="perf-reveal-btn" style="font-size:1.05rem;padding:12px 32px;" onclick="revealPerformanceResult()">Reveal my results →</button>
-      </div>
-      <div id="perf-result-box" style="display:none;">
-        <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:20px;text-align:center;margin:12px 0;">
-          <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">You beat <span style="font-size:1.5rem;font-weight:800;color:#1e293b;">${hCount} out of 10</span>.</p>
-          <p style="margin:8px 0 0;font-size:1rem;font-weight:400;color:#64748b;">Your payment in this round: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings.toFixed(2)}</span></p>
-        </div>
-        <div class="nav-row" id="perf-continue-row">
-          <button class="btn btn-primary" onclick="roundShowGamma()">Continue →</button>
-        </div>
-      </div>`;
+    const sampledIdx = idxs.slice(0, CONFIG.outcomesPerRound);
+    STATE.roundOpponentIndices = sampledIdx;
+    STATE.roundOpponentScores = sampledIdx.map(i => CONFIG.study1ScoresShared[i]);
+    // Compute outcomes against these 10
+    const outcomes = [];
+    for (const op of STATE.roundOpponentScores) {
+      if (STATE.quizScoreShared > op) outcomes.push('H');
+      else if (STATE.quizScoreShared === op) outcomes.push(Math.random() < 0.5 ? 'H' : 'L');
+      else outcomes.push('L');
+    }
+    STATE.roundOutcomes = outcomes;
+    STATE.roundHCount = outcomes.filter(o => o === 'H').length;
+    STATE.roundEarnings = STATE.roundHCount * CONFIG.payPerH;
   } else {
-    // Fixed Manager: show dollar amount directly — no reveal needed, no new info
-    outcomesDiv.innerHTML = `
-      <h3 class="step-heading">Payment</h3>
-      <p style="margin:14px 0 10px;">You chose the <strong>${mgrNameStr}</strong>.</p>
-      <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:20px;text-align:center;margin:12px 0;">
-        <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">Your payment in this round: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings.toFixed(2)}</span></p>
-      </div>`;
-    // Merged round design: render belief slider on the same page directly below.
-    roundShowGamma();
+    // Fixed: pays gammaStar/100 directly
+    STATE.roundOutcomes = null;
+    STATE.roundOpponentScores = null;
+    STATE.roundOpponentIndices = null;
+    STATE.roundHCount = null;
+    STATE.roundEarnings = STATE.fixedPayDollars;
   }
 
-  outcomesDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showScreen('payoffReveal');
 }
 
-// Time-gate: disable the outcome→belief Continue button for 3 seconds
-function startOutcomeTimeGate() {
-  let secs = 3;
-  const btn = document.getElementById('outcome-continue-btn');
-  const cd = document.getElementById('outcome-cd');
-  if (!btn || !cd) return;
-  const tick = setInterval(() => {
-    secs--;
-    if (secs <= 0) {
-      btn.disabled = false;
-      cd.textContent = '';
-      clearInterval(tick);
-    } else {
-      cd.textContent = ` (wait ${secs}s)`;
-    }
-  }, 1000);
-}
+// ---- 2.10.2 Payoff Reveal (REVISED): Screen A — override decision only ----
+// The full payoff flow is now split into two screens:
+//   Screen A (payoffReveal): override decision — was your pick honored?
+//   Screen B (payoffResults): manager + actual results + posterior elicitation
+// On entry to A: subject sees a reminder of the override probabilities and a
+// Reveal button. Clicking reveals whether the choice was implemented or the
+// override fired. Continue → payoffResults (Screen B).
+SCREENS.payoffReveal = () => {
+  STATE.tsAssignmentShown = Date.now();
+  const implemented = STATE.implementedManager;
+  const overrode = STATE.overrideTriggered;
+  const mgrLabel = managerLabel(implemented);
+  const overridePct = Math.round(CONFIG.overrideProb * 100);
+  const choiceHonoredPct = 100 - overridePct;
 
-// Reveal performance results (adds anticipation / makes it feel like new info).
-// Result box has its own Continue button so participants get a beat to absorb
-// the outcome before being asked to update their guess.
-function revealPerformanceResult() {
-  const roundData = window._pendingRound;
-  roundData.tsResultRevealed = Date.now();
-  document.getElementById('perf-reveal-btn').style.display = 'none';
-  document.getElementById('perf-result-box').style.display = '';
-}
+  // Pre-built assignment box (shown after Reveal click).
+  // Yellow box for the override-triggered (rare) case; calmer grey for the routine case.
+  const assignmentBox = overrode
+    ? `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:16px 18px;margin:14px 0;">
+         <p style="margin:0;font-size:1.05rem;"><strong>Your choice is NOT implemented.</strong> This was one of the ${overridePct}% cases — you get the payoff from the <strong>${mgrLabel}</strong> instead.</p>
+       </div>`
+    : `<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:14px 0;">
+         <p style="margin:0;font-size:1.05rem;"><strong>Your choice is implemented.</strong> You get the payoff from the <strong>${mgrLabel}</strong>.</p>
+       </div>`;
 
-// Bonuses → γ slider (now populates the in-page gamma section, NOT a fresh screen)
-function roundShowGamma() {
-  const roundData = window._pendingRound;
-  roundData.tsGammaShown = Date.now();
-
-  const isFirstGammaUpdate = STATE.rounds.length === 0;
-  const prevGamma = isFirstGammaUpdate
-    ? (STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief)
-    : STATE.rounds[STATE.rounds.length - 1].belief;
-  const chosenMgr = roundData.manager;
-
-  // Inline prompt for the belief update. For Performance rounds, surface the
-  // gap between the previous guess and the round's result so OC participants
-  // are confronted with disconfirming evidence directly. For Fixed rounds,
-  // explicitly cue no-update behavior (goal #2 lever).
-  const reminderText = chosenMgr === 'performance'
-    ? `Your previous guess: <strong>${Number(prevGamma).toFixed(1)} out of 10</strong>. This round: <strong>${roundData.hCount} out of 10</strong>. What's your new best guess for a new draw of 10?`
-    : `You received no new information. Your best guess stays as it is.`;
-
-  const gammaDiv = document.getElementById('round-step-gamma');
-  gammaDiv.innerHTML = `
-    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 18px;">
-    <p style="margin:6px 0 14px;">${reminderText}</p>
-
-    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:16px 0;">
-      <p style="margin:0 0 14px;">How many of 10 random Prolific participants who took this quiz would you expect to beat?</p>
-      <div class="slider-container" style="margin:0;">
-        <div class="slider-row">
-          <input type="range" id="gamma-round-slider" min="0" max="10" step="0.1" value="${prevGamma}" data-touched=""
-                 style="width:100%;"
-                 onpointerdown="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = parseFloat(this.value).toFixed(1);"
-                 oninput="markSliderTouched(this); document.getElementById('gamma-round-val').textContent = parseFloat(this.value).toFixed(1);">
-        </div>
-        <div class="slider-labels"><span>0 of 10</span><span>10 of 10</span></div>
-        <p style="margin:14px 0 0;text-align:center;font-size:1rem;">I expect to beat <strong id="gamma-round-val">${Number(prevGamma).toFixed(1)}</strong> out of 10.</p>
-      </div>
+  container.innerHTML = `
+    <div class="screen-header"><h2>Your manager assignment</h2></div>
+    <p style="margin:14px 0;color:#475569;">Remember: there's an ${choiceHonoredPct}% chance you get the manager you chose, and a ${overridePct}% chance you get the other manager.</p>
+    <div id="assignment-reveal-row" style="text-align:center;margin:20px 0;">
+      <button class="btn btn-primary" id="assignment-reveal-btn" style="font-size:1.05rem;padding:12px 32px;" onclick="revealAssignment()">Reveal what the program decided →</button>
     </div>
-
-    <div id="gamma-slider-warning" class="slider-warning"></div>
-    <div class="nav-row" id="gamma-nav">
-      <button class="btn btn-primary" onclick="roundSubmitGamma()">Next →</button>
+    <div id="assignment-result-box" style="display:none;">
+      ${assignmentBox}
+      <div class="nav-row">
+        <button class="btn btn-primary" onclick="showScreen('payoffResults')">Continue →</button>
+      </div>
     </div>`;
-
-  gammaDiv.style.display = '';
-  // On Performance rounds, hide the result-box Continue button now that gamma is shown
-  const continueRow = document.getElementById('perf-continue-row');
-  if (continueRow) continueRow.style.display = 'none';
-  gammaDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-// Step 3 → Step 4: lock γ, show evaluator choice (or finish)
-function roundSubmitGamma() {
-  const roundData = window._pendingRound;
-  const slider = document.getElementById('gamma-round-slider');
-  // STORED AS COUNT (0.0 to 10.0)
-  roundData.belief = parseFloat(slider.value);
-  roundData.beliefSliderTouched = slider.dataset.touched === '1';
-  roundData.beliefKeptButton = !roundData.beliefSliderTouched;
-  roundData.tsGammaSubmit = Date.now();
-  STATE.rounds.push(roundData);
-
-  // Lock the γ slider
-  slider.disabled = true;
-  slider.style.opacity = '0.6';
-  const gammNav = document.getElementById('gamma-nav');
-  if (gammNav) gammNav.style.display = 'none';
-
-  STATE.currentRound++;
-
-  // After all choice + forced rounds: done
-  if (STATE.currentRound > CONFIG.numChoiceRounds + CONFIG.numForcedRounds) {
-    showScreen('roundsComplete');
-    return;
-  }
-
-  // Entering forced-rounds territory
-  if (STATE.currentRound > CONFIG.numChoiceRounds) {
-    if (STATE.currentRound === CONFIG.numChoiceRounds + 1) {
-      // First forced round: show transition screen
-      showScreen('forcedRoundsTransition');
-    } else {
-      // Subsequent forced rounds: go directly into the next forced round
-      STATE.currentManager = 'performance';
-      showRoundScreen();
-    }
-    return;
-  }
-
-  // Choice rounds: show manager choice on a separate screen
-  showManagerChoiceScreen();
-}
-
-function showManagerChoiceScreen() {
-  // Get the participant's latest belief (just submitted)
-  const latestBelief = STATE.rounds[STATE.rounds.length - 1].belief;
-
-  container.innerHTML = buildManagerChoiceHTML(
-    STATE.currentRound, latestBelief, 'roundMakeChoiceByMgr'
-  );
-
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// Step 4: evaluator choice → next round (called with the chosen manager id)
-function roundMakeChoiceByMgr(chosenMgr) {
-  // Record choice timestamp on the round that just finished
-  const lastRound = STATE.rounds[STATE.rounds.length - 1];
-  if (lastRound) lastRound.tsChoiceMade = Date.now();
-
-  const transferred = (chosenMgr !== STATE.currentManager);
-  STATE.currentManager = chosenMgr;
-  // Store transfer decision so the next round's data captures it
-  STATE._pendingTransfer = transferred;
-  showRoundScreen();
-}
-
-// ---- 2.10b Transition into the forced Performance Manager rounds ----
-SCREENS.forcedRoundsTransition = () => {
-  container.innerHTML = `
-    <div class="screen-header"><h2>Your ${CONFIG.numChoiceRounds} choice rounds are done</h2></div>
-    <p>Now: ${CONFIG.numForcedRounds} rounds with the Performance Manager without choice.</p>
-    <div class="nav-row">
-      <button class="btn btn-primary" onclick="beginForcedRounds()">Begin extra round 1 →</button>
-    </div>`;
+  updateProgress(0.66);
 };
 
-function beginForcedRounds() {
-  STATE.currentManager = 'performance';
-  showRoundScreen();
+function revealAssignment() {
+  STATE.tsAssignmentRevealed = Date.now();
+  document.getElementById('assignment-reveal-btn').style.display = 'none';
+  document.getElementById('assignment-result-box').style.display = '';
 }
 
-// ---- 2.11 Rounds Complete Transition ----
-SCREENS.roundsComplete = () => {
-  const totalRounds = CONFIG.numChoiceRounds + CONFIG.numForcedRounds;
-  container.innerHTML = `
-    <div class="screen-header"><h2>All rounds done</h2></div>
-    <p>You've finished all ${totalRounds} rounds.</p>
-    <p>Next: a few short follow-up questions.</p>
-    <div class="nav-row">
-      <button class="btn btn-primary" onclick="showScreen('riskPreferences')">Continue →</button>
+// ---- 2.10.2b Payoff Results + Posterior (NEW Screen B) ----
+// Stages (Performance branch):
+//   1. Context paragraph + Reveal button
+//   2. (after Reveal) + result box + Next button
+//   3. (after Next) + posterior section: header, notice, prior card, Keep/Revise
+//   4. (after Revise) + slider + Submit
+// Stages (Fixed branch):
+//   1. Amount visible immediately (no Reveal needed) + Next button
+//   2. (after Next) + posterior section
+//   3. (after Revise) + slider + Submit
+// The posterior elicitation is folded into this screen; the original
+// posteriorBelief screen is now a stub redirecting here.
+// Posterior section uses the same DOM IDs as the legacy posteriorBelief screen,
+// so keepPriorBelief / reviseBelief / submitPosterior / onPosteriorMuChange
+// continue to work unchanged.
+SCREENS.payoffResults = () => {
+  STATE.tsResultsShown = Date.now();
+  const implemented = STATE.implementedManager;
+  const earnings = Number(STATE.roundEarnings).toFixed(2);
+  const priorN = Number(STATE.belief_0);
+  const prior = Math.round(priorN);
+  const expectedWins = (priorN / 2).toFixed(1);
+  const stake = (STATE.bsrStake != null ? STATE.bsrStake : CONFIG.beliefBonusStake).toFixed(0);
+
+  // Posterior section — shared by both branches; revealed by showPosterior().
+  const posteriorSection = `
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+    <p style="margin:14px 0;font-size:1rem;">We will now give you the opportunity to review your guess about how you think you did compared to the 100 Prolific participants.</p>
+    <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:14px 16px;margin:6px 0 14px;">
+      <p style="margin:0;">Your <strong>$${stake} accuracy payment</strong> depends on whichever guess you submit on this screen — your earlier one or a new one.</p>
+    </div>
+    <div class="nav-row" id="posterior-decision-row" style="gap:14px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="keepPriorBelief()">Keep my earlier guess</button>
+      <button class="btn btn-primary" onclick="reviseBelief()">Revise my guess</button>
+    </div>
+    <div id="posterior-revise-wrap" style="display:none;margin-top:18px;">
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px 20px;margin:12px 0;">
+        <p style="margin:0 0 14px;"><strong>Out of the 100 Prolific participants, how many do you now expect to beat on the shared questions?</strong></p>
+        <div class="slider-container" style="margin:0;">
+          <div class="slider-row">
+            <input type="range" id="posterior-mu-slider" min="0" max="100" step="1" value="${prior}" class="slider-hidden-thumb"
+                   style="width:100%;"
+                   onpointerdown="onPosteriorMuChange(this.value)"
+                   oninput="onPosteriorMuChange(this.value)">
+          </div>
+          <div class="slider-labels"><span>0 of 100</span><span>100 of 100</span></div>
+          <p id="posterior-mu-readout" style="display:none;margin:14px 0 0;text-align:center;font-size:1rem;">I now expect to beat <span id="posterior-mu-val">—</span> out of 100.</p>
+        </div>
+      </div>
+      <div class="nav-row" id="posterior-revise-submit-row" style="display:none;">
+        <button class="btn btn-primary" onclick="submitPosterior()">Submit revised guess →</button>
+      </div>
     </div>`;
-  updateProgress(0.88);
+
+  if (implemented === 'performance') {
+    const hCount = STATE.roundHCount;
+    container.innerHTML = `
+      <div class="screen-header"><h2>Your results</h2></div>
+      <p style="margin:14px 0;">Based on your earlier guess of beating <strong>${prior} out of the 100 Prolific participants</strong>, you would expect to beat about <strong>${expectedWins} out of the 50</strong> participants the <strong class="eval-performance">Performance Manager</strong> picks.</p>
+      <div id="results-reveal-row" style="text-align:center;margin:20px 0;">
+        <button class="btn btn-primary" id="results-reveal-btn" style="font-size:1.05rem;padding:12px 32px;" onclick="revealResults()">Reveal your results →</button>
+      </div>
+      <div id="results-result-box" style="display:none;">
+        <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:20px;text-align:center;margin:12px 0;">
+          <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">You beat <span style="font-size:1.5rem;font-weight:800;color:#1e293b;">${hCount} of those 50</span>.</p>
+          <p style="margin:8px 0 0;font-size:1rem;font-weight:400;color:#64748b;">Your manager payment: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings}</span></p>
+        </div>
+        <div class="nav-row" id="results-next-row">
+          <button class="btn btn-primary" onclick="showPosterior()">Next →</button>
+        </div>
+      </div>
+      <div id="posterior-section" style="display:none;">
+        ${posteriorSection}
+      </div>`;
+  } else {
+    container.innerHTML = `
+      <div class="screen-header"><h2>Your results</h2></div>
+      <p style="margin:14px 0;">You get the payoff from the <strong class="eval-fixed">Fixed Manager</strong>.</p>
+      <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:20px;text-align:center;margin:12px 0;">
+        <p style="margin:0;font-size:1rem;font-weight:400;color:#64748b;">Your manager payment: <span style="font-size:1.3rem;font-weight:800;color:#1e293b;">$${earnings}</span></p>
+      </div>
+      <div class="nav-row" id="results-next-row">
+        <button class="btn btn-primary" onclick="showPosterior()">Next →</button>
+      </div>
+      <div id="posterior-section" style="display:none;">
+        ${posteriorSection}
+      </div>`;
+  }
+  updateProgress(0.74);
 };
+
+function revealResults() {
+  STATE.tsPayoffRevealed = Date.now();
+  document.getElementById('results-reveal-btn').style.display = 'none';
+  document.getElementById('results-result-box').style.display = '';
+}
+
+function showPosterior() {
+  STATE.tsPosteriorShown = Date.now();
+  const nextRow = document.getElementById('results-next-row');
+  if (nextRow) nextRow.style.display = 'none';
+  const section = document.getElementById('posterior-section');
+  if (section) {
+    section.style.display = '';
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// ---- 2.10.3 (REVISED) Surprise Posterior — folded into payoffResults ----
+// The posterior elicitation was previously its own screen. It is now part of
+// Screen B (payoffResults) — revealed by clicking Next after the manager
+// payoff is shown. This standalone entry is preserved as a stub: if reached
+// via direct nav (e.g., browser back), redirect to payoffResults so the
+// elicitation still happens.
+SCREENS.posteriorBelief = () => {
+  showScreen('payoffResults');
+};
+
+// Slider interaction handler for the posterior μ slider (μ-only, no confidence)
+function onPosteriorMuChange(val) {
+  const slider = document.getElementById('posterior-mu-slider');
+  if (slider) slider.classList.remove('slider-hidden-thumb');
+  const valEl = document.getElementById('posterior-mu-val');
+  if (valEl) valEl.textContent = Math.round(parseFloat(val)).toString();
+  const readout = document.getElementById('posterior-mu-readout');
+  if (readout) readout.style.display = '';
+  const submitRow = document.getElementById('posterior-revise-submit-row');
+  if (submitRow) submitRow.style.display = '';
+}
+
+function keepPriorBelief() {
+  STATE.posteriorChanged = false;
+  STATE.posteriorBelief = STATE.belief_0;
+  STATE.posteriorConfidence = STATE.initialConfidence;
+  STATE.posteriorKappa = STATE.initialKappa;
+  STATE.posteriorAlpha = STATE.initialAlpha;
+  STATE.posteriorBeta = STATE.initialBeta;
+  STATE.finalScoredBelief = STATE.belief_0;
+  STATE.tsPosteriorSubmit = Date.now();
+  showScreen('riskPreferences');
+}
+
+function reviseBelief() {
+  // Reveal the slider section but keep the decision row (Keep / Revise buttons)
+  // visible — subjects who click Revise can still change their mind and click
+  // Keep without having to back-navigate.
+  const wrap = document.getElementById('posterior-revise-wrap');
+  if (wrap) {
+    wrap.style.display = '';
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function submitPosterior() {
+  const slider = document.getElementById('posterior-mu-slider');
+  if (!slider) return;
+  const mu = parseFloat(slider.value);
+  STATE.posteriorChanged = true;
+  STATE.posteriorBelief = mu;
+  // No confidence elicitation on posterior; intentionally null.
+  STATE.posteriorConfidence = null;
+  STATE.posteriorKappa = null;
+  STATE.posteriorAlpha = null;
+  STATE.posteriorBeta = null;
+  STATE.finalScoredBelief = mu;
+  STATE.tsPosteriorSubmit = Date.now();
+  showScreen('riskPreferences');
+}
 
 // ---- 3.1 Risk Preferences ----
 SCREENS.riskPreferences = () => {
@@ -3273,158 +3238,75 @@ function checkAmbiguityComplete() {
 }
 
 function submitAmbiguity() {
-  // Compute the belief-inconsistency triggers, split by direction:
-  //  A. chose Fixed while prior > rp   (belief favored Performance)
-  //  B. chose Performance while prior < rp (belief favored Random)
-  const split = computeChoiceExplanationTriggers();
-  STATE.choseFixedAgainstBeliefRounds = split.aRoundsFixedVsPerf;
-  STATE.chosePerfAgainstBeliefRounds   = split.bRoundsPerfVsRandom;
-  STATE.perfChoiceExplanationRounds    = [...split.aRoundsFixedVsPerf, ...split.bRoundsPerfVsRandom].sort((x,y)=>x-y);
+  // Single-choice belief-inconsistency check.
+  // E[Performance pay] = belief_0/100 × 50 wins × $0.01/win = belief_0/200 dollars
+  // If chose Fixed but prior implied Performance pays more → ask why.
+  // If chose Performance but prior implied Fixed pays more → ask why.
+  const priorPay = Number(STATE.belief_0) / 200;
+  const fixedPay = Number(STATE.fixedPayDollars);
+  const chosen = STATE.chosenManager;
+  let direction = null;
+  if (chosen === 'fixed' && priorPay > fixedPay) direction = 'choseFixedVsPerf';
+  else if (chosen === 'performance' && priorPay < fixedPay) direction = 'chosePerfVsFixed';
 
-  // Compute rounds where participant chose Fixed AND adjusted their guess
-  STATE.fixedBeliefAdjustRounds = computeFixedBeliefAdjustRounds();
-
-  if (STATE.perfChoiceExplanationRounds.length > 0) {
-    STATE.perfChoiceExplanationShown = true;
-    showScreen('perfChoiceExplanation');
+  if (direction) {
+    STATE.choiceExplanationShown = true;
+    STATE._explainDirection = direction;
+    showScreen('choiceExplanation');
   } else {
     showScreen('demographics');
   }
 }
 
-// Helper: returns { aRoundsFixedVsPerf, bRoundsPerfVsRandom } — 1-indexed
-// round lists split by direction of belief-inconsistent manager choice.
-function computeChoiceExplanationTriggers() {
-  // Compare against the Fixed Manager's displayed percentage (fixedBonusH * 10)
-  // so the criterion matches what the participant actually saw.
-  const rp = STATE.fixedBonusDisplayPct;
-  const out = { aRoundsFixedVsPerf: [], bRoundsPerfVsRandom: [] };
-  if (!Number.isFinite(rp)) return out;
-  const rounds = STATE.rounds || [];
-  for (let i = 0; i < rounds.length; i++) {
-    const rd = rounds[i];
-    if (!rd || !rd.manager) continue;
-    const t = rd.roundNum;
-    // Prior belief for round t: belief_0 (or initial_belief) if t===1, else belief from round t-1
-    let prior;
-    if (t === 1) {
-      prior = STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief;
-    } else {
-      const prev = rounds.find(x => x && x.roundNum === (t - 1));
-      prior = prev ? prev.belief : null;
-    }
-    if (prior == null || !Number.isFinite(Number(prior))) continue;
-    const priorN = Number(prior);
-    if      (rd.manager === 'fixed'      && priorN > rp) out.aRoundsFixedVsPerf.push(t);
-    else if (rd.manager === 'performance' && priorN < rp) out.bRoundsPerfVsRandom.push(t);
+// ---- 3.2d Open-ended follow-up: belief-inconsistent manager choice ----
+SCREENS.choiceExplanation = () => {
+  const direction = STATE._explainDirection;
+  let block;
+  if (direction === 'choseFixedVsPerf') {
+    block = `
+      <p>You chose the <strong class="eval-fixed">Fixed Manager</strong>, even though your guess suggested that the <strong class="eval-performance">Performance Manager</strong> would pay more on average.</p>
+      <p><strong>Could you briefly tell us what made you choose the Fixed Manager?</strong></p>`;
+  } else {
+    block = `
+      <p>You chose the <strong class="eval-performance">Performance Manager</strong>, even though your guess suggested that the <strong class="eval-fixed">Fixed Manager</strong> would pay more on average.</p>
+      <p><strong>Could you briefly tell us what made you choose the Performance Manager?</strong></p>`;
   }
-  return out;
-}
-
-// ---- 3.2d Open-ended follow-ups: belief-inconsistent manager choices ----
-// One question per direction, each only shown if that direction has ≥1 round.
-SCREENS.perfChoiceExplanation = () => {
-  const aRounds = STATE.choseFixedAgainstBeliefRounds || []; // chose Fixed vs belief→Perf
-  const bRounds = STATE.chosePerfAgainstBeliefRounds   || []; // chose Perf vs belief→Random
-
-  function fmtRounds(rs) {
-    if (rs.length === 1) return `round ${rs[0]}`;
-    if (rs.length === 2) return `rounds ${rs[0]} and ${rs[1]}`;
-    return `rounds ${rs.slice(0,-1).join(', ')}, and ${rs[rs.length-1]}`;
-  }
-  function nStr(rs) { return rs.length === 1 ? 'one round' : `${rs.length} rounds`; }
-
-  const blockA = aRounds.length === 0 ? '' : `
-    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin:16px 0;">
-      <p style="margin:0 0 10px;">
-        In ${nStr(aRounds)} (${fmtRounds(aRounds)}) you chose the <strong class="eval-fixed">Fixed Manager</strong>
-        even though your latest guess suggested the <strong class="eval-performance">Performance Manager</strong> would
-        pay you more.
-      </p>
-      <p style="margin:0 0 10px;"><strong>What made you pick the Fixed Manager in those rounds?</strong></p>
-      <textarea id="explain-chose-random" rows="4"
-        placeholder="Please write at least a sentence or two..."
-        style="width:100%;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"
-        oninput="checkChoiceExplanations()"></textarea>
-    </div>`;
-
-  const blockB = bRounds.length === 0 ? '' : `
-    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin:16px 0;">
-      <p style="margin:0 0 10px;">
-        In ${nStr(bRounds)} (${fmtRounds(bRounds)}) you chose the <strong class="eval-performance">Performance Manager</strong>
-        even though your latest guess suggested the <strong class="eval-fixed">Fixed Manager</strong> would
-        pay you more.
-      </p>
-      <p style="margin:0 0 10px;"><strong>What made you pick the Performance Manager in those rounds?</strong></p>
-      <textarea id="explain-chose-perf" rows="4"
-        placeholder="Please write at least a sentence or two..."
-        style="width:100%;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"
-        oninput="checkChoiceExplanations()"></textarea>
-    </div>`;
 
   container.innerHTML = `
-    <div class="screen-header"><h2>About Your Choices</h2></div>
-    ${blockA}
-    ${blockB}
+    <div class="screen-header"><h2>About your choice</h2></div>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin:16px 0;">
+      ${block}
+      <textarea id="choice-explain-text" rows="4"
+        placeholder="Please write at least a sentence or two..."
+        style="width:100%;padding:10px 12px;font-size:0.95rem;border:1px solid #ccc;border-radius:6px;resize:vertical;font-family:inherit;"
+        oninput="checkChoiceExplanation()"></textarea>
+    </div>
     <div class="error-msg" id="choice-explain-error">Please write a short answer before continuing.</div>
     <div class="nav-row">
-      <button class="btn btn-primary" id="choice-explain-next" disabled onclick="submitChoiceExplanations()">Next →</button>
+      <button class="btn btn-primary" id="choice-explain-next" disabled onclick="submitChoiceExplanation()">Next →</button>
     </div>`;
   updateProgress(0.96);
 };
 
-function checkChoiceExplanations() {
-  const aEl = document.getElementById('explain-chose-random');
-  const bEl = document.getElementById('explain-chose-perf');
+function checkChoiceExplanation() {
+  const el = document.getElementById('choice-explain-text');
   const btn = document.getElementById('choice-explain-next');
   const err = document.getElementById('choice-explain-error');
-  const aOk = !aEl || aEl.value.trim().length >= 3;
-  const bOk = !bEl || bEl.value.trim().length >= 3;
-  const ok = aOk && bOk;
+  const ok = el && el.value.trim().length >= 3;
   if (btn) btn.disabled = !ok;
   if (ok && err) err.style.display = 'none';
 }
 
-function submitChoiceExplanations() {
-  const aEl = document.getElementById('explain-chose-random');
-  const bEl = document.getElementById('explain-chose-perf');
-  const aText = aEl ? aEl.value.trim() : '';
-  const bText = bEl ? bEl.value.trim() : '';
-  if ((aEl && aText.length < 3) || (bEl && bText.length < 3)) {
+function submitChoiceExplanation() {
+  const el = document.getElementById('choice-explain-text');
+  const text = el ? el.value.trim() : '';
+  if (text.length < 3) {
     const err = document.getElementById('choice-explain-error');
     if (err) err.classList.add('visible');
     return;
   }
-  STATE.choseFixedAgainstBeliefText = aText;
-  STATE.chosePerfAgainstBeliefText   = bText;
-  // Legacy combined field for back-compat
-  const parts = [];
-  if (aText) parts.push('[chose Fixed vs belief→Perf] ' + aText);
-  if (bText) parts.push('[chose Perf vs belief→Random] ' + bText);
-  STATE.perfChoiceExplanation = parts.join(' | ');
+  STATE.choiceExplanationText = text;
   showScreen('demographics');
-}
-
-// ---- 3.2e Fixed Manager belief adjustment follow-up ----
-// Identifies rounds where the participant chose the Fixed Manager AND changed their guess.
-function computeFixedBeliefAdjustRounds() {
-  const rounds = STATE.rounds || [];
-  const adjustRounds = [];
-  for (let i = 0; i < rounds.length; i++) {
-    const rd = rounds[i];
-    if (!rd || rd.manager !== 'fixed') continue;
-    // Prior belief: belief_0 (or initial_belief) if round 1, else previous round's belief
-    let prior;
-    if (rd.roundNum === 1) {
-      prior = STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief;
-    } else {
-      const prev = rounds.find(x => x && x.roundNum === (rd.roundNum - 1));
-      prior = prev ? prev.belief : null;
-    }
-    if (prior == null) continue;
-    if (rd.belief !== prior) adjustRounds.push(rd.roundNum);
-  }
-  return adjustRounds;
 }
 
 
@@ -3499,59 +3381,55 @@ function submitDemographics() {
 
 // ---- Payment computation ----
 function computePayment() {
-  const totalRounds = STATE.rounds.length; // 5 rounds
+  // Single-round design.
+  // 1) Manager payment: deterministic — STATE.roundEarnings
+  STATE.outcomeEarnings = STATE.roundEarnings;
 
-  // 1) Select random round for outcome payment
-  STATE.selectedPaymentRound = Math.floor(Math.random() * totalRounds);
-  const payRound = STATE.rounds[STATE.selectedPaymentRound];
-  STATE.outcomeEarnings = payRound.earnings;
-
-  // 2) Accuracy payment: BSR on one randomly selected guess from all 6
-  //    Index 0 = pre-choice belief, 1–5 = round beliefs
-  STATE.selectedBeliefIndex = Math.floor(Math.random() * 6);
-  {
-    const selectedBelief = STATE.selectedBeliefIndex === 0
-      ? (STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief)
-      : STATE.rounds[STATE.selectedBeliefIndex - 1].belief;
-    const s1scores = CONFIG.study1ScoresShared;
-    const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
-    const beat = STATE.quizScoreShared > oppScore || (STATE.quizScoreShared === oppScore && Math.random() < 0.5);
-    const bsr = resolveBSR(selectedBelief, beat, STATE.bsrStake);
-    STATE.beliefBonus_won = bsr.won;
-    STATE.beliefBonus_amount = bsr.amount;
-  }
+  // 2) Accuracy payment: BSR on the final scored belief (revised posterior or kept prior)
+  const scored = STATE.finalScoredBelief != null ? STATE.finalScoredBelief : STATE.belief_0;
+  const s1scores = CONFIG.study1ScoresShared;
+  const oppScore = s1scores[Math.floor(Math.random() * s1scores.length)];
+  const beat = STATE.quizScoreShared > oppScore || (STATE.quizScoreShared === oppScore && Math.random() < 0.5);
+  STATE.beliefBonusEventOccurred = beat;
+  STATE.beliefBonusOpponent = oppScore;
+  const bsr = resolveBSR(scored, beat, STATE.bsrStake);
+  STATE.beliefBonus_won = bsr.won;
+  STATE.beliefBonus_amount = bsr.amount;
 
   STATE.totalBonus = CONFIG.showUpFee
     + STATE.outcomeEarnings
     + STATE.beliefBonus_amount;
 
-  // Submit data then show results
   submitData().then(() => showScreen('results'));
 }
 
-// ---- 3.3 Results ----
+// ---- 3.3 Results (single-choice) ----
 SCREENS.results = () => {
-  const payRound = STATE.rounds[STATE.selectedPaymentRound];
-  const roundLabel = `Round ${payRound.roundNum}`;
+  const implemented = STATE.implementedManager;
+  const chosen = STATE.chosenManager;
+  const overrode = STATE.overrideTriggered;
+  const mgrLabel = managerLabel(implemented);
+  const overrideNote = overrode
+    ? ` (the ${Math.round(CONFIG.overrideProb * 100)}% override fired — you originally chose ${managerLabel(chosen)})`
+    : '';
+  const payDescription = implemented === 'performance'
+    ? `${STATE.roundHCount} wins × $0.01`
+    : `Fixed flat $${Number(STATE.fixedPayDollars).toFixed(2)}`;
 
-  // Accuracy payment details
-  const beliefIndex = STATE.selectedBeliefIndex;
-  const beliefLabel = beliefIndex === 0 ? 'Pre-round guess' : `Round ${beliefIndex}`;
-  const beliefValue = beliefIndex === 0
-    ? (STATE.belief_0 != null ? STATE.belief_0 : STATE.initial_belief)
-    : STATE.rounds[beliefIndex - 1].belief;
+  const beliefLabel = STATE.posteriorChanged ? 'Final guess (revised)' : 'Final guess (kept prior)';
+  const beliefValue = STATE.finalScoredBelief != null ? STATE.finalScoredBelief : STATE.belief_0;
 
   container.innerHTML = `
     <div class="screen-header"><h2>Results</h2></div>
 
-    ${CONFIG.texts.resultsReveal(payRound.roundNum, payRound.manager)}
+    ${CONFIG.texts.resultsReveal(implemented, overrode)}
 
     <div class="results-section">
       <h3>Payment Breakdown</h3>
       <div class="payment-line"><span>Show-up fee</span><span>$${CONFIG.showUpFee.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Manager payment (selected: ${roundLabel}, ${payRound.hCount} wins × $0.10)</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Accuracy payment (selected: ${beliefLabel}, your guess: ${Number(beliefValue).toFixed(1)} of 10)</span><span>$${STATE.beliefBonus_amount.toFixed(2)}</span></div>
-      <div class="payment-total"><span>Total payment</span><span>$${STATE.totalBonus.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Manager payment (${mgrLabel}${overrideNote}: ${payDescription})</span><span>$${Number(STATE.outcomeEarnings).toFixed(2)}</span></div>
+      <div class="payment-line"><span>Accuracy payment (${beliefLabel}: ${Math.round(Number(beliefValue))} of 100)</span><span>$${Number(STATE.beliefBonus_amount).toFixed(2)}</span></div>
+      <div class="payment-total"><span>Total payment</span><span>$${Number(STATE.totalBonus).toFixed(2)}</span></div>
     </div>
 
     <p>The program will calculate your payment and credit it to your Prolific account within five business days.</p>
@@ -3606,12 +3484,9 @@ async function submitData() {
     quizScoreShared: quizBreakdown.shared6,                 // 0–6 (SE1, SX1, SX2, SH2, H1, H2) — used for γ*
     quizScoreDistinct: quizBreakdown.distinct,             // 0–6 (E3–E8 if Easy cond; H3–H8 if Hard cond)
     gammaStar: STATE.gammaStar,
-    fixedProbShown: STATE.fixedProbShown,
-    fixedBonusH: STATE.fixedBonusH,
-    fixedBonusFloor: STATE.fixedBonusFloor,
-    fixedBonusCeil: STATE.fixedBonusCeil,
-    roundingDirection: STATE.roundingDirection,
-    fixedBonusDisplayPct: STATE.fixedBonusDisplayPct,
+    fixedPayDollars: STATE.fixedPayDollars,
+    overrideProb: CONFIG.overrideProb,
+    trueWinsOf100: STATE.trueWinsOf100,
     quizAnswers: JSON.stringify(STATE.quizAnswers),
 
     // Initial beliefs (γ₀ + continuous confidence slider; Beta from γ₀ + κ)
@@ -3628,22 +3503,38 @@ async function submitData() {
     elicitedFixedHCount: STATE.elicitedFixedHCount,
     elicitedBetterManager: STATE.elicitedBetterManager,
 
-    // Rounds — one column per variable per round (flat structure for Google Sheets)
-    ...Object.fromEntries(STATE.rounds.flatMap(r => {
-      const i = r.roundNum;
-      return [
-        [`manager_${i}`,       r.manager],
-        [`forced_${i}`,        r.forced ? 1 : 0],                     // 1 for forced Performance rounds (post-choice), 0 for choice rounds
-        [`transferred_${i}`,   r.transferred],
-        [`hCount_${i}`,        r.hCount],
-        [`earnings_${i}`,      r.earnings],
-        [`belief_${i}`,   r.belief],
-        [`beliefSliderTouched_${i}`, r.beliefSliderTouched ? 1 : 0],
-        [`beliefKeptButton_${i}`, r.beliefKeptButton ? 1 : 0],
-        [`outcomes_${i}`,      (r.outcomes || []).join('')],          // e.g. "HHLHH"
-        [`opponentScores_${i}`, (r.opponentScores || []).join(',')],  // e.g. "7,4,9,3,6"
-      ];
-    })),
+    // Single manager round (flat fields)
+    chosenManager: STATE.chosenManager,
+    overrideTriggered: STATE.overrideTriggered === null ? null : (STATE.overrideTriggered ? 1 : 0),
+    implementedManager: STATE.implementedManager,
+    overrideDraw: STATE.overrideDraw,
+    roundOutcomes: (STATE.roundOutcomes || []).join(''),
+    roundOpponentScores: (STATE.roundOpponentScores || []).join(','),
+    roundOpponentIndices: (STATE.roundOpponentIndices || []).join(','),
+    roundHCount: STATE.roundHCount,
+    roundEarnings: STATE.roundEarnings,
+    tsChoiceMade: STATE.tsChoiceMade,
+    tsAssignmentShown: STATE.tsAssignmentShown,
+    tsAssignmentRevealed: STATE.tsAssignmentRevealed,
+    tsResultsShown: STATE.tsResultsShown,
+    tsPayoffShown: STATE.tsPayoffShown,
+    tsPayoffRevealed: STATE.tsPayoffRevealed,
+    tsImplicationRevealed: STATE.tsImplicationRevealed,
+    tsPosteriorShown: STATE.tsPosteriorShown,
+    tsPosteriorSubmit: STATE.tsPosteriorSubmit,
+
+    // Surprise posterior elicitation
+    posteriorBelief: STATE.posteriorBelief,
+    posteriorChanged: STATE.posteriorChanged === null ? null : (STATE.posteriorChanged ? 1 : 0),
+    posteriorConfidence: STATE.posteriorConfidence,
+    posteriorKappa: STATE.posteriorKappa,
+    posteriorAlpha: STATE.posteriorAlpha,
+    posteriorBeta: STATE.posteriorBeta,
+    finalScoredBelief: STATE.finalScoredBelief,
+
+    // BSR resolution detail (single belief, single random opponent)
+    beliefBonusEventOccurred: STATE.beliefBonusEventOccurred === null ? null : (STATE.beliefBonusEventOccurred ? 1 : 0),
+    beliefBonusOpponent: STATE.beliefBonusOpponent,
 
     // Post-experiment
     riskPreference: STATE.riskPreference,
@@ -3652,28 +3543,17 @@ async function submitData() {
     ambiguityColor: STATE.ambiguityAnswers.color,
     ambiguityUrnPreference: STATE.ambiguityAnswers.urnPreference,
 
-    // Open-ended follow-ups for belief-inconsistent manager choices.
-    // Split by direction; legacy fields populated as the union / combined text.
-    perfChoiceExplanationShown: STATE.perfChoiceExplanationShown ? 1 : 0,
-    perfChoiceExplanationRounds: JSON.stringify(STATE.perfChoiceExplanationRounds || []),
-    perfChoiceExplanation: STATE.perfChoiceExplanation || '',
-    choseFixedAgainstBeliefRounds: JSON.stringify(STATE.choseFixedAgainstBeliefRounds || []),
-    choseFixedAgainstBeliefText:   STATE.choseFixedAgainstBeliefText || '',
-    chosePerfAgainstBeliefRounds:   JSON.stringify(STATE.chosePerfAgainstBeliefRounds || []),
-    chosePerfAgainstBeliefText:     STATE.chosePerfAgainstBeliefText || '',
-    fixedBeliefAdjustRounds:        JSON.stringify(STATE.fixedBeliefAdjustRounds || []),
-    fixedBeliefAdjustExplanationShown: STATE.fixedBeliefAdjustExplanationShown ? 1 : 0,
-    fixedBeliefAdjustExplanationText:  STATE.fixedBeliefAdjustExplanationText || '',
+    // Open-ended follow-up: belief-inconsistent manager choice (single direction)
+    choiceExplanationShown: STATE.choiceExplanationShown ? 1 : 0,
+    choiceExplanationText: STATE.choiceExplanationText || '',
 
     feedbackClarity: STATE.feedbackClarity,
     feedbackComplaints: STATE.feedbackComplaints,
 
     // Payment
-    selectedPaymentRound: STATE.selectedPaymentRound,
     outcomeEarnings: STATE.outcomeEarnings,
-    selectedBeliefIndex: STATE.selectedBeliefIndex,
     beliefBonus_amount: STATE.beliefBonus_amount,
-    beliefBonus_won: STATE.beliefBonus_won,
+    beliefBonus_won: STATE.beliefBonus_won ? 1 : 0,
     totalBonus: STATE.totalBonus,
 
     // Timing
@@ -3708,9 +3588,9 @@ async function submitData() {
   window._experimentData = data;
 
   // Send to Google Sheets. We use mode:'no-cors' because Apps Script responds with
-  // a 302 redirect that the browser can't read under CORS. As a result, the fetch
+  // a 302 redirect that the browser cannot read under CORS. As a result, the fetch
   // promise often rejects even when the POST was processed server-side, so retrying
-  // would just create duplicate rows. Fire once, don't await, don't retry.
+  // would just create duplicate rows. Fire once, do not await, do not retry.
   if (CONFIG.googleSheetsURL) {
     try {
       fetch(CONFIG.googleSheetsURL, {
