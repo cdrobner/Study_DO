@@ -1456,8 +1456,11 @@ function buildManagerChoiceHTML(belief, onChoose) {
   const expectedWins50 = (beliefN / 2).toFixed(1);
   const expectedPay = (beliefN / 200).toFixed(2);
 
-  const perfContext = `Based on your guess, you expect the Performance Manager to pay you a <strong>total</strong> of ${badge('$' + expectedPay)} on average.`;
-  const fixedContext = `The Fixed Manager pays you a <strong>total</strong> of ${badge('$' + fixedPay)}.`;
+  // Mechanism-only descriptions (no EV pre-computation on this screen). Subjects
+  // saw the EV comparison earlier on preChoiceBelief (gated behind the imply
+  // button); here they decide based on memory + the mechanism description.
+  const perfContext = `Randomly picks 50 of the 100 Prolific participants and pays you ${badge('$0.01')} for each one you beat on the shared questions.`;
+  const fixedContext = `Pays you a <strong>total</strong> of ${badge('$' + fixedPay)}.`;
 
   function cardHTML(mgr) {
     const isPerf = mgr === 'performance';
@@ -2766,37 +2769,37 @@ function submitManagerChoice(chosenMgr) {
     ? (chosenMgr === 'performance' ? 'fixed' : 'performance')
     : chosenMgr;
 
-  // Generate manager outcomes for the implemented manager
+  // ALWAYS draw the Performance counterfactual — sample 50 of the 100 fixed reference
+  // opponents (CONFIG.study1ScoresShared) without replacement, regardless of which
+  // manager was chosen / implemented. This lets the analyst run a counterfactual
+  // ("what would Performance have paid?") for every subject, including those who
+  // got Fixed. The displayed payment (roundEarnings) still depends on the
+  // implemented manager.
+  const N = CONFIG.study1ScoresShared.length; // 100
+  const idxs = Array.from({length: N}, (_, i) => i);
+  for (let i = idxs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+  }
+  const sampledIdx = idxs.slice(0, CONFIG.outcomesPerRound);
+  STATE.roundOpponentIndices = sampledIdx;
+  STATE.roundOpponentScores = sampledIdx.map(i => CONFIG.study1ScoresShared[i]);
+  const outcomes = [];
+  for (const op of STATE.roundOpponentScores) {
+    if (STATE.quizScoreShared > op) outcomes.push('H');
+    else if (STATE.quizScoreShared === op) outcomes.push(Math.random() < 0.5 ? 'H' : 'L');
+    else outcomes.push('L');
+  }
+  STATE.roundOutcomes = outcomes;
+  STATE.roundHCount = outcomes.filter(o => o === 'H').length;
+
+  // Realized earnings depend on the IMPLEMENTED manager; the counterfactual fields
+  // above are populated either way for analysis.
   const mgr = STATE.implementedManager;
   if (mgr === 'performance') {
-    // Sample 50 of the 100 fixed reference opponents (CONFIG.study1ScoresShared)
-    // without replacement. Indices are recorded so the analyst knows exactly which
-    // 50 of the 100 each participant saw.
-    const N = CONFIG.study1ScoresShared.length; // 100
-    const idxs = Array.from({length: N}, (_, i) => i);
-    for (let i = idxs.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
-    }
-    const sampledIdx = idxs.slice(0, CONFIG.outcomesPerRound);
-    STATE.roundOpponentIndices = sampledIdx;
-    STATE.roundOpponentScores = sampledIdx.map(i => CONFIG.study1ScoresShared[i]);
-    // Compute outcomes against these 10
-    const outcomes = [];
-    for (const op of STATE.roundOpponentScores) {
-      if (STATE.quizScoreShared > op) outcomes.push('H');
-      else if (STATE.quizScoreShared === op) outcomes.push(Math.random() < 0.5 ? 'H' : 'L');
-      else outcomes.push('L');
-    }
-    STATE.roundOutcomes = outcomes;
-    STATE.roundHCount = outcomes.filter(o => o === 'H').length;
     STATE.roundEarnings = STATE.roundHCount * CONFIG.payPerH;
   } else {
-    // Fixed: pays gammaStar/100 directly
-    STATE.roundOutcomes = null;
-    STATE.roundOpponentScores = null;
-    STATE.roundOpponentIndices = null;
-    STATE.roundHCount = null;
+    // Fixed: pays gammaStar/200 directly (calibrated rule)
     STATE.roundEarnings = STATE.fixedPayDollars;
   }
 
