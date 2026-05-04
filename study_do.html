@@ -1456,7 +1456,7 @@ function buildManagerChoiceHTML(belief, onChoose) {
   const expectedWins50 = (beliefN / 2).toFixed(1);
   const expectedPay = (beliefN / 200).toFixed(2);
 
-  const perfContext = `Based on your guess, you expect the Performance Manager to pay ${badge('$' + expectedPay)} on average.`;
+  const perfContext = `Based on your guess, you expect the Performance Manager to pay you a <strong>total</strong> of ${badge('$' + expectedPay)} on average.`;
   const fixedContext = `The Fixed Manager pays you a <strong>total</strong> of ${badge('$' + fixedPay)}.`;
 
   function cardHTML(mgr) {
@@ -1683,7 +1683,7 @@ function renderMuConfidenceWidget(_unused) {
             <div style="flex:1;padding:14px 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;text-align:center;">
               <p style="margin:0 0 8px;font-size:0.85rem;font-weight:700;" class="eval-performance">Performance Manager</p>
               <p style="margin:0;font-size:1.6rem;font-weight:800;color:#1e293b;">$<span id="init-perf-pay">—</span></p>
-              <p style="margin:6px 0 0;font-size:0.78rem;color:#64748b;">on average</p>
+              <p style="margin:6px 0 0;font-size:0.78rem;color:#64748b;"><strong>total</strong> on average</p>
             </div>
             <div style="flex:1;padding:14px 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;text-align:center;">
               <p style="margin:0 0 8px;font-size:0.85rem;font-weight:700;" class="eval-fixed">Fixed Manager</p>
