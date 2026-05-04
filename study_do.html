@@ -2874,7 +2874,7 @@ SCREENS.payoffResults = () => {
   // Posterior section — shared by both branches; revealed by showPosterior().
   const posteriorSection = `
     <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
-    <p style="margin:14px 0;font-size:1rem;">We will now give you the opportunity to review your guess about how you think you did compared to the 100 Prolific participants.</p>
+    <p style="margin:14px 0;font-size:1rem;">We will now give you the opportunity to review your guess about how you compared to others. Your earlier guess was that you would beat <strong>${prior} out of 100</strong>.</p>
     <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:14px 16px;margin:6px 0 14px;">
       <p style="margin:0;">Your <strong>$${stake} accuracy payment</strong> depends on whichever guess you submit on this screen — your earlier one or a new one.</p>
     </div>
@@ -2906,7 +2906,7 @@ SCREENS.payoffResults = () => {
     const hCount = STATE.roundHCount;
     container.innerHTML = `
       <div class="screen-header"><h2>Your results</h2></div>
-      <p style="margin:14px 0;">Based on your earlier guess of beating <strong>${prior} out of the 100 Prolific participants</strong>, you would expect to beat about <strong>${expectedWins} out of the 50</strong> participants the <strong class="eval-performance">Performance Manager</strong> picks.</p>
+      <p style="margin:14px 0;">You get the payoff from the <strong class="eval-performance">Performance Manager</strong>. Based on your earlier guess of beating <strong>${prior} out of the 100 Prolific participants</strong>, you would expect to beat about <strong>${expectedWins} out of the 50</strong> participants it picks.</p>
       <div id="results-reveal-row" style="text-align:center;margin:20px 0;">
         <button class="btn btn-primary" id="results-reveal-btn" style="font-size:1.05rem;padding:12px 32px;" onclick="revealResults()">Reveal your results →</button>
       </div>
