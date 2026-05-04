@@ -438,7 +438,7 @@ const CONFIG = {
   // stays separate from the pedagogy-on variant. Until you set that up, leaving
   // the same endpoint is fine — the schema is identical and rows can be filtered
   // post-hoc by studyId.
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbyKI-ATtdDSHnc22u8J8ptJJKqRW9iOD22t62iZSEMi5ocsq2nu7cUWV-SF3f5zZu96nw/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbw5KQ-jvfTsKBum47Mt8E5UbMyT7fb9C0k6soyyX79AkzxEIyLxk60XafuqtNrAc7h7yA/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -1678,17 +1678,15 @@ function renderMuConfidenceWidget(_unused) {
              implied payoffs. Only the manager names use brand colors; the rest is
              neutral grey, with dollar amounts emphasized by weight + size. -->
         <div id="init-pay-display" style="display:none;margin-top:14px;">
-          <p style="margin:0 0 10px;font-size:0.95rem;color:#475569;text-align:center;">Based on this guess, you would expect:</p>
+          <p style="margin:0 0 10px;font-size:0.95rem;color:#475569;text-align:center;">Based on this guess, here is the <strong>total</strong> payment you would expect from each manager:</p>
           <div style="display:flex;gap:12px;">
             <div style="flex:1;padding:14px 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;text-align:center;">
               <p style="margin:0 0 8px;font-size:0.85rem;font-weight:700;" class="eval-performance">Performance Manager</p>
               <p style="margin:0;font-size:1.6rem;font-weight:800;color:#1e293b;">$<span id="init-perf-pay">—</span></p>
-              <p style="margin:6px 0 0;font-size:0.78rem;color:#64748b;"><strong>total</strong> on average</p>
             </div>
             <div style="flex:1;padding:14px 16px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;text-align:center;">
               <p style="margin:0 0 8px;font-size:0.85rem;font-weight:700;" class="eval-fixed">Fixed Manager</p>
               <p style="margin:0;font-size:1.6rem;font-weight:800;color:#1e293b;">$${fixedPay}</p>
-              <p style="margin:6px 0 0;font-size:0.78rem;color:#64748b;font-weight:700;">total</p>
             </div>
           </div>
         </div>
