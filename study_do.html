@@ -438,7 +438,7 @@ const CONFIG = {
   // stays separate from the pedagogy-on variant. Until you set that up, leaving
   // the same endpoint is fine — the schema is identical and rows can be filtered
   // post-hoc by studyId.
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbw5iVI61X8jJEG_04-ivoYh7iutOQKzhvSo6-wrjkhgdWRXqHxY9xK0KjyIeEVGYTgC/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzgaB8jL4m-TLVokfVrqRoNUhQHyImHUHlKt-1XLaPxcYR5MJ1QLzueuJ22FZ0Flm7D2Q/exec',  // e.g. 'https://script.google.com/macros/s/XXXX/exec'
 
   // ---- Tab-switch exclusion (temporarily disabled for testing; re-enable later) ----
   tabSwitchExclusionEnabled: false,
@@ -448,7 +448,7 @@ const CONFIG = {
   payPerH: 0.01,           // $ per comparison won (Performance Manager); n=50 → max $0.50
   showUpFee: 2.00,         // $ flat fee
   beliefBonusStake: 1.00,  // $ BSR stake on the final scored belief
-  overrideProb: 0.20,      // 20% probability that the OTHER manager is implemented
+  overrideProb: 0.50,      // 50% probability that the manager is randomly assigned (50/50 Perf/Fixed) regardless of choice
   quizTimePerQuestion: 10, // seconds
   numQuizQuestions: 12,
 
@@ -1116,14 +1116,14 @@ const CONFIG = {
         performance: `<p><strong class="eval-performance">Performance Manager:</strong> randomly picks <strong>50 of the 100 Prolific participants</strong> and compares your score on the shared questions to theirs. You earn <strong>$0.01 for each one you beat</strong> (ties decided by a coin flip).</p>`,
         fixed: `<p><strong class="eval-fixed">Fixed Manager:</strong> pays you a <strong>total</strong> of <strong>$${fixedPay}</strong>.</p>`,
         // The override block is shown alongside the manager descriptions so the
-        // randomization mechanism does not appear "out of nowhere" later.
+        // random-assignment mechanism does not appear "out of nowhere" later.
         override: `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:14px 16px;margin:18px 0 4px;">
           <p style="margin:0 0 8px;"><strong>One twist — your pick is not always the manager you get:</strong></p>
           <ul style="margin:0;padding-left:20px;">
-            <li><strong>${overrideMain}% of the time</strong>, you get the manager you picked.</li>
-            <li><strong>${overrideOther}% of the time</strong>, you get the other manager instead.</li>
+            <li><strong>${overrideMain}% of the time</strong>, your choice is implemented and you get the manager you picked.</li>
+            <li><strong>${overrideOther}% of the time</strong>, the computer randomly assigns one of the two managers (Performance or Fixed, with equal probability), regardless of your choice.</li>
           </ul>
-          <p style="margin:10px 0 0;">So you should pick the manager you actually prefer — that one is much more likely to be the one you end up with.</p>
+          <p style="margin:10px 0 0;">So overall you end up with the manager you picked <strong>75% of the time</strong> (50% directly + 25% by random coincidence). This means you should pick the manager you actually prefer.</p>
         </div>`,
       };
     },
@@ -1168,7 +1168,7 @@ const CONFIG = {
         items: [
           { text: "The Performance Manager picks 50 of the 100 Prolific participants and pays me $0.01 for each one I beat on the shared questions.", correct: true },
           { text: `The Fixed Manager pays me a <strong>total</strong> of $${fixedPay}.`, correct: true },
-          { text: `With ${overrideOther}% probability, I get the manager I did NOT pick instead of the one I choose.`, correct: true },
+          { text: `With ${overrideOther}% probability, the computer randomly assigns a manager (Performance or Fixed with equal probability) regardless of what I pick.`, correct: true },
           { text: "Both managers pay $0.01 for each participant I beat.", correct: false },
         ],
       };
@@ -1244,9 +1244,12 @@ const STATE = {
 
   // ---- Single manager round ----
   chosenManager: null,            // 'performance' | 'fixed' (what participant picked)
-  overrideTriggered: null,        // true if 20% override fired
-  implementedManager: null,       // what actually got implemented after override
-  overrideDraw: null,             // raw uniform draw used for override resolution
+  overrideTriggered: null,        // true if the 50% random-assignment branch fired (i.e., assignmentArm === 'random')
+  implementedManager: null,       // what actually got implemented after the random-assignment resolution
+  overrideDraw: null,             // raw uniform draw (local fallback; -1 if server-assigned via stratified arm endpoint)
+  overrideRandomDraw: null,       // raw uniform draw used to pick Performance vs Fixed when the random branch fired (null otherwise)
+  assignmentArm: null,            // 'choice' | 'random' — assigned after belief elicitation, stratified on (OC|UC) × (hard|easy)
+  assignmentStratum: null,        // 'oc-hard' | 'oc-easy' | 'uc-hard' | 'uc-easy' — stratum used for arm assignment
   roundOutcomes: null,            // ['H'/'L', ...] of length 10 (Performance only; null on Fixed)
   roundOpponentScores: null,      // [int, ...] of length 10 (Performance only; null on Fixed)
   roundOpponentIndices: null,     // [int, ...] of length 50 — indices into CONFIG.study1ScoresShared (the fixed reference 100) of the 50 opponents the participant was compared to (Performance only)
@@ -2709,7 +2712,58 @@ function submitPreChoiceBelief() {
   STATE.initialKappa      = kappa;
   STATE.initialAlpha      = muC * kappa;
   STATE.initialBeta       = (1 - muC) * kappa;
-  showScreen('managerChoice');
+
+  // Determine arm assignment via server-side stratified randomization on (OC|UC) × (hard|easy).
+  // OC if reported prior > true win rate; UC otherwise (bias = 0 → UC by convention).
+  const ocLabel = (mu > Number(STATE.trueWinsOf100)) ? 'oc' : 'uc';
+  STATE.assignmentStratum = ocLabel + '-' + STATE.quizCondition;
+
+  // Show a brief loading screen while we wait for the server arm assignment
+  container.innerHTML = `
+    <div class="screen-header"><h2>Preparing your manager choice…</h2></div>
+    <p style="margin:14px 0;color:#64748b;">One moment please.</p>`;
+  assignArm().then(() => showScreen('managerChoice'));
+}
+
+/**
+ * Server-side stratified block randomization for the choice-vs-random arm.
+ * Stratum is 'oc-hard' | 'oc-easy' | 'uc-hard' | 'uc-easy', determined by the
+ * subject's elicited prior relative to true win rate, combined with quiz condition.
+ * Falls back to local 50/50 crypto-secure draw if the server is unreachable.
+ */
+async function assignArm() {
+  if (STATE.assignmentArm) return;
+
+  // Try server-side stratified assignment first
+  if (CONFIG.googleSheetsURL && STATE.prolificPid && STATE.assignmentStratum) {
+    try {
+      const url = CONFIG.googleSheetsURL
+        + '?action=randomizeArm'
+        + '&stratum=' + encodeURIComponent(STATE.assignmentStratum)
+        + '&pid='     + encodeURIComponent(STATE.prolificPid);
+      const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      const data = await resp.json();
+      if (data && (data.arm === 'choice' || data.arm === 'random')) {
+        STATE.assignmentArm = data.arm;
+        STATE.overrideDraw = -1; // server-assigned (stratified block randomization)
+        return;
+      }
+    } catch (err) {
+      // fall through to local fallback
+    }
+  }
+
+  // Local fallback (50/50, unstratified)
+  let draw;
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    draw = buf[0] / 0x100000000;
+  } else {
+    draw = Math.random();
+  }
+  STATE.overrideDraw = draw;
+  STATE.assignmentArm = draw < CONFIG.overrideProb ? 'random' : 'choice';
 }
 
 function renderComprehensionCheck(checkConfig, onPass, checkId) {
@@ -2784,8 +2838,12 @@ function validateComprehension() {
 //                                                     → riskPreferences
 //
 // Key mechanisms:
-//  - Override: with CONFIG.overrideProb (=0.20) probability, the OTHER
-//    manager is implemented instead of the participant's choice.
+//  - Random assignment: with CONFIG.overrideProb (=0.50) probability, the
+//    computer randomly assigns one of the two managers (50/50 Performance or
+//    Fixed) regardless of the participant's choice. With the remaining 50%,
+//    the participant's choice is implemented as selected. Net result: the
+//    participant ends up with their chosen manager 75% of the time
+//    (50% direct + 25% random by coincidence).
 //  - Posterior: SURPRISE elicitation after payoff. Participant can keep
 //    their incentivized prior (belief_0) or revise it. The final scored
 //    belief (used for BSR) is whichever they end on.
@@ -2803,13 +2861,21 @@ function submitManagerChoice(chosenMgr) {
   STATE.chosenManager = chosenMgr;
   STATE.tsChoiceMade = Date.now();
 
-  // Resolve the override
-  const draw = Math.random();
-  STATE.overrideDraw = draw;
-  STATE.overrideTriggered = draw < CONFIG.overrideProb;
-  STATE.implementedManager = STATE.overrideTriggered
-    ? (chosenMgr === 'performance' ? 'fixed' : 'performance')
-    : chosenMgr;
+  // Use the pre-assigned arm (set in submitPreChoiceBelief via assignArm()).
+  // Stratified server-side randomization on (OC|UC) × (hard|easy) ensures
+  // ~50/50 balance of choice-vs-random within each stratum.
+  // 'choice' arm: the participant's choice is implemented as selected.
+  // 'random' arm: the computer randomly assigns one of the two managers
+  // (50/50 Performance/Fixed), independent of the participant's choice.
+  STATE.overrideTriggered = STATE.assignmentArm === 'random';
+  if (STATE.overrideTriggered) {
+    const randomMgrDraw = Math.random();
+    STATE.overrideRandomDraw = randomMgrDraw;
+    STATE.implementedManager = randomMgrDraw < 0.5 ? 'performance' : 'fixed';
+  } else {
+    STATE.overrideRandomDraw = null;
+    STATE.implementedManager = chosenMgr;
+  }
 
   // ALWAYS draw the Performance counterfactual — sample 50 of the 100 fixed reference
   // opponents (CONFIG.study1ScoresShared) without replacement, regardless of which
@@ -2864,10 +2930,10 @@ SCREENS.payoffReveal = () => {
   const choiceHonoredPct = 100 - overridePct;
 
   // Pre-built assignment box (shown after Reveal click).
-  // Yellow box for the override-triggered (rare) case; calmer grey for the routine case.
+  // Yellow box for the random-assignment branch; calmer grey for the choice-implemented case.
   const assignmentBox = overrode
     ? `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:16px 18px;margin:14px 0;">
-         <p style="margin:0;font-size:1.05rem;"><strong>Your choice is NOT implemented.</strong> This was one of the ${overridePct}% cases — you get the payoff from the <strong>${mgrLabel}</strong> instead.</p>
+         <p style="margin:0;font-size:1.05rem;"><strong>The computer randomly assigned your manager.</strong> This was one of the ${overridePct}% cases — your manager is the <strong>${mgrLabel}</strong> (chosen by the program with equal probability across the two managers).</p>
        </div>`
     : `<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:16px 18px;margin:14px 0;">
          <p style="margin:0;font-size:1.05rem;"><strong>Your choice is implemented.</strong> You get the payoff from the <strong>${mgrLabel}</strong>.</p>
@@ -2875,7 +2941,7 @@ SCREENS.payoffReveal = () => {
 
   container.innerHTML = `
     <div class="screen-header"><h2>Your manager assignment</h2></div>
-    <p style="margin:14px 0;color:#475569;">Remember: there's an ${choiceHonoredPct}% chance you get the manager you chose, and a ${overridePct}% chance you get the other manager.</p>
+    <p style="margin:14px 0;color:#475569;">Remember: there's a ${choiceHonoredPct}% chance your choice is implemented as you selected, and a ${overridePct}% chance the computer randomly assigns one of the two managers.</p>
     <div id="assignment-reveal-row" style="text-align:center;margin:20px 0;">
       <button class="btn btn-primary" id="assignment-reveal-btn" style="font-size:1.05rem;padding:12px 32px;" onclick="revealAssignment()">Reveal what the program decided →</button>
     </div>
@@ -3466,7 +3532,7 @@ SCREENS.results = () => {
   const overrode = STATE.overrideTriggered;
   const mgrLabel = managerLabel(implemented);
   const overrideNote = overrode
-    ? ` (the ${Math.round(CONFIG.overrideProb * 100)}% override fired — you originally chose ${managerLabel(chosen)})`
+    ? ` (the computer randomly assigned this manager — you originally chose ${managerLabel(chosen)})`
     : '';
   const payDescription = implemented === 'performance'
     ? `${STATE.roundHCount} wins × $0.01`
@@ -3564,6 +3630,9 @@ async function submitData() {
     overrideTriggered: STATE.overrideTriggered === null ? null : (STATE.overrideTriggered ? 1 : 0),
     implementedManager: STATE.implementedManager,
     overrideDraw: STATE.overrideDraw,
+    overrideRandomDraw: STATE.overrideRandomDraw,
+    assignmentArm: STATE.assignmentArm,
+    assignmentStratum: STATE.assignmentStratum,
     roundOutcomes: (STATE.roundOutcomes || []).join(''),
     roundOpponentScores: (STATE.roundOpponentScores || []).join(','),
     roundOpponentIndices: (STATE.roundOpponentIndices || []).join(','),
