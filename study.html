@@ -133,20 +133,11 @@ strong { font-weight: 600; }
   min-width: 52px; text-align: center; font-weight: 700;
   font-size: 1.1rem; color: #2563eb;
 }
-.slider-untouched::-webkit-slider-thumb {
-  background: #94a3b8 !important;
-}
-.slider-untouched::-moz-range-thumb {
-  background: #94a3b8 !important;
-}
 .slider-hidden-thumb::-webkit-slider-thumb {
   opacity: 0 !important;
 }
 .slider-hidden-thumb::-moz-range-thumb {
   opacity: 0 !important;
-}
-.slider-warning {
-  color: #dc2626; font-size: 0.88rem; margin-top: 4px; display: none;
 }
 .slider-labels {
   display: flex; justify-content: space-between; font-size: 0.8rem; color: #888;
@@ -746,9 +737,13 @@ const CONFIG = {
   // ---- Prolific settings ----
   prolificCompletionURL: 'https://app.prolific.com/submissions/complete?cc=C12F5J5G',
 
+  // ---- Prolific SCREEN-OUT (attention-check / eligibility failures) ----
+  // Screen-out completion URL (failed attention checks) from the Prolific study settings.
+  screenOutURL: 'https://app.prolific.com/submissions/complete?cc=CAYABD7T',
+
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbx40bTnGro9cRrq949hTdKPPbCNh8cdiUqY8OpMCqVNRa7i51SEGGNu80G4_bFVae5zIQ/exec',
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwS860tZX_OpJuTRw9GHir4cFFvqhZHdx5bzeEYBmdD-y3JBgtzAL_n6XwfoREFaReeEw/exec',
 
   // ---- Post-quiz block structure (manager task) ----
   // Each entry is one feedback "set". choiceBefore:
@@ -1367,7 +1362,7 @@ const CONFIG = {
       title: 'Consent Form',
       pi: 'Yesim Orhun (University of Michigan)',
       coPi: 'Christoph Drobner (Central European University)',
-      body: `You are invited to participate in a study about decision-making. If you agree to be part of the study, you will be asked to make decisions on your computer. Data collected during the study will be linked only to your Prolific ID, and in no way will it be linked to your name. Therefore, your behavior during this study is completely anonymous.`,
+      body: `You are invited to participate in a study about decision-making. If you agree to be part of the study, you will be asked to make decisions on your computer. The study is expected to take 10&ndash;15 minutes. The study includes attention checks; if you do not follow the instructions for these checks, you may be removed from the study before it is complete. Data collected during the study will be linked only to your Prolific ID, and in no way will it be linked to your name. Therefore, your behavior during this study is completely anonymous.`,
       benefits: `You may not receive any personal benefits from being in this study. However, others may benefit from the knowledge gained from this study.`,
       risks: `This study involves behavioral tasks and does not pose more than minimal risks to you physically, psychologically, and legally.`,
       // {{MAX_BONUS}} and {{SHOW_UP_FEE}} are filled in at render time from CONFIG.
@@ -1381,7 +1376,7 @@ const CONFIG = {
       <p><strong>No AI tools:</strong> The use of AI tools (such as ChatGPT, Copilot, or similar) is strictly prohibited during this study. We trust you to complete this study using only your own reasoning. Please treat this as a commitment to honest participation — your integrity is essential to the quality of our research.</p>`,
 
     quizInstructions: `<p>You will begin by completing a short logic quiz with <strong>12&nbsp;questions</strong>. You will have <strong>10&nbsp;seconds</strong> to solve each question.</p>
-      <p>If you don't pick an answer within 10&nbsp;seconds, the question counts as incorrect — so always pick your best guess, even if you're unsure.</p>
+      <p>If you do not pick an answer within 10&nbsp;seconds, the question counts as incorrect — so always pick your best guess, even if you are unsure.</p>
       <p><strong>Scoring higher on the quiz can increase your earnings.</strong> So please do your best.</p>
       <p>Each question shows a 3×3 grid of shapes following a pattern. The bottom-right cell is missing (marked with ?). Select the answer that best completes the pattern.</p>
       <p>Before the quiz starts, we will show you one <strong>sample question</strong> so you can see the format.</p>`,
@@ -1396,8 +1391,8 @@ const CONFIG = {
       prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
       backScreen: 'quizInstructions',
       items: [
-        { text: 'Scoring higher on the quiz can increase my payoff.', correct: true },
-        { text: 'The quiz has no effect on my earnings.', correct: false },
+        { qid: 'quiz_pay',           text: 'Scoring higher on the quiz can increase my payoff.', correct: true },
+        { qid: 'quiz_no_effect_false', text: 'The quiz has no effect on my earnings.', correct: false },
       ],
     },
 
@@ -1405,11 +1400,11 @@ const CONFIG = {
       prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
       backScreen: 'mTask',
       items: [
-        { text: 'Across the 4 rounds, I will receive 50 bonuses per round.', correct: true },
-        { text: 'Each bonus is either green (worth 5¢) or red (worth 0¢).', correct: true },
-        { text: 'At the end of the study, one of the 4 rounds will be randomly selected, and I will be paid the bonuses from that round only.', correct: true },
-        { text: 'I can switch managers at any time during a round.', correct: false },
-        { text: 'Between rounds, I can decide whether to stay with my current manager or switch to the other one.', correct: true },
+        { qid: 'rounds50',            text: 'In each round, I will see 50 bonus outcomes from my current manager.', correct: true },
+        { qid: 'green_red_5c',        text: 'Each bonus is either green (worth 5¢) or red (worth 0¢).', correct: true },
+        { qid: 'random_round_paid',   text: 'At the end of the study, one of the 4 rounds will be randomly selected, and I will be paid the bonuses from that round only.', correct: true },
+        { qid: 'switch_during_false', text: 'I can switch managers at any time during a round.', correct: false },
+        { qid: 'between_rounds_switch', text: 'Between rounds, I can decide whether to stay with my current manager or switch to the other one.', correct: true },
       ],
     },
 
@@ -1417,20 +1412,23 @@ const CONFIG = {
       prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
       backScreen: 'mTypes',
       items: [
-        { text: 'One of Alex or Sam is the Performance Manager, and the other is the Random Manager.', correct: true },
-        { text: 'The Performance Manager pays a green bonus when my quiz score is higher than a randomly picked Prolific participant.', correct: true },
-        { text: 'The Random Manager\'s wheel has 100 fields; some are green and the rest are red. The wheel is the same for every bonus.', correct: true },
-        { text: 'I will be told at the beginning whether Alex is the Performance Manager or the Random Manager.', correct: false },
-        { text: 'Alex\'s type and Sam\'s type both stay the same throughout all 4 rounds of the study.', correct: true },
+        { qid: 'one_perf_one_rand',     text: 'One of Alex or Sam is the Performance Manager, and the other is the Random Manager.', correct: true },
+        { qid: 'perf_pays_higher_score', text: 'The Performance Manager pays a green bonus when my quiz score is higher than a randomly picked Prolific participant.', correct: true },
+        { qid: 'rand_wheel_100_fields', text: 'The Random Manager\'s wheel of fortune has 100 fields; some are green and the rest are red. The wheel of fortune is the same for every bonus.', correct: true },
+        { qid: 'told_who_is_who_false', text: 'I will be told at the beginning whether Alex is the Performance Manager or the Random Manager.', correct: false },
+        { qid: 'types_fixed',           text: 'Alex\'s type and Sam\'s type both stay the same throughout all 4 rounds of the study.', correct: true },
       ],
     },
 
     riskPreferences: `<p>How do you see yourself: are you a person who is generally willing to take risks, or do you try to avoid taking risks?</p>
       <p>Please use a scale from 0 to 10, where 0 means you are "completely unwilling to take risks" and 10 means you are "very willing to take risks." You can also use the values in-between to indicate where you fall on the scale.</p>`,
 
+    patiencePreferences: `<p>How willing are you to give up something that is beneficial for you today in order to benefit more from that in the future?</p>
+      <p>Please use a scale from 0 to 10, where 0 means you are "completely unwilling to do so" and 10 means you are "very willing to do so." You can also use the values in-between to indicate where you fall on the scale.</p>`,
+
     ambiguityPreferencesIntro: `Please imagine the following <strong>hypothetical</strong> situation (no actual payment is involved):`,
     ambiguityPreferencesBold: `You can choose between drawing a ball from two different urns, urn&nbsp;A and urn&nbsp;B.`,
-    urnADescription: `<strong>Urn&nbsp;A</strong> contains 100&nbsp;balls, some are white and some are black. However, you don't know how many balls are white and how many balls are black. Any combination is possible. There might be from 0 to 100 white balls, with the remaining balls being black.`,
+    urnADescription: `<strong>Urn&nbsp;A</strong> contains 100&nbsp;balls, some are white and some are black. However, you do not know how many balls are white and how many balls are black. Any combination is possible. There might be from 0 to 100 white balls, with the remaining balls being black.`,
     urnBDescription: `<strong>Urn&nbsp;B</strong> contains 100&nbsp;balls as well, but you know that it contains exactly 50&nbsp;white balls and 50&nbsp;black balls.`,
     ambiguityColorPrompt: `Now choose a color, either <strong>White</strong> or <strong>Black</strong>.`,
     ambiguityPayoff: `Suppose you win <strong>$100</strong> if you draw a ball of the color you have selected. If the ball is of the other color, you win nothing.`,
@@ -1454,8 +1452,7 @@ const STATE = {
   // Condition assignment
   quizCondition: null,  // 'easy' or 'hard'
   perfManagerIsAlex: null,  // true = Alex is Performance Manager, false = Sam
-  firstRoundManager: null,  // 'alex' or 'sam' — alias of assignedManager (back-compat)
-  assignedManager: null,    // 'alex' or 'sam' — manager freely selected by participant for set 1
+  firstRoundManager: null,  // 'alex' or 'sam' — the manager freely selected by the participant for set 1
   alexColor: null,      // hex color assigned to Alex (randomized once per session)
   samColor: null,       // hex color assigned to Sam (randomized once per session)
   nameOrder: null,      // ['alex','sam'] or ['sam','alex'] — randomized once per session
@@ -1465,8 +1462,14 @@ const STATE = {
                            // the belief page (quiz on right); false → manager-type on the
                            // RIGHT (quiz on left). Randomized once per session.
   clarityFeedback: '',     // Free-text from the Round-1 clarity-check page (optional).
-  clarityComprehension: null,        // Selected item indices on the Round-1 clarity comprehension Q.
-  clarityComprehensionCorrect: null, // Whether those selections were all correct (non-gating).
+  clarityComprehension: null,        // Selected item qids on the final passing submission.
+  clarityComprehensionCorrect: null, // Whether the final submission was all-correct (always true at completion).
+  // Per-attempt + per-item tracking lives in STATE.comprehensionDetail (filtered by checkId='clarityCheck').
+  // Flat columns derived at submission via extractCheckFlatFields().
+
+  // Sample question (pre-quiz practice; recorded as a pre-treatment attention/comprehension screen)
+  sampleQuestionSelected: null,  // index the participant submitted
+  sampleQuestionCorrect: null,   // whether the submitted answer was correct
 
   // Quiz
   quizAnswers: [],     // [{questionId, selected, correct, timeSpent}]
@@ -1480,14 +1483,12 @@ const STATE = {
   gammaStar: null,     // true ability (percentile from shared-6 reference, N=100)
   randomProbShown: null, // the [XX]% shown to participant
 
-  // Initial beliefs (post-quiz, three-fractile elicitation: P50 → P10 → P90)
+  // Initial beliefs (post-quiz, μ + confidence elicitation)
   initialMu: null,             // Best guess (0–100 integer)
   initialConfidence: null,     // Confidence level 1–5
   initialKappa: null,          // Beta concentration α+β derived from confidence
   initialAlpha: null,          // Beta α = (μ/100) * κ
   initialBeta: null,           // Beta β = (1 - μ/100) * κ
-  initialGamma: null,          // legacy alias for initialMu
-  initialP10: null, initialP50: null, initialP90: null,  // not elicited under the μ+confidence design
 
   // Rounds data: array of round objects
   rounds: [],
@@ -1497,14 +1498,21 @@ const STATE = {
   //   beliefTheta: int (0-100), beliefGamma: int (0-100) }
 
   currentManager: null, // 'alex' or 'sam'
-  currentRound: 1,        // legacy (unused by the block flow)
   currentBlockIdx: 0,     // 0-based index into CONFIG.blocks
 
   // Post-experiment
   riskPreference: null,
+  patiencePreference: null,
   ambiguityAnswers: {},
   demographicAge: null,
   demographicGender: null,
+
+  // Pre-quiz screening (attention checks + early demographics; administered BEFORE treatment randomization)
+  screeningMoon: null,        // moon attention-check answer (pass = '0')
+  screeningDuration: null,    // consent-comprehension: expected study length (recorded)
+  prolificFrequency: null,    // studies/week on Prolific (covariate)
+  attnCheck1Pass: null,       // moon check passed (screen-out only if BOTH checks fail)
+  attnCheck2Pass: null,       // in-instructions check passed (screen-out only if BOTH checks fail)
   feedbackClarity: '',
   feedbackComplaints: '',
 
@@ -1646,14 +1654,14 @@ const progressBar = document.getElementById('progress-bar');
 // Screen navigation
 const SCREEN_ORDER = [
   // Phase 1: quiz + initial belief
-  'welcome', 'consent', 'quizInstructions', 'quizComprehension', 'sampleQuestion',
+  'welcome', 'consent', 'screening', 'quizInstructions', 'quizComprehension', 'sampleQuestion',
   'quiz', 'predictionIntro', 'scoreAndBelief',
   // Phase 2 intro + manager task
   'mTask', 'mTaskCheck', 'mTypes', 'mTypesCheck',
   // (Manager task itself — 5 batches + 2 stay/switch decisions — handled
   //  procedurally by startManagerTask() / beginBlock(), not via SCREENS.)
   // Phase 3: post-experiment
-  'roundsComplete', 'riskPreferences', 'ambiguityPreferences', 'demographics',
+  'roundsComplete', 'riskPreferences', 'patiencePreferences', 'ambiguityPreferences', 'demographics',
   'visualCheck', 'revealOption', 'revealInfo', 'results',
 ];
 
@@ -1685,9 +1693,6 @@ function managerName(mgr_id) {
 }
 function managerClass(mgr_id) {
   return mgr_id === 'alex' ? 'eval-alex' : 'eval-sam';
-}
-function managerLabel(mgr_id) {
-  return `<span class="${managerClass(mgr_id)}">${managerName(mgr_id)}</span>`;
 }
 function otherManager(mgr_id) {
   return mgr_id === 'alex' ? 'sam' : 'alex';
@@ -1759,18 +1764,6 @@ function beliefGridSVG(val){
 function updateBeliefGrid(val){
   for (let i = 0; i < 100; i++){ const el = document.getElementById('bp-'+i); if (el) el.setAttribute('fill', i < val ? '#22c55e' : '#ef4444'); }
 }
-function cardsGridSVG(green, picked){
-  let cells = []; for (let i=0;i<green;i++) cells.push('g'); for (let i=0;i<100-green;i++) cells.push('r');
-  cells = shuffled(cells, 4);
-  const drawn = cells[picked], step = 26, sz = 22; let out = '';
-  for (let i = 0; i < 100; i++){
-    const r = Math.floor(i/10), c = i % 10, x = c*step, y = r*step, fill = cells[i]==='g' ? '#22c55e' : '#ef4444';
-    if (i === picked) out += `<rect x="${x-3}" y="${y-9}" width="${sz+6}" height="${sz+6}" rx="7" fill="${fill}" stroke="#111827" stroke-width="3"/>`;
-    else out += `<rect x="${x}" y="${y}" width="${sz}" height="${sz}" rx="6" fill="${fill}"/>`;
-  }
-  return { svg: `<svg viewBox="0 0 256 258" width="100%" style="max-width:300px;display:block;margin:12px auto;" aria-hidden="true">${out}</svg>`, drawn };
-}
-
 // Random Manager spinner: wheel divided into 100 tick-fields, the first `greenPct`
 // fields (starting at 12 o'clock, clockwise) are green and the rest are red.
 // Each field gets a thin black separator so the "100 fields" count is visually
@@ -1829,15 +1822,6 @@ function logGamma(z) {
   return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
 }
 
-function logBetaFn(a, b) {
-  return logGamma(a) + logGamma(b) - logGamma(a + b);
-}
-
-function betaPDF(x, alpha, beta) {
-  if (x <= 0 || x >= 1) return 0;
-  return Math.exp((alpha - 1) * Math.log(x) + (beta - 1) * Math.log(1 - x) - logBetaFn(alpha, beta));
-}
-
 // ---- Regularized incomplete beta (CDF) via Lentz continued fraction ----
 function betaCF(x, a, b) {
   const MAXIT = 200, EPS = 3e-7, FPMIN = 1e-30;
@@ -1871,17 +1855,6 @@ function betaCDF(x, a, b) {
     return Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lbeta) / a * betaCF(x, a, b);
   }
   return 1 - Math.exp(b * Math.log(1 - x) + a * Math.log(x) - lbeta) / b * betaCF(1 - x, b, a);
-}
-
-function betaCDFInverse(p, a, b) {
-  if (p <= 0) return 0;
-  if (p >= 1) return 1;
-  let lo = 0, hi = 1;
-  for (let i = 0; i < 80; i++) {
-    const mid = (lo + hi) / 2;
-    betaCDF(mid, a, b) < p ? (lo = mid) : (hi = mid);
-  }
-  return (lo + hi) / 2;
 }
 
 /* ==============================================================
@@ -1920,7 +1893,7 @@ function renderPriorBeliefWidget() {
       <div id="pb-step-conf" class="pbw-block" style="display:none;">
         <p>How sure are you about your guess?</p>
         <div class="slider-row">
-          <input type="range" id="pb-conf" min="1" max="5" step="0.01" value="${initConf}" oninput="onPriorConf(this.value)">
+          <input type="range" id="pb-conf" class="slider-hidden-thumb" min="1" max="5" step="0.01" value="${initConf}" oninput="onPriorConf(this.value)">
         </div>
         <div class="pb-conf-labels">
           <span>No clue at all</span>
@@ -1983,6 +1956,10 @@ function onPriorConf() {
   if (!_pbConfTouched) {
     _pbConfTouched = true;
     document.getElementById('pb-conf-confirm').style.display = '';
+    // Reveal the thumb on first interaction (hidden until now so no default
+    // confidence level is visually suggested — matches the μ slider).
+    const s = document.getElementById('pb-conf');
+    if (s) s.classList.remove('slider-hidden-thumb');
   }
   refreshBinTableIfVisible();
 }
@@ -2056,100 +2033,7 @@ function submitPriorBelief() {
   STATE.initialKappa      = kappa;
   STATE.initialAlpha      = alpha;
   STATE.initialBeta       = beta;
-  STATE.initialGamma      = mu;   // legacy alias
-  STATE.initialP10 = STATE.initialP50 = STATE.initialP90 = null;  // not elicited here
   showScreen('mTask');
-}
-
-// (legacy stub — three-fractile widget removed)
-function fitBetaToFractiles(p10, p50, p90) {
-  const x10 = Math.max(0.01, Math.min(0.99, p10 / 100));
-  const x50 = Math.max(0.01, Math.min(0.99, p50 / 100));
-  const x90 = Math.max(0.01, Math.min(0.99, p90 / 100));
-
-  // Method-of-moments seed (μ ≈ P50; σ ≈ (P90-P10)/2.56)
-  const mu0 = x50;
-  const spread = Math.max(0.02, (x90 - x10) / 2.56);
-  let nu0 = Math.max(2, mu0 * (1 - mu0) / (spread * spread) - 1);
-  nu0 = Math.min(nu0, 500);
-
-  const toAB = (lm, ln) => {
-    const mu = 1 / (1 + Math.exp(-lm));
-    const nu = Math.exp(ln);
-    return { alpha: mu * nu, beta: (1 - mu) * nu };
-  };
-  const sse = (lm, ln) => {
-    const { alpha, beta } = toAB(lm, ln);
-    if (!isFinite(alpha) || !isFinite(beta) || alpha < 1e-3 || beta < 1e-3) return 1e9;
-    const d10 = betaCDF(x10, alpha, beta) - 0.1;
-    const d50 = betaCDF(x50, alpha, beta) - 0.5;
-    const d90 = betaCDF(x90, alpha, beta) - 0.9;
-    return d10 * d10 + d50 * d50 + d90 * d90;
-  };
-
-  const x = [
-    [Math.log(mu0 / (1 - mu0)),       Math.log(nu0)      ],
-    [Math.log(mu0 / (1 - mu0)) + 0.5, Math.log(nu0)      ],
-    [Math.log(mu0 / (1 - mu0)),       Math.log(nu0) + 0.5],
-  ];
-  const f = x.map(p => sse(p[0], p[1]));
-
-  for (let iter = 0; iter < 80; iter++) {
-    const idx = [0, 1, 2].sort((a, b) => f[a] - f[b]);
-    const xs = idx.map(i => x[i]);
-    const fs = idx.map(i => f[i]);
-    if (fs[2] - fs[0] < 1e-9) break;
-    const cm = [(xs[0][0] + xs[1][0]) / 2, (xs[0][1] + xs[1][1]) / 2];
-    // Reflect
-    const xr = [2 * cm[0] - xs[2][0], 2 * cm[1] - xs[2][1]];
-    const fr = sse(xr[0], xr[1]);
-    if (fr < fs[1] && fr >= fs[0]) {
-      xs[2] = xr; fs[2] = fr;
-    } else if (fr < fs[0]) {
-      const xe = [3 * cm[0] - 2 * xs[2][0], 3 * cm[1] - 2 * xs[2][1]];
-      const fe = sse(xe[0], xe[1]);
-      if (fe < fr) { xs[2] = xe; fs[2] = fe; } else { xs[2] = xr; fs[2] = fr; }
-    } else {
-      const xc = [(cm[0] + xs[2][0]) / 2, (cm[1] + xs[2][1]) / 2];
-      const fc = sse(xc[0], xc[1]);
-      if (fc < fs[2]) {
-        xs[2] = xc; fs[2] = fc;
-      } else {
-        xs[1] = [(xs[0][0] + xs[1][0]) / 2, (xs[0][1] + xs[1][1]) / 2];
-        xs[2] = [(xs[0][0] + xs[2][0]) / 2, (xs[0][1] + xs[2][1]) / 2];
-        fs[1] = sse(xs[1][0], xs[1][1]);
-        fs[2] = sse(xs[2][0], xs[2][1]);
-      }
-    }
-    for (let i = 0; i < 3; i++) { x[i] = xs[i]; f[i] = fs[i]; }
-  }
-  const best = (f[0] <= f[1] && f[0] <= f[2]) ? 0 : (f[1] <= f[2] ? 1 : 2);
-  return toAB(x[best][0], x[best][1]);
-}
-
-// (legacy three-fractile widget code removed; replaced by μ + confidence + bin-table above)
-
-function markSliderTouched(slider) {
-  slider.classList.remove('slider-untouched');
-  slider.dataset.touched = '1';
-  const warn = slider.closest('.beta-widget, .screen-content, .card')?.querySelector('.slider-warning');
-  if (warn) {
-    const allSliders = slider.closest('.beta-widget, .screen-content, .card')?.querySelectorAll('input[type="range"]');
-    if (allSliders && [...allSliders].every(s => s.dataset.touched)) warn.style.display = 'none';
-  }
-}
-
-function requireSliders(sliderIds, warningId) {
-  const untouched = sliderIds.filter(id => {
-    const s = document.getElementById(id);
-    return s && !s.dataset.touched;
-  });
-  if (untouched.length > 0) {
-    const warn = document.getElementById(warningId);
-    if (warn) { warn.style.display = 'block'; warn.textContent = 'Please move each slider to your chosen value before continuing.'; }
-    return false;
-  }
-  return true;
 }
 
 /* ==============================================================
@@ -2219,10 +2103,95 @@ SCREENS.consent = () => {
       <label for="consent-check">${c.agreement}</label>
     </div>
     <div class="nav-row">
-      <button class="btn btn-primary" id="consent-btn" disabled onclick="showScreen('quizInstructions')">I Agree →</button>
+      <button class="btn btn-primary" id="consent-btn" disabled onclick="showScreen('screening')">I Agree →</button>
     </div>`;
   updateProgress(0.03);
 };
+
+// ---- 1.1b Pre-quiz screening: attention check 1 (terminating) + early demographics ----
+// Administered right after consent, BEFORE the quiz assigns Easy/Difficult, so
+// terminating here is orthogonal to treatment (balanced across conditions).
+SCREENS.screening = () => {
+  const opt = (name, val, label) => `<label style="display:block;margin:5px 0;"><input type="radio" name="${name}" value="${val}"> ${label}</label>`;
+  const genderBtn = (val, label) => `<label style="display:inline-block;margin:5px 14px 5px 0;"><input type="radio" name="s-gender" value="${val}"> ${label}</label>`;
+  container.innerHTML = `
+    <h2 class="m-h1">A few quick questions</h2>
+    <p class="lead">Before the study begins, please answer the questions below. If you are unsure of an answer, you can go back to re-read the study information.</p>
+
+    <div style="margin-top:18px;">
+      <p><strong>How many times per week do you travel to the moon?</strong></p>
+      ${opt('s-moon','0','0')}${opt('s-moon','1-2','1–2')}${opt('s-moon','3-5','3–5')}${opt('s-moon','6+','6 or more')}
+    </div>
+
+    <div style="margin-top:18px;">
+      <p><strong>About how long is this study expected to take?</strong></p>
+      ${opt('s-dur','5-10','5–10 minutes')}${opt('s-dur','10-15','10–15 minutes')}${opt('s-dur','15-20','15–20 minutes')}
+    </div>
+
+    <div style="margin-top:18px;">
+      <p><strong>How many studies do you typically complete per week on Prolific?</strong></p>
+      ${opt('s-freq','0-1','0–1')}${opt('s-freq','2-5','2–5')}${opt('s-freq','5-10','5–10')}${opt('s-freq','10+','10 or more')}
+    </div>
+
+    <div style="margin-top:18px;">
+      <p><strong>What is your gender?</strong></p>
+      ${genderBtn('male','Male')}${genderBtn('female','Female')}${genderBtn('non-binary','Non-binary')}${genderBtn('prefer not to say','Prefer not to say')}
+    </div>
+
+    <div style="margin-top:18px;">
+      <p><strong>What is your age?</strong></p>
+      <input type="number" id="s-age" min="18" max="120" placeholder="e.g. 25"
+             style="width:120px;padding:8px 12px;font-size:1rem;border:1px solid #ccc;border-radius:6px;">
+    </div>
+
+    <div class="error-msg" id="screening-error" style="display:none;margin-top:14px;">Please answer all of the questions before continuing.</div>
+    <div class="nav-row" style="margin-top:16px;display:flex;gap:10px;">
+      <button class="btn" style="background:#e2e8f0;color:#334155;" onclick="screeningBack()">← Back to study information</button>
+      <button class="btn btn-primary" onclick="submitScreening()">Continue →</button>
+    </div>`;
+  // restore answers if the participant went back to re-read the study information
+  const setRadio = (n, v) => { if (v) { const el = document.querySelector('input[name="' + n + '"][value="' + v + '"]'); if (el) el.checked = true; } };
+  setRadio('s-moon', STATE.screeningMoon);
+  setRadio('s-dur', STATE.screeningDuration);
+  setRadio('s-freq', STATE.prolificFrequency);
+  setRadio('s-gender', STATE.demographicGender);
+  if (STATE.demographicAge != null) document.getElementById('s-age').value = STATE.demographicAge;
+  updateProgress(0.04);
+};
+
+function screeningSavePartial() {
+  const pick = (n) => { const el = document.querySelector('input[name="' + n + '"]:checked'); return el ? el.value : null; };
+  STATE.screeningMoon     = pick('s-moon');
+  STATE.screeningDuration = pick('s-dur');
+  STATE.prolificFrequency = pick('s-freq');
+  STATE.demographicGender = pick('s-gender');
+  const age = document.getElementById('s-age').value;
+  STATE.demographicAge = age ? parseInt(age) : null;
+}
+
+function screeningBack() {
+  screeningSavePartial();   // preserve answers so they are restored when the participant returns
+  showScreen('consent');
+}
+
+function submitScreening() {
+  const pick = (n) => { const el = document.querySelector('input[name="' + n + '"]:checked'); return el ? el.value : null; };
+  const moon = pick('s-moon'), dur = pick('s-dur'), freq = pick('s-freq'), gender = pick('s-gender');
+  const age  = document.getElementById('s-age').value;
+  if (!moon || !dur || !freq || !gender || !age) {
+    document.getElementById('screening-error').style.display = '';
+    return;
+  }
+  STATE.screeningMoon     = moon;
+  STATE.screeningDuration = dur;
+  STATE.prolificFrequency = freq;
+  STATE.demographicGender = gender;
+  STATE.demographicAge    = parseInt(age);
+  // Attention check 1: the only correct answer is 0. Record but do NOT terminate here —
+  // screen-out requires failing BOTH checks, and check 2 comes later (quizInstructions).
+  STATE.attnCheck1Pass = (moon === '0');
+  showScreen('quizInstructions');
+}
 
 // ---- 1.2 Visual Check (Pseudo-Ebbinghaus AI honeypot) ----
 // Silent log only — answers are recorded to STATE.visualCheck for offline analysis.
@@ -2338,14 +2307,41 @@ SCREENS.visualCheck = () => {
 
 // ---- 1.3 Quiz Instructions ----
 SCREENS.quizInstructions = () => {
+  // Once the attention check has been answered (pass OR fail), do not re-run it on re-entry
+  // (e.g., after using "Back to instructions" from the comprehension check), so the first
+  // attempt is the one recorded and a reset slider cannot overwrite it.
+  const passed = STATE.attnCheck2Pass !== null;
+  const checkBlock = passed ? '' : `
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0;">
+      <p><strong>To confirm that you are reading carefully, please move the slider below to 4.</strong></p>
+      <input type="range" id="imc-slider" min="1" max="5" step="1" value="1"
+             oninput="document.getElementById('imc-val').textContent = this.value;"
+             style="width:100%;max-width:360px;display:block;">
+      <div style="display:flex;justify-content:space-between;max-width:360px;color:#64748b;font-size:0.9rem;margin-top:2px;">
+        <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+      </div>
+      <p style="margin-top:6px;">Selected: <strong id="imc-val">1</strong></p>
+    </div>`;
   container.innerHTML = `
     <h2 class="m-h1">Getting Started</h2>
     ${CONFIG.texts.quizInstructions}
+    ${checkBlock}
     <div class="nav-row">
-      <button class="btn btn-primary" onclick="showScreen('quizComprehension')">Continue →</button>
+      <button class="btn btn-primary" onclick="${passed ? "showScreen('quizComprehension')" : 'submitQuizInstructions()'}">Continue →</button>
     </div>`;
   updateProgress(0.07);
 };
+
+function submitQuizInstructions() {
+  // Attention check 2: the instructed slider position is 4. Screen out ONLY if the
+  // participant also failed check 1 — a single failure is retained (recorded for analysis).
+  const v = parseInt(document.getElementById('imc-slider').value, 10);
+  STATE.attnCheck2Pass = (v === 4);
+  if (STATE.attnCheck1Pass === false && STATE.attnCheck2Pass === false) {
+    terminateStudy('failed_both_attention_checks'); return;
+  }
+  showScreen('quizComprehension');
+}
 
 // ---- 1.4 Quiz Comprehension Check ----
 SCREENS.quizComprehension = () => {
@@ -2419,6 +2415,9 @@ function submitSampleQuestion() {
   window._sampleSubmitted = true;
   const selectedIdx = window._sampleSelected;
   const correctIdx = CONFIG.sampleQuestion.correctAnswer;
+  // Record for offline analysis (pre-treatment attention/comprehension screen)
+  STATE.sampleQuestionSelected = selectedIdx;
+  STATE.sampleQuestionCorrect = (selectedIdx === correctIdx);
   // Disable further clicks
   document.querySelectorAll('.answer-option[id^="sample-ans-"]').forEach(el => {
     el.onclick = null;
@@ -2732,10 +2731,12 @@ function finishQuiz() {
 SCREENS.predictionIntro = () => {
   const maxBeliefBonus = CONFIG.beliefBonusMax.toFixed(0);
   container.innerHTML = `
-    <h2 class="m-h1">Belief payment</h2>
-    <p class="lead">You will answer several belief questions in this study. You can earn an <strong>additional payment of up to $${maxBeliefBonus}</strong> depending on the accuracy of your answers.</p>
-    <p class="lead" style="margin-top:10px;">At the end of the study, <strong>one of your answers will be randomly selected for payment</strong>, and the payment will be based on that answer alone. Each answer is equally likely to be selected, so every answer matters.</p>
-    <p class="lead" style="margin-top:10px;"><strong>The incentives are designed so that stating your honest belief gives you the highest chance of winning.</strong> The precise payment rule details are available by request at the end of the study.</p>
+    <h2 class="m-h1">Questions about what you believe</h2>
+    <p class="lead">Now that you have finished the quiz, we will ask you a few questions about <strong>what you think</strong> — starting with how well you did, and about other things later in the study.</p>
+    <p class="lead" style="margin-top:10px;">These are not just for our records: your answers can earn you an <strong>extra payment of up to $${maxBeliefBonus}</strong>, on top of your other earnings — and <strong>the more accurate your answers, the more you are likely to earn.</strong></p>
+    <p class="lead" style="margin-top:10px;">At the end, we pick <strong>one of your answers at random</strong> and pay the bonus on that one alone. Every answer is equally likely to be picked, so each one counts.</p>
+    <p class="lead" style="margin-top:10px;">The bonus is set up so that <strong>the surest way to be accurate is simply to answer honestly</strong>: telling us what you truly believe gives you the best chance of earning it. (Full details of how this works are available on request at the end.)</p>
+    <p class="lead" style="margin-top:10px;">Let us begin with the first question.</p>
 
     <div class="m-row-end"><button class="m-btn" onclick="showScreen('scoreAndBelief')">Continue →</button></div>`;
   updateProgress(0.31);
@@ -2746,7 +2747,7 @@ SCREENS.scoreAndBelief = () => {
   const maxBeliefBonus = CONFIG.beliefBonusMax.toFixed(0);
   container.innerHTML = `
     <h2 class="m-h1">Your first belief question</h2>
-    <p class="lead">The belief question is about how your performance on the logic quiz you just completed compares to 100 other Prolific participants — based on the 6 questions that were the same for everyone. For each comparison, we check whether you answered more of those shared questions correctly. Ties are decided by a coin flip.</p>
+    <p class="lead">Your first question is about how your performance on the logic quiz you just completed compares to 100 other Prolific participants — based on the 6 questions that were the same for everyone. For each comparison, we check whether you answered more of those shared questions correctly. Ties are decided by a coin flip.</p>
     <p class="lead" style="margin-top:10px;">Before answering this belief question, you can see how many questions you answered correctly on the full quiz.</p>
     <div class="m-row-end" id="reveal-score-wrap" style="margin-top:14px;">
       <button class="m-btn" onclick="revealScoreAndBelief()">Reveal my score →</button>
@@ -2760,7 +2761,7 @@ SCREENS.scoreAndBelief = () => {
         <div class="quiz-score-sub">questions correct</div>
       </div>
       <p class="lead" style="margin-top:16px;">Take a moment to think about how your score may compare with the scores of the other participants.</p>
-      <p class="lead reminder-note reminder-plain" style="margin-top:14px;">Remember: this answer, along with the ones you'll give later, could be randomly selected for payment, earning you up to <strong>$${maxBeliefBonus}</strong> depending on how accurate it is. The incentives are designed so that stating your honest belief gives you the highest chance of winning.</p>
+      <p class="lead reminder-note reminder-plain" style="margin-top:14px;">Remember: this answer, along with the ones you will give later, could be randomly selected for payment, earning you up to <strong>$${maxBeliefBonus}</strong> — and the more accurate it is, the more you are likely to earn. The bonus is set up so that the surest way to be accurate is simply to answer honestly.</p>
       ${renderPriorBeliefWidget()}
     </div>`;
   initPriorBeliefWidget();
@@ -2845,8 +2846,8 @@ SCREENS.mTypes = () => {
         <div class="mgr-type-icon">${spinnerVis}</div>
         <p class="mgr-type-desc">The Random Manager (↻) determines bonuses in each round as follows:</p>
         <ol class="mgr-type-steps">
-          <li>Spin the wheel. The wheel has <strong>100 fields</strong>: <strong>${green} are green</strong> and <strong>${100 - green} are red</strong>.</li>
-          <li>Set the bonus to <strong>green</strong> if the wheel lands on a green field, <strong>red</strong> otherwise.</li>
+          <li>Spin the wheel of fortune. The wheel of fortune has <strong>100 fields</strong>: <strong>${green} are green</strong> and <strong>${100 - green} are red</strong>.</li>
+          <li>Set the bonus to <strong>green</strong> if the wheel of fortune lands on a green field, <strong>red</strong> otherwise.</li>
           <li>Repeat 50 times.</li>
         </ol>
       </div>
@@ -2868,11 +2869,11 @@ SCREENS.mTypesCheck = () => {
     prompt: CONFIG.texts.comprehensionCheckTypes.prompt,
     backScreen: CONFIG.texts.comprehensionCheckTypes.backScreen,
     items: [
-      { text: 'One of Alex or Sam is the Performance Manager, and the other is the Random Manager.', correct: true },
-      { text: 'The Performance Manager pays a green bonus when my quiz score is higher than a randomly picked Prolific participant.', correct: true },
-      { text: `The Random Manager spins a wheel with ${green} green and ${100 - green} red fields for every bonus.`, correct: true },
-      { text: 'I will be told at the beginning whether Alex is the Performance Manager or the Random Manager.', correct: false },
-      { text: 'Alex\'s type and Sam\'s type both stay the same throughout all 4 rounds of the study.', correct: true },
+      { qid: 'one_perf_one_rand',     text: 'One of Alex or Sam is the Performance Manager, and the other is the Random Manager.', correct: true },
+      { qid: 'perf_pays_higher_score', text: 'The Performance Manager pays a green bonus when my quiz score is higher than a randomly picked Prolific participant.', correct: true },
+      { qid: 'rand_wheel_100_fields', text: `The Random Manager spins a wheel of fortune with ${green} green and ${100 - green} red fields for every bonus.`, correct: true },
+      { qid: 'told_who_is_who_false', text: 'I will be told at the beginning whether Alex is the Performance Manager or the Random Manager.', correct: false },
+      { qid: 'types_fixed',           text: 'Alex\'s type and Sam\'s type both stay the same throughout all 4 rounds of the study.', correct: true },
     ],
   };
   renderComprehensionCheck(checkConfig, () => {
@@ -2890,13 +2891,28 @@ function renderComprehensionCheck(checkConfig, onPass, checkId) {
   const { prompt, items, backScreen } = checkConfig;
   const attempts = STATE.comprehensionAttempts[checkId] || 0;
 
+  // Fisher-Yates shuffle items once per (participant × checkId). The shuffled
+  // order is cached on window so "← Back to instructions" and re-entry restore
+  // the same order. Analysis by qid is content-addressed regardless of display
+  // order; the shuffle just removes position-based bias on screen.
+  window._comprehensionItemsByCheck = window._comprehensionItemsByCheck || {};
+  let displayItems = window._comprehensionItemsByCheck[checkId];
+  if (!displayItems) {
+    displayItems = items.slice();
+    for (let i = displayItems.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [displayItems[i], displayItems[j]] = [displayItems[j], displayItems[i]];
+    }
+    window._comprehensionItemsByCheck[checkId] = displayItems;
+  }
+
   container.innerHTML = `
     <h2 class="m-h1">Comprehension Check</h2>
     <p>${prompt}</p>
     <div id="check-items">
-      ${items.map((item, i) => `
+      ${displayItems.map((item, i) => `
         <label class="check-item" id="check-item-${i}">
-          <input type="checkbox" id="check-${i}" data-correct="${item.correct}">
+          <input type="checkbox" id="check-${i}" data-correct="${item.correct}" data-qid="${item.qid || ('item' + i)}">
           <span>${item.text}</span>
         </label>
       `).join('')}
@@ -2925,9 +2941,10 @@ function validateComprehension() {
     }
   });
 
-  // Record detailed responses for this attempt
+  // Record detailed responses for this attempt (with qid for content-addressed analysis)
   const attemptNum = (STATE.comprehensionAttempts[checkId] || 0) + 1;
   const responses = Array.from(items).map((input, i) => ({
+    qid: input.dataset.qid || ('item' + i),
     itemIndex: i,
     checked: input.checked,
     correct: input.dataset.correct === 'true',
@@ -3098,7 +3115,6 @@ function selectFirstManager(mgr) {
 
 function confirmFirstManager() {
   if (!window._firstPick) return;
-  STATE.assignedManager     = window._firstPick;  // semantic: starting manager (no longer "assigned" by computer)
   STATE.currentManager      = window._firstPick;
   STATE.firstRoundManager   = window._firstPick;
   beginBlock(0);
@@ -3268,8 +3284,8 @@ function renderStepPrimerLayered() {
         </div>
         <div class="ptype-card ptype-rand">
           <span class="pill pill-rand">Random Manager</span>
-          <p class="ptype-info">You get a <strong>green</strong> bonus each time the wheel lands on a green field.</p>
-          <p>The Random Manager's wheel has <strong>100 fields</strong>: <strong>${green} are green</strong>.</p>
+          <p class="ptype-info">You get a <strong>green</strong> bonus each time the wheel of fortune lands on a green field.</p>
+          <p>The Random Manager's wheel of fortune has <strong>100 fields</strong>: <strong>${green} are green</strong>.</p>
           <p>Therefore, you would expect about <strong>${randExpected} of the ${nSignals}</strong> bonuses to be green.</p>
         </div>
       </div>
@@ -3300,7 +3316,7 @@ function renderClarityCheck() {
   const green = STATE.randomProbShown;
   if (!window._clarityItems) {
     const items = [
-      { qid: 'link',     correct: true,  text: `Only a Performance Manager's bonuses provide new information about my quiz score. The Random Manager's bonuses come from a wheel with ${green} green and ${100 - green} red fields. So how much I learn about my quiz performance from the bonuses depends on how likely I think ${name} is the Performance Manager.` },
+      { qid: 'link',     correct: true,  text: `The Performance Manager's bonuses depend on my quiz score; the Random Manager's bonuses come from a wheel of fortune with ${green} green and ${100 - green} red fields. If I am confident that ${name} is the Performance Manager, I should strongly revise my belief about my quiz score based on the bonuses. If I am confident ${name} is the Random Manager, I should barely revise my belief about my quiz score.` },
       { qid: 'uninf',    correct: false, text: `Because I do not know whether ${name} is the Performance or Random Manager, the bonuses ${name} pays are completely uninformative about my quiz performance.` },
       { qid: 'type',     correct: true,  text: `Observing the bonuses over time can teach me about whether ${name} is the Performance or the Random Manager.` },
     ];
@@ -3367,12 +3383,39 @@ function saveClarityFeedback() {
 // Gating check: the participant cannot proceed to Round 1 until every statement
 // is answered correctly. On a wrong submission, an error is shown and they stay
 // on this page (they may go back to re-read the instructions and try again).
+//
+// Per-attempt tracking: each call pushes an entry into STATE.comprehensionDetail
+// with checkId 'clarityCheck' (same shape as mTaskCheck / mTypesCheck). Flat
+// columns are derived from comprehensionDetail at submission time via
+// extractCheckFlatFields('clarityCheck', 'clarity_check', [...]).
 function validateClarityCheck() {
   saveClarityFeedback();
-  if (STATE.clarityComprehensionCorrect) {
-    // Show the review panel (color-coded items + Continue button), then advance.
-    const inputs = document.querySelectorAll('#clarity-check-items input[type="checkbox"]');
-    showComprehensionReview(inputs, renderRoundCombined, {
+
+  // Build the per-item response array for this attempt (qid + itemIndex + checked + correct + isError).
+  const checkboxes = document.querySelectorAll('#clarity-check-items input[type="checkbox"]');
+  const responses = Array.from(checkboxes).map((cb, i) => ({
+    qid: cb.dataset.qid || ('item' + i),
+    itemIndex: i,
+    checked: cb.checked,
+    correct: cb.dataset.correct === 'true',
+    isError: cb.checked !== (cb.dataset.correct === 'true'),
+  }));
+
+  const allCorrect = !!STATE.clarityComprehensionCorrect;
+  const priorAttempts = (STATE.comprehensionDetail || [])
+    .filter(d => d.checkId === 'clarityCheck').length;
+  const attemptNum = priorAttempts + 1;
+
+  STATE.comprehensionDetail.push({
+    checkId: 'clarityCheck',
+    attempt: attemptNum,
+    timestamp: Date.now(),
+    passed: allCorrect,
+    responses,
+  });
+
+  if (allCorrect) {
+    showComprehensionReview(checkboxes, renderRoundCombined, {
       itemsContainerId: 'clarity-check-items',
       navSelector: '#clarity-nav',
       errorElementId: 'clarity-error',
@@ -3575,7 +3618,7 @@ function submitBlockBeliefs() {
 // ---- 2.11 Rounds Complete Transition ----
 SCREENS.roundsComplete = () => {
   container.innerHTML = `
-    <h2 class="m-h1">You're almost done.</h2>
+    <h2 class="m-h1">You are almost done.</h2>
     <p>You have completed all 4 rounds with your managers.</p>
     <p>A few more questions follow (about 3–4 minutes), and then you will see your payment.</p>
     <div class="nav-row">
@@ -3616,6 +3659,43 @@ function selectRisk(val) {
 function submitRisk() {
   if (STATE.riskPreference === null) {
     document.getElementById('risk-error').classList.add('visible');
+    return;
+  }
+  showScreen('patiencePreferences');
+}
+
+// ---- 3.1b Patience Preferences (Falk et al. 2018 GPS) ----
+SCREENS.patiencePreferences = () => {
+  container.innerHTML = `
+    ${CONFIG.texts.patiencePreferences}
+
+    <div class="risk-scale">
+      ${Array.from({length: 11}, (_, i) => `
+        <button class="risk-btn" onclick="selectPatience(${i})">${i}</button>
+      `).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#888;max-width:530px;margin:0 auto">
+      <span>completely unwilling</span><span>very willing</span>
+    </div>
+
+    <div class="error-msg" id="patience-error">Please select a value.</div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="patience-next" disabled onclick="submitPatience()">Submit</button>
+    </div>`;
+  updateProgress(0.92);
+};
+
+function selectPatience(val) {
+  STATE.patiencePreference = val;
+  document.querySelectorAll('.risk-btn').forEach((btn, i) => {
+    btn.classList.toggle('selected', i === val);
+  });
+  document.getElementById('patience-next').disabled = false;
+}
+
+function submitPatience() {
+  if (STATE.patiencePreference === null) {
+    document.getElementById('patience-error').classList.add('visible');
     return;
   }
   showScreen('ambiguityPreferences');
@@ -3806,7 +3886,9 @@ function checkAmbiguityComplete() {
 }
 
 function submitAmbiguity() {
-  showScreen('demographics');
+  // Age and gender are now collected up front on the screening screen, so the
+  // end-of-study demographics screen is skipped; go straight to payment.
+  computePayment();
 }
 
 // ---- 3.3 Demographics ----
@@ -4064,7 +4146,7 @@ function beliefPaymentDetailsHTML() {
   const drawLine = (draw != null && wp != null)
     ? `The computer drew a random number between 0 and 1. Result: <strong>${drawStr}</strong> → since ${drawStr} ${won ? '&lt;' : '&gt;'} ${winProbStr}, <strong>you ${won ? 'won' : 'did not win'} the $${prizeAmt} prize.</strong>`
     : '';
-  const footer = `<p style="margin:10px 0 0;font-style:italic;color:#475569;">This rule is designed so that stating your honest belief maximizes your chance of winning.</p>`;
+  const footer = `<p style="margin:10px 0 0;font-style:italic;color:#475569;">This rule is designed so that stating your honest belief maximizes your chance of earning the bonus.</p>`;
 
   // Three cases by belief type:
   //   (a) initial μ          → performance belief about γ
@@ -4128,131 +4210,292 @@ function redirectToProlific() {
   window.location.href = CONFIG.prolificCompletionURL;
 }
 
+// Screen-out: failed a (pre-treatment) attention check. Log it, show a neutral
+// message, and redirect to the Prolific SCREEN-OUT completion URL. We do NOT
+// reveal which check failed (avoids coaching future participants).
+function terminateStudy(reason) {
+  const isDev = new URLSearchParams(window.location.search).get('dev') === '1' && (typeof isDevAllowed === 'function' && isDevAllowed());
+  container.innerHTML = `
+    <h2 class="m-h1">Thank you</h2>
+    <p class="lead">Based on your responses, you do not qualify to continue this study. You will now be redirected back to Prolific. Thank you for your time.</p>
+    ${isDev ? `<p style="color:#b45309;margin-top:12px;"><em>[dev mode] Screen-out fired (${reason}). In production this redirects to CONFIG.screenOutURL; suppressed here so you can keep testing.</em></p>` : ''}`;
+  if (CONFIG.googleSheetsURL) {
+    fetch(CONFIG.googleSheetsURL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prolificPid: STATE.prolificPid,
+        terminated: 1,
+        terminationReason: reason,
+        timestamp: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }
+  if (!isDev) setTimeout(() => { window.location.href = CONFIG.screenOutURL; }, 1500);
+}
+
 
 /* ==============================================================
    DATA SUBMISSION (Google Sheets)
    ============================================================== */
 
 let _dataSubmitted = false;
+// Build per-check flat columns from STATE.comprehensionDetail.
+// Returns an object with keys: <prefix>_attempts_total, <prefix>_failed_attempts,
+// <prefix>_first_try_all_correct, <prefix>_item_<qid>_first_correct for each qid.
+function extractCheckFlatFields(checkId, prefix, qids) {
+  const attempts = (STATE.comprehensionDetail || []).filter(d => d.checkId === checkId);
+  const out = {};
+  if (attempts.length === 0) {
+    out[`${prefix}_attempts_total`] = null;
+    out[`${prefix}_failed_attempts`] = null;
+    out[`${prefix}_first_try_all_correct`] = null;
+    qids.forEach(qid => { out[`${prefix}_item_${qid}_first_correct`] = null; });
+    return out;
+  }
+  const totalAttempts = attempts.length;
+  const failedAttempts = attempts.filter(a => !a.passed).length;
+  const firstAttempt = attempts[0];
+  out[`${prefix}_attempts_total`] = totalAttempts;
+  out[`${prefix}_failed_attempts`] = failedAttempts;
+  out[`${prefix}_first_try_all_correct`] = firstAttempt.passed ? 1 : 0;
+  qids.forEach(qid => {
+    const resp = (firstAttempt.responses || []).find(r => r.qid === qid);
+    out[`${prefix}_item_${qid}_first_correct`] = resp ? (resp.isError ? 0 : 1) : null;
+  });
+  return out;
+}
+
 async function submitData() {
   if (_dataSubmitted) return;
   _dataSubmitted = true;
+
+  // ---- Per-round flat fields ----
+  // STATE.rounds is 0-indexed; rounds[i] corresponds to round i+1.
+  const rounds = STATE.rounds || [];
+  const r = (i) => rounds[i] || {};  // safe accessor
+  const getTheta = (i) => r(i).beliefTheta != null ? r(i).beliefTheta : null;
+  const getGamma = (i) => r(i).beliefGamma != null ? r(i).beliefGamma : null;
+  const getMgr   = (i) => r(i).manager || null;
+  const getGreens = (i) => r(i).hCount != null ? r(i).hCount : null;
+
+  // ---- Derived: switch_after_t (1 if manager changed between round t and t+1) ----
+  const switchAfter = [null, null, null];  // for decisions after rounds 1, 2, 3
+  for (let i = 0; i < 3; i++) {
+    if (rounds[i] && rounds[i + 1]) {
+      switchAfter[i] = (rounds[i].manager !== rounds[i + 1].manager) ? 1 : 0;
+    }
+  }
+
+  // ---- Derived: chosen_managertype_belief_t ----
+  // The θ̂ for the manager chosen at the decision following round t (i.e., the
+  // manager going into round t+1). If stayed: chosen = current θ̂ at round t.
+  // If switched: chosen = 100 - current θ̂ at round t (pegged sliders).
+  const chosenTheta = [null, null, null];
+  for (let i = 0; i < 3; i++) {
+    if (rounds[i] && rounds[i + 1] && rounds[i].beliefTheta != null) {
+      chosenTheta[i] = (rounds[i].manager === rounds[i + 1].manager)
+        ? rounds[i].beliefTheta
+        : (100 - rounds[i].beliefTheta);
+    }
+  }
+
+  // ---- Derived: bias measures ----
+  const initialGamma = STATE.initialMu;       // 0-100
+  const gammaStar    = STATE.gammaStar;       // 0-100
+  const deltaGamma0  = (initialGamma != null && gammaStar != null) ? (initialGamma - gammaStar) : null;
+  const absDelta0    = deltaGamma0 != null ? Math.abs(deltaGamma0) : null;
+  const oc           = deltaGamma0 != null ? (deltaGamma0 > 0 ? 1 : 0) : null;
+
+  const biasReduction = [null, null, null, null];
+  const normCorrection = [null, null, null, null];
+  for (let i = 0; i < 4; i++) {
+    const g_t = getGamma(i);
+    if (g_t != null && gammaStar != null && absDelta0 != null) {
+      const absBias_t = Math.abs(g_t - gammaStar);
+      biasReduction[i] = absDelta0 - absBias_t;
+      normCorrection[i] = absDelta0 > 0 ? biasReduction[i] / absDelta0 : null;
+    }
+  }
+
+  // ---- Honeypot helper ----
+  const honeypotEl = document.getElementById('hp_referral_code_a4b9');
+  const honeypotValue = honeypotEl ? honeypotEl.value : null;
+  const honeypotTripped = !!(honeypotEl && honeypotEl.value && honeypotEl.value.length > 0);
+
+  // ---- Construct the flat payload ----
   const data = {
-    // Identifiers
-    prolificPid: STATE.prolificPid,
-    studyId: STATE.studyId,
-    sessionId: STATE.sessionId,
+    // ===== Identifiers =====
+    prolific_pid: STATE.prolificPid,
+    study_id: STATE.studyId,
+    session_id: STATE.sessionId,
     timestamp: new Date().toISOString(),
 
-    // Condition
-    quizCondition: STATE.quizCondition,
-    perfManagerIsAlex: STATE.perfManagerIsAlex,
-    firstRoundManager: STATE.firstRoundManager,
-    assignedManager: STATE.assignedManager,
-    alexColor: STATE.alexColor,
-    samColor: STATE.samColor,
-    nameOrder: STATE.nameOrder ? STATE.nameOrder.join(',') : null,
-    takeawayTypeFirst: STATE.takeawayTypeFirst,
-    mgrBeliefLeft: STATE.mgrBeliefLeft,
-    clarityFeedback: STATE.clarityFeedback,
-    clarityComprehension: STATE.clarityComprehension ? STATE.clarityComprehension.join(',') : null,
-    clarityComprehensionCorrect: STATE.clarityComprehensionCorrect,
+    // ===== Condition + design metadata =====
+    condition: STATE.quizCondition,                                   // "easy" / "hard"
+    easy: STATE.quizCondition === 'easy' ? 1 : 0,                     // 0/1 for regression
+    condition_draw: STATE.quizConditionDraw,
+    stratum: STATE.stratificationStratum,
+    shared_score: STATE.sharedScoreAtStratification,
+    stratification_server_attempts: STATE.stratificationServerAttempts,
+    stratification_failures_json: STATE.stratificationFailures ? JSON.stringify(STATE.stratificationFailures) : null,
+    perf_manager_is_alex: STATE.perfManagerIsAlex ? 1 : 0,
+    first_round_manager: STATE.firstRoundManager,
+    alex_color: STATE.alexColor,
+    sam_color: STATE.samColor,
+    name_order: STATE.nameOrder ? STATE.nameOrder.join(',') : null,
+    takeaway_type_first: STATE.takeawayTypeFirst ? 1 : 0,
+    mgr_belief_left: STATE.mgrBeliefLeft ? 1 : 0,
 
-    // Quiz
-    quizScore: STATE.quizScore,
-    quizScoreShared: STATE.quizScoreShared,
-    quizConditionDraw: STATE.quizConditionDraw,
-    sharedScoreAtStratification: STATE.sharedScoreAtStratification,
-    stratificationStratum: STATE.stratificationStratum,
-    stratificationServerAttempts: STATE.stratificationServerAttempts,
-    stratificationFailures: STATE.stratificationFailures ? JSON.stringify(STATE.stratificationFailures) : null,
-    gammaStar: STATE.gammaStar,
-    randomProbShown: STATE.randomProbShown,
-    quizAnswers: JSON.stringify(STATE.quizAnswers),
+    // ===== Sample question (pre-quiz practice; pre-treatment screen) =====
+    sample_question_selected: STATE.sampleQuestionSelected,
+    sample_question_correct: STATE.sampleQuestionCorrect === null ? null : (STATE.sampleQuestionCorrect ? 1 : 0),
 
-    // Initial beliefs (three-fractile elicitation: P50 → P10 → P90; doc §2.1)
-    initialMu: STATE.initialMu,
-    initialConfidence: STATE.initialConfidence,
-    initialKappa: STATE.initialKappa,
-    initialAlpha: STATE.initialAlpha,
-    initialBeta: STATE.initialBeta,
-    initialGamma: STATE.initialGamma,  // legacy alias = initialMu
+    // ===== Quiz =====
+    quiz_score_total: STATE.quizScore,
+    quiz_score_shared: STATE.quizScoreShared,
+    gamma_star: gammaStar,                          // 0-100
+    random_prob_shown: STATE.randomProbShown,       // 0-100
 
-    // Rounds (one row per round, or all as JSON)
-    rounds: JSON.stringify(STATE.rounds.map(r => ({
-      roundNum: r.roundNum,
-      blockNum: r.blockNum,
-      signals: r.signals,
-      choiceBefore: r.choiceBefore,
-      choiceInfo: r.choiceInfo,
-      manager: r.manager,
-      transferred: r.transferred,
-      outcomes: r.outcomes,
-      opponentScores: r.opponentScores,
-      hCount: r.hCount,
-      earnings: r.earnings,
-      beliefTheta: r.beliefTheta,
-      beliefGamma: r.beliefGamma,
-      tsRoundStart: r.tsRoundStart,
-      tsFeedbackShown: r.tsFeedbackShown,
-      tsBeliefsShown: r.tsBeliefsShown,
-      tsBeliefsSubmit: r.tsBeliefsSubmit,
-      tsChoiceMade: r.tsChoiceMade,
+    // ===== Beliefs (all 0-100) =====
+    performance_belief_0: initialGamma,             // Phase 1 (initial μ)
+    performance_belief_1: getGamma(0),              // after round 1
+    performance_belief_2: getGamma(1),              // after round 2
+    performance_belief_3: getGamma(2),              // after round 3
+    performance_belief_4: getGamma(3),              // after round 4
+    initial_confidence: STATE.initialConfidence,
+    initial_kappa: STATE.initialKappa,
+    initial_alpha: STATE.initialAlpha,
+    initial_beta: STATE.initialBeta,
+
+    // managertype_belief_t = θ̂ for the manager held during round t (current manager)
+    // managertype_belief_0 omitted by construction (uninformed prior θ̂_0 = 50)
+    managertype_belief_1: getTheta(0),
+    managertype_belief_2: getTheta(1),
+    managertype_belief_3: getTheta(2),
+    managertype_belief_4: getTheta(3),
+
+    // chosen_managertype_belief_t = θ̂ for the manager chosen at the decision
+    // following round t (i.e., the manager going into round t+1). After 3 decisions.
+    chosen_managertype_belief_1: chosenTheta[0],
+    chosen_managertype_belief_2: chosenTheta[1],
+    chosen_managertype_belief_3: chosenTheta[2],
+
+    // ===== Per-round structure =====
+    manager_1: getMgr(0),
+    manager_2: getMgr(1),
+    manager_3: getMgr(2),
+    manager_4: getMgr(3),
+    green_count_1: getGreens(0),
+    green_count_2: getGreens(1),
+    green_count_3: getGreens(2),
+    green_count_4: getGreens(3),
+    switch_after_1: switchAfter[0],
+    switch_after_2: switchAfter[1],
+    switch_after_3: switchAfter[2],
+
+    // ===== Derived bias measures =====
+    delta_gamma_0: deltaGamma0,
+    abs_delta_gamma_0: absDelta0,
+    oc: oc,
+    bias_reduction_1: biasReduction[0],
+    bias_reduction_2: biasReduction[1],
+    bias_reduction_3: biasReduction[2],
+    bias_reduction_4: biasReduction[3],
+    norm_correction_1: normCorrection[0],
+    norm_correction_2: normCorrection[1],
+    norm_correction_3: normCorrection[2],
+    norm_correction_4: normCorrection[3],
+
+    // ===== Comprehension checks (flat per-check summaries) =====
+    clarity_feedback: STATE.clarityFeedback,
+    clarity_comprehension: STATE.clarityComprehension ? STATE.clarityComprehension.join(',') : null,
+    clarity_comprehension_correct: STATE.clarityComprehensionCorrect ? 1 : 0,
+    // Quiz-instructions comprehension (post-quizInstructions): 2 items
+    ...extractCheckFlatFields('comprehensionCheck0', 'quiz_check',
+        ['quiz_pay', 'quiz_no_effect_false']),
+    // mTask comprehension (post-mTask): 5 items
+    ...extractCheckFlatFields('mTaskCheck', 'mtask_check',
+        ['rounds50', 'green_red_5c', 'random_round_paid', 'switch_during_false', 'between_rounds_switch']),
+    // mTypes comprehension (post-mTypes): 5 items
+    ...extractCheckFlatFields('mTypesCheck', 'mtypes_check',
+        ['one_perf_one_rand', 'perf_pays_higher_score', 'rand_wheel_100_fields', 'told_who_is_who_false', 'types_fixed']),
+    // Clarity check (post-primer, Round 1): 3 items
+    ...extractCheckFlatFields('clarityCheck', 'clarity_check',
+        ['link', 'uninf', 'type']),
+
+    // ===== Post-experiment measures =====
+    risk_preference: STATE.riskPreference,
+    patience_preference: STATE.patiencePreference,
+    age: STATE.demographicAge,
+    gender: STATE.demographicGender,
+
+    // ===== Pre-quiz screening (attention checks + covariates, pre-treatment) =====
+    screening_moon: STATE.screeningMoon,
+    screening_duration: STATE.screeningDuration,
+    prolific_frequency: STATE.prolificFrequency,
+    attn_check1_pass: STATE.attnCheck1Pass === null ? null : (STATE.attnCheck1Pass ? 1 : 0),
+    attn_check2_pass: STATE.attnCheck2Pass === null ? null : (STATE.attnCheck2Pass ? 1 : 0),
+
+    ambiguity_color: STATE.ambiguityAnswers ? STATE.ambiguityAnswers.color : null,
+    ambiguity_urn_preference: STATE.ambiguityAnswers ? STATE.ambiguityAnswers.urnPreference : null,
+    ambiguity_check_choice: STATE.ambiguityAnswers ? STATE.ambiguityAnswers.checkChoice : null,
+    ambiguity_check_correct_first_try: STATE.ambiguityAnswers ? (STATE.ambiguityAnswers.checkCorrectFirstTry ? 1 : 0) : null,
+    feedback_clarity: STATE.feedbackClarity,
+    feedback_complaints: STATE.feedbackComplaints,
+
+    // ===== Reveal option =====
+    opted_in_reveal: STATE.optedInReveal == null ? null : (STATE.optedInReveal ? 1 : 0),
+    reveal_button_order: STATE.revealButtonOrder,
+
+    // ===== Payment =====
+    selected_payment_round: STATE.selectedPaymentRound,
+    bonus_pay: STATE.outcomeEarnings,
+    selected_belief_is_initial: STATE.selectedBeliefIsInitial == null ? null : (STATE.selectedBeliefIsInitial ? 1 : 0),
+    selected_belief_round: STATE.selectedBeliefRound,
+    selected_belief_type: STATE.selectedBeliefType,
+    belief_bonus_amount: STATE.beliefBonus_amount,
+    belief_bonus_won: STATE.beliefBonus_won == null ? null : (STATE.beliefBonus_won ? 1 : 0),
+    belief_bonus_event: STATE.beliefBonus_event,
+    belief_bonus_win_prob: STATE.beliefBonus_winProb,
+    belief_bonus_draw: STATE.beliefBonus_draw,
+    belief_bonus_opp_score: STATE.beliefBonus_oppScore,
+    total_bonus: STATE.totalBonus,
+
+    // ===== Visual check (AI honeypot) =====
+    visual_check_total_correct: STATE.visualCheck ? STATE.visualCheck.totalCorrect : null,
+    visual_check_total_trials:  STATE.visualCheck ? STATE.visualCheck.totalTrials  : null,
+    visual_check_duration_ms:   STATE.visualCheck ? STATE.visualCheck.totalDurationMs : null,
+
+    // ===== AI defense scalars =====
+    honeypot_tripped: honeypotTripped ? 1 : 0,
+    honeypot_value: honeypotValue,
+    n_paste_events: Array.isArray(STATE.pasteEvents) ? STATE.pasteEvents.length : 0,
+    n_focus_events: Array.isArray(STATE.focusEvents) ? STATE.focusEvents.length : 0,
+    n_copy_attempts: STATE.copyAttempts || 0,
+
+    // ===== Timing =====
+    total_duration_ms: Date.now() - STATE.startTime,
+
+    // ===== Raw JSON columns for forensic / detailed analysis =====
+    rounds_raw_json: JSON.stringify(rounds.map(rd => ({
+      roundNum: rd.roundNum, blockNum: rd.blockNum, signals: rd.signals,
+      choiceBefore: rd.choiceBefore, choiceInfo: rd.choiceInfo, manager: rd.manager,
+      transferred: rd.transferred, outcomes: rd.outcomes, opponentScores: rd.opponentScores,
+      hCount: rd.hCount, earnings: rd.earnings,
+      beliefTheta: rd.beliefTheta, beliefGamma: rd.beliefGamma,
+      tsRoundStart: rd.tsRoundStart, tsFeedbackShown: rd.tsFeedbackShown,
+      tsBeliefsShown: rd.tsBeliefsShown, tsBeliefsSubmit: rd.tsBeliefsSubmit,
+      tsChoiceMade: rd.tsChoiceMade,
     }))),
-
-    // Post-experiment
-    riskPreference: STATE.riskPreference,
-    demographicAge: STATE.demographicAge,
-    demographicGender: STATE.demographicGender,
-    ambiguityColor: STATE.ambiguityAnswers.color,
-    ambiguityUrnPreference: STATE.ambiguityAnswers.urnPreference,
-    ambiguityCheckChoice: STATE.ambiguityAnswers.checkChoice,
-    ambiguityCheckCorrectFirstTry: STATE.ambiguityAnswers.checkCorrectFirstTry,
-    feedbackClarity: STATE.feedbackClarity,
-    feedbackComplaints: STATE.feedbackComplaints,
-
-    // Payment
-    selectedPaymentRound: STATE.selectedPaymentRound,
-    outcomeEarnings: STATE.outcomeEarnings,
-    selectedBeliefIsInitial: STATE.selectedBeliefIsInitial,
-    selectedBeliefRound: STATE.selectedBeliefRound,
-    selectedBeliefType: STATE.selectedBeliefType,
-    beliefBonus_amount: STATE.beliefBonus_amount,
-    beliefBonus_won: STATE.beliefBonus_won,
-    beliefBonus_event: STATE.beliefBonus_event,
-    beliefBonus_winProb: STATE.beliefBonus_winProb,
-    beliefBonus_draw: STATE.beliefBonus_draw,
-    beliefBonus_oppScore: STATE.beliefBonus_oppScore,
-    totalBonus: STATE.totalBonus,
-    optedInReveal: STATE.optedInReveal,
-    revealButtonOrder: STATE.revealButtonOrder,
-
-    // Timing
-    totalDurationMs: Date.now() - STATE.startTime,
-    screenTimestamps: JSON.stringify(STATE.screenTimestamps),
-    screenDurations: JSON.stringify(STATE.screenDurations),
-
-    // Comprehension checks
-    comprehensionAttempts: JSON.stringify(STATE.comprehensionAttempts),
-    comprehensionDetail: JSON.stringify(STATE.comprehensionDetail),
-
-    copyAttempts: STATE.copyAttempts,
-    pasteEvents: STATE.pasteEvents,
-    focusEvents: STATE.focusEvents,
-    honeypotValue: (() => {
-      const el = document.getElementById('hp_referral_code_a4b9');
-      return el ? el.value : null;
-    })(),
-    honeypotTripped: (() => {
-      const el = document.getElementById('hp_referral_code_a4b9');
-      return !!(el && el.value && el.value.length > 0);
-    })(),
-
-    // Visual perception honeypot (AI detection — silent)
-    visualCheckTotalCorrect: STATE.visualCheck ? STATE.visualCheck.totalCorrect : null,
-    visualCheckTotalTrials:  STATE.visualCheck ? STATE.visualCheck.totalTrials  : null,
-    visualCheckDurationMs:   STATE.visualCheck ? STATE.visualCheck.totalDurationMs : null,
-    visualCheckTrials:       STATE.visualCheck ? JSON.stringify(STATE.visualCheck.trials) : '',
+    quiz_answers_json: JSON.stringify(STATE.quizAnswers || []),
+    screen_timestamps_json: JSON.stringify(STATE.screenTimestamps || []),
+    screen_durations_json: JSON.stringify(STATE.screenDurations || {}),
+    paste_events_json: JSON.stringify(STATE.pasteEvents || []),
+    focus_events_json: JSON.stringify(STATE.focusEvents || []),
+    visual_check_trials_json: STATE.visualCheck ? JSON.stringify(STATE.visualCheck.trials) : '',
+    comprehension_attempts_json: JSON.stringify(STATE.comprehensionAttempts || {}),
+    comprehension_detail_json: JSON.stringify(STATE.comprehensionDetail || []),
   };
 
   // Store as backup
@@ -4422,12 +4665,10 @@ function setupDevBaseState(params) {
   STATE.initialKappa      = 18;
   STATE.initialAlpha      = 9;
   STATE.initialBeta       = 9;
-  STATE.initialGamma      = 50;
 
   STATE.perfManagerIsAlex = (params.perf === 'sam') ? false : true;
 
   const start = (params.start === 'sam' || params.start === 'alex') ? params.start : 'alex';
-  STATE.assignedManager   = start;
   STATE.currentManager    = start;
   STATE.firstRoundManager = start;
 }
@@ -4456,7 +4697,8 @@ function synthesizeRoundsForDev(upToBlockCount) {
 const DEV_TARGETS = [
   { id: 'welcome',              group: 'Phase 1',       label: 'Welcome' },
   { id: 'consent',              group: 'Phase 1',       label: 'Consent' },
-  { id: 'quizInstructions',     group: 'Phase 1',       label: 'Quiz instructions' },
+  { id: 'screening',            group: 'Phase 1',       label: 'Screening (attention check 1 + demographics)' },
+  { id: 'quizInstructions',     group: 'Phase 1',       label: 'Quiz instructions (+ attention check 2)' },
   { id: 'quizComprehension',    group: 'Phase 1',       label: 'Quiz comprehension check' },
   { id: 'sampleQuestion',       group: 'Phase 1',       label: 'Sample question' },
   { id: 'predictionIntro',      group: 'Phase 1',       label: 'Predictions & prizes (BSR explainer)' },
@@ -4475,6 +4717,7 @@ const DEV_TARGETS = [
   { id: 'block4',               group: 'Phase 2 task',  label: 'Batch 4 (after stay/switch 3)',     custom: true },
   { id: 'roundsComplete',       group: 'Phase 3',       label: 'Rounds complete' },
   { id: 'riskPreferences',      group: 'Phase 3',       label: 'Risk preferences (GPS)' },
+  { id: 'patiencePreferences',  group: 'Phase 3',       label: 'Patience preferences (GPS)' },
   { id: 'ambiguityPreferences', group: 'Phase 3',       label: 'Ambiguity preferences' },
   { id: 'demographics',         group: 'Phase 3',       label: 'Demographics' },
   { id: 'visualCheck',          group: 'Phase 3',       label: 'Visual check (Ebbinghaus — AI honeypot, silent log)' },
@@ -4573,13 +4816,6 @@ function init() {
     return;
   }
   showScreen('welcome');
-}
-
-// Helper: render the Alex/Sam name pair in the randomized order, with colors
-function namePair(sep) {
-  const [first, second] = STATE.nameOrder;
-  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-  return `<span class="eval-${first}">${cap(first)}</span> ${sep} <span class="eval-${second}">${cap(second)}</span>`;
 }
 
 // Start
