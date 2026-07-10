@@ -743,7 +743,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwS860tZX_OpJuTRw9GHir4cFFvqhZHdx5bzeEYBmdD-y3JBgtzAL_n6XwfoREFaReeEw/exec',
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycby8xfQnamRLSbTFLdkvXIWnmMOkrwJrUceLmBaqNmRouGArmSERfF_75EMOJSm8yraF/exec',
 
   // ---- Post-quiz block structure (manager task) ----
   // Each entry is one feedback "set". choiceBefore:
@@ -1400,7 +1400,7 @@ const CONFIG = {
       prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
       backScreen: 'mTask',
       items: [
-        { qid: 'rounds50',            text: 'In each round, I will see 50 bonus outcomes from my current manager.', correct: true },
+        { qid: 'rounds50',            text: 'In each round, I will see 50 bonuses.', correct: true },
         { qid: 'green_red_5c',        text: 'Each bonus is either green (worth 5¢) or red (worth 0¢).', correct: true },
         { qid: 'random_round_paid',   text: 'At the end of the study, one of the 4 rounds will be randomly selected, and I will be paid the bonuses from that round only.', correct: true },
         { qid: 'switch_during_false', text: 'I can switch managers at any time during a round.', correct: false },
@@ -2732,11 +2732,11 @@ SCREENS.predictionIntro = () => {
   const maxBeliefBonus = CONFIG.beliefBonusMax.toFixed(0);
   container.innerHTML = `
     <h2 class="m-h1">Questions about what you believe</h2>
-    <p class="lead">Now that you have finished the quiz, we will ask you a few questions about <strong>what you think</strong> — starting with how well you did, and about other things later in the study.</p>
-    <p class="lead" style="margin-top:10px;">These are not just for our records: your answers can earn you an <strong>extra payment of up to $${maxBeliefBonus}</strong>, on top of your other earnings — and <strong>the more accurate your answers, the more you are likely to earn.</strong></p>
-    <p class="lead" style="margin-top:10px;">At the end, we pick <strong>one of your answers at random</strong> and pay the bonus on that one alone. Every answer is equally likely to be picked, so each one counts.</p>
+    <p class="lead">Now that you have finished the quiz, we will ask you several questions about <strong>what you believe</strong> — starting with how well you did, and covering other topics later in the study. We call these <strong>belief questions</strong>.</p>
+    <p class="lead" style="margin-top:10px;">These are not just for our records: your answers can earn you an <strong>extra payment of up to $${maxBeliefBonus}</strong>, on top of your other earnings — and <strong>the more accurate your beliefs, the more you are likely to earn.</strong></p>
+    <p class="lead" style="margin-top:10px;">At the end, we pick <strong>one of these answers at random</strong> and pay the bonus on that one alone. Every answer is equally likely to be picked, so each one counts.</p>
     <p class="lead" style="margin-top:10px;">The bonus is set up so that <strong>the surest way to be accurate is simply to answer honestly</strong>: telling us what you truly believe gives you the best chance of earning it. (Full details of how this works are available on request at the end.)</p>
-    <p class="lead" style="margin-top:10px;">Let us begin with the first question.</p>
+    <p class="lead" style="margin-top:10px;">Let us begin with your first belief question.</p>
 
     <div class="m-row-end"><button class="m-btn" onclick="showScreen('scoreAndBelief')">Continue →</button></div>`;
   updateProgress(0.31);
@@ -2746,8 +2746,8 @@ SCREENS.predictionIntro = () => {
 SCREENS.scoreAndBelief = () => {
   const maxBeliefBonus = CONFIG.beliefBonusMax.toFixed(0);
   container.innerHTML = `
-    <h2 class="m-h1">Your first belief question</h2>
-    <p class="lead">Your first question is about how your performance on the logic quiz you just completed compares to 100 other Prolific participants — based on the 6 questions that were the same for everyone. For each comparison, we check whether you answered more of those shared questions correctly. Ties are decided by a coin flip.</p>
+    <h2 class="m-h1">Your quiz performance</h2>
+    <p class="lead">This belief question is about how your performance on the logic quiz you just completed compares to 100 other Prolific participants — based on the 6 questions that were the same for everyone. For each comparison, we check whether you answered more of those shared questions correctly. Ties are decided by a coin flip.</p>
     <p class="lead" style="margin-top:10px;">Before answering this belief question, you can see how many questions you answered correctly on the full quiz.</p>
     <div class="m-row-end" id="reveal-score-wrap" style="margin-top:14px;">
       <button class="m-btn" onclick="revealScoreAndBelief()">Reveal my score →</button>
@@ -2761,7 +2761,7 @@ SCREENS.scoreAndBelief = () => {
         <div class="quiz-score-sub">questions correct</div>
       </div>
       <p class="lead" style="margin-top:16px;">Take a moment to think about how your score may compare with the scores of the other participants.</p>
-      <p class="lead reminder-note reminder-plain" style="margin-top:14px;">Remember: this answer, along with the ones you will give later, could be randomly selected for payment, earning you up to <strong>$${maxBeliefBonus}</strong> — and the more accurate it is, the more you are likely to earn. The bonus is set up so that the surest way to be accurate is simply to answer honestly.</p>
+      <p class="lead reminder-note reminder-plain" style="margin-top:14px;">Remember: this belief, along with the ones you will give later, could be randomly selected for payment, earning you up to <strong>$${maxBeliefBonus}</strong> — and the more accurate it is, the more you are likely to earn. The bonus is set up so that the surest way to be accurate is simply to answer honestly.</p>
       ${renderPriorBeliefWidget()}
     </div>`;
   initPriorBeliefWidget();
@@ -3257,7 +3257,7 @@ function renderStepPrimerLayered() {
 
   // Two directions of inference, shown in a counterbalanced order (STATE.takeawayTypeFirst).
   const tType = `<strong>About ${name}'s type:</strong> If your count of green bonuses is closer to <strong>${perfExpected} of ${nSignals}</strong> (what a Performance Manager would produce given your beliefs), ${name} is more likely a Performance Manager. If it is closer to <strong>${randExpected} of ${nSignals}</strong> (what a Random Manager would produce), ${name} is more likely a Random Manager.`;
-  const tPerf = `<strong>About your quiz performance:</strong> only a Performance Manager's bonuses provide new information about your quiz score. So the more likely you think ${name} is the Performance Manager, the more the bonuses tell you about your score.`;
+  const tPerf = `<strong>About your quiz performance:</strong> only a Performance Manager's bonuses provide new information about your quiz performance. So the more likely you think ${name} is the Performance Manager, the more the bonuses tell you about your performance.`;
   const takeawayList = (STATE.takeawayTypeFirst !== false) ? [tType, tPerf] : [tPerf, tType];
 
   window._primerStep = 0;
@@ -3279,7 +3279,7 @@ function renderStepPrimerLayered() {
         <div class="ptype-card ptype-perf">
           <span class="pill pill-perf">Performance Manager</span>
           <p class="ptype-info">You get a <strong>green</strong> bonus for each time your quiz score beats another participant's score.</p>
-          <p>You indicated that you expect your quiz score to beat <strong>${prevGamma} of the 100</strong> participants.</p>
+          <p>You indicated that you expect to beat <strong>${prevGamma} of the 100</strong> participants.</p>
           <p>Therefore, you would expect about <strong>${perfExpected} of the ${nSignals}</strong> bonuses to be green.</p>
         </div>
         <div class="ptype-card ptype-rand">
@@ -3316,9 +3316,10 @@ function renderClarityCheck() {
   const green = STATE.randomProbShown;
   if (!window._clarityItems) {
     const items = [
-      { qid: 'link',     correct: true,  text: `The Performance Manager's bonuses depend on my quiz score; the Random Manager's bonuses come from a wheel of fortune with ${green} green and ${100 - green} red fields. If I am confident that ${name} is the Performance Manager, I should strongly revise my belief about my quiz score based on the bonuses. If I am confident ${name} is the Random Manager, I should barely revise my belief about my quiz score.` },
-      { qid: 'uninf',    correct: false, text: `Because I do not know whether ${name} is the Performance or Random Manager, the bonuses ${name} pays are completely uninformative about my quiz performance.` },
-      { qid: 'type',     correct: true,  text: `Observing the bonuses over time can teach me about whether ${name} is the Performance or the Random Manager.` },
+      { qid: 'mech',      correct: true,  text: `The Performance Manager's bonuses depend on my quiz score, while the Random Manager's bonuses come from a wheel of fortune with ${green} green and ${100 - green} red fields.` },
+      { qid: 'revise',    correct: true,  text: `If I am confident that ${name} is the Performance Manager, I should strongly revise my belief about my quiz performance based on the bonuses. If I am confident ${name} is the Random Manager, I should barely revise my belief about my quiz performance.` },
+      { qid: 'told_type', correct: false, text: `I will be told whether ${name} is the Performance or the Random Manager before Round 1 begins.` },
+      { qid: 'type',      correct: true,  text: `Observing the bonuses over time can teach me about whether ${name} is the Performance or the Random Manager.` },
     ];
     for (let i = items.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -4422,7 +4423,7 @@ async function submitData() {
         ['one_perf_one_rand', 'perf_pays_higher_score', 'rand_wheel_100_fields', 'told_who_is_who_false', 'types_fixed']),
     // Clarity check (post-primer, Round 1): 3 items
     ...extractCheckFlatFields('clarityCheck', 'clarity_check',
-        ['link', 'uninf', 'type']),
+        ['mech', 'revise', 'told_type', 'type']),
 
     // ===== Post-experiment measures =====
     risk_preference: STATE.riskPreference,
