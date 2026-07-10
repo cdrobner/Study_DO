@@ -3318,7 +3318,7 @@ function renderClarityCheck() {
     const items = [
       { qid: 'mech',      correct: true,  text: `The Performance Manager's bonuses depend on my quiz score, while the Random Manager's bonuses come from a wheel of fortune with ${green} green and ${100 - green} red fields.` },
       { qid: 'revise',    correct: true,  text: `If I am confident that ${name} is the Performance Manager, I should strongly revise my belief about my quiz performance based on the bonuses. If I am confident ${name} is the Random Manager, I should barely revise my belief about my quiz performance.` },
-      { qid: 'told_type', correct: false, text: `I will be told whether ${name} is the Performance or the Random Manager before Round 1 begins.` },
+      { qid: 'accuracy_pays', correct: false, text: `The accuracy of my answers to the belief questions has <strong>no</strong> effect on my payment.` },
       { qid: 'type',      correct: true,  text: `Observing the bonuses over time can teach me about whether ${name} is the Performance or the Random Manager.` },
     ];
     for (let i = items.length - 1; i > 0; i--) {
@@ -4423,7 +4423,7 @@ async function submitData() {
         ['one_perf_one_rand', 'perf_pays_higher_score', 'rand_wheel_100_fields', 'told_who_is_who_false', 'types_fixed']),
     // Clarity check (post-primer, Round 1): 3 items
     ...extractCheckFlatFields('clarityCheck', 'clarity_check',
-        ['mech', 'revise', 'told_type', 'type']),
+        ['mech', 'revise', 'accuracy_pays', 'type']),
 
     // ===== Post-experiment measures =====
     risk_preference: STATE.riskPreference,
