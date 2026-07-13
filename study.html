@@ -429,10 +429,10 @@ strong { font-weight: 600; }
 .ledger-summary { text-align: center; font-size: 1.0rem; color: #1e293b; margin: 12px 0 4px; }
 .ledger-summary strong { color: #0f172a; }
 
-/* Compact ledger for large batches (50 signals → 2 rows of 25) */
-.ledger-row-compact { display: grid; grid-template-columns: repeat(25, 1fr); gap: 3px; margin: 14px 0 10px; }
+/* Compact ledger for large batches, sorted greens-first (50 signals → 10 rows of 5) */
+.ledger-row-compact { display: grid; grid-template-columns: repeat(5, 30px); gap: 5px; margin: 14px 0 10px; justify-content: center; }
 .ledger-cell-compact { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 4px;
-                       height: 26px; }
+                       width: 30px; height: 30px; }
 .ledger-cell-compact.paid   { background: #22c55e; border-color: #15803d; }
 .ledger-cell-compact.unpaid { background: #ef4444; border-color: #b91c1c; }
 
@@ -746,7 +746,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycby1GiduXMv7YpBYJabJOzYJ91Fi4YOJ_6U5gsbE-AY5c9Is2YzMI2sBlS2HnRRwCXsn-g/exec',
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbz_BLiDdGWnydKPgL6hnBiyYM-KIpRh6t3sKuWw783hT84mIXNQXzbkzUGtUwZAHEP_/exec',
 
   // ---- Post-quiz block structure (manager task) ----
   // Each entry is one feedback "set". choiceBefore:
@@ -776,12 +776,13 @@ const CONFIG = {
   // Placeholder synthetic distributions (n=100 each) for a plausible Prolific US
   // sample on the Study 2 quiz (12 questions: 4 shared + 8 condition-specific).
   // Each entry is a score (number of correct answers out of 12).
-  // γ* = fraction of same-condition scores strictly lower + 0.5 × fraction equal.
-  // After the 100-participant pilot, replace these arrays with the observed pilot scores.
-  // EASY synthetic: mean ≈ 8.77, SD ≈ 2.30
-  // HARD synthetic: mean ≈ 5.71, SD ≈ 2.64
+  // γ* = fraction of reference scores strictly lower + 0.5 × fraction equal.
+  // Reference = observed shared-6 scores from the UK pilot (N=97, pilot_ej_UK, 2026-07-13),
+  // replacing the earlier low-scoring synthetic pool that inflated γ* (median score 3 → γ*≈60,
+  // making the UK sample look underconfident). UK self-distribution puts score 3 at γ*=50.
+  // Shared-score counts 0..6: [1,12,23,25,23,9,4].
   study1ScoresShared: [
-    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,6,6
+    0,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,6,6,6,6
   ],
 
   // ---- Quiz questions ----
@@ -3512,10 +3513,13 @@ function roundRevealBonuses() {
   blockData.earnings = earnings;
 
   const nUnpaid = nSignals - hCount;
-  // Compact 2-row grid for large batches; original per-chip ledger for small.
+  const pctGreen = Math.round((hCount / nSignals) * 100);
+  // Compact grid for large batches, sorted greens-first so the proportion is legible
+  // (display only — blockData.outcomes keeps the generated order). Per-chip ledger for small.
+  const displayOut = outcomes.slice().sort((a, b) => (a === 'H' ? 0 : 1) - (b === 'H' ? 0 : 1));
   const isCompact = nSignals > 10;
   const ledgerHtml = isCompact
-    ? `<div class="ledger-row-compact">${outcomes.map((o) =>
+    ? `<div class="ledger-row-compact">${displayOut.map((o) =>
          `<div class="ledger-cell-compact ${o === 'H' ? 'paid' : 'unpaid'}" aria-label="${o === 'H' ? 'green' : 'red'}"></div>`
        ).join('')}</div>`
     : `<div class="ledger-row">${outcomes.map((o, i) =>
@@ -3525,9 +3529,9 @@ function roundRevealBonuses() {
           </div>`
        ).join('')}</div>`;
   document.getElementById('r1-bonus-area').innerHTML = `
-    <h2 class="m-h1">${name}'s ${nSignals} bonuses this round</h2>
+    <h2 class="m-h1">${nSignals} Bonuses from ${name}</h2>
     ${ledgerHtml}
-    <p class="ledger-summary"><strong>${hCount} of ${nSignals}</strong> bonuses from ${name} this round are green.</p>`;
+    <p class="ledger-summary"><strong>${hCount} of ${nSignals} (${pctGreen}%)</strong> bonuses from ${name} this round are green.</p>`;
 
   document.getElementById('r1-reveal-wrap').style.display = 'none';
   document.getElementById('r1-next-wrap').style.display = '';
@@ -3587,11 +3591,19 @@ function roundShowBeliefs() {
   // sliders sit together. The "What to expect" cards stay.
   const cb = document.getElementById('round-current-beliefs'); if (cb) cb.style.display = 'none';
   const area = document.getElementById('r1-belief-area');
-  const beliefBonusMax = CONFIG.beliefBonusMax.toFixed(0);
+  // Computed reminder: greens expressed on the /100 belief scale, and whether that implied
+  // beat-rate is slightly / plainly / substantially higher or lower than the going-in belief
+  // (thresholds 10 / 20). Compared against startGamma (= belief entering the round).
+  const nSig = blockData.signals;
+  const xxImplied = Math.round((blockData.hCount / nSig) * 100);
+  const dImp = xxImplied - startGamma, adImp = Math.abs(dImp);
+  const midImp = dImp === 0
+    ? 'which is <strong>about the same as</strong> your current quiz performance beliefs'
+    : `which is <strong>${adImp < 10 ? 'slightly ' : (adImp < 20 ? '' : 'substantially ')}${dImp > 0 ? 'higher' : 'lower'}</strong> than your current quiz performance beliefs`;
   area.innerHTML = `
-    <h2 class="m-h2-umbrella">How do these bonuses affect your beliefs?</h2>
-    <p style="font-size:0.95rem;color:#374151;margin:0 0 10px;"><strong>Remember,</strong> the more likely you think ${name} is a Performance Manager, the more those bonuses should inform your beliefs about your quiz performance.</p>
-    <div class="callout-attention"><strong>Please take your time to think carefully about your answers.</strong> You will have a higher chance of winning the <strong>£${beliefBonusMax}</strong> belief payment if you provide the most accurate beliefs.</div>
+    <h2 class="m-h2-umbrella">How do these bonuses affect your beliefs about your quiz performance and ${name}'s type?</h2>
+    <p style="font-size:0.95rem;color:#374151;margin:0 0 10px;">If ${name} is the Random Manager, these bonuses provide no information. If ${name} is the Performance Manager, these bonuses mean that (in expectation) you would beat <strong>${xxImplied} out of 100</strong> participants, ${midImp}. The more likely you think ${name} is the Performance Manager, the more you should update your quiz performance beliefs in this direction.</p>
+    <div class="callout-attention"><strong>Please take your time to think carefully about your answers.</strong> You will have a higher chance of winning the belief payment if you provide the most accurate beliefs.</div>
     <div class="belief-cols">${colsInner}</div>
     <div class="m-row-end" id="beliefs-nav" style="${navStyle}"><button class="m-btn" onclick="submitBlockBeliefs()">Submit</button></div>`;
   area.style.display = '';
