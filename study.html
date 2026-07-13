@@ -568,6 +568,9 @@ strong { font-weight: 600; }
 .mslider { width:100%; -webkit-appearance:none; appearance:none; height:6px; border-radius:3px; background:#e5e7eb; outline:none; }
 .mslider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:24px; height:24px; border-radius:50%; background:#111827; cursor:pointer; border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.2); }
 .mslider::-moz-range-thumb { width:24px; height:24px; border-radius:50%; background:#111827; cursor:pointer; border:3px solid #fff; }
+/* Round belief sliders start gray ("prior, unconfirmed"); turn dark on first touch. */
+.mslider.slider-untouched::-webkit-slider-thumb { background:#94a3b8; }
+.mslider.slider-untouched::-moz-range-thumb { background:#94a3b8; }
 .mval { text-align:center; font-size:1.02rem; color:#1e293b; margin-top:12px; }
 .mval strong { font-size:1.18rem; }
 /* Two-worlds pegged manager-type sliders */
@@ -735,15 +738,15 @@ function svgOverlay(elements) {
 const CONFIG = {
 
   // ---- Prolific settings ----
-  prolificCompletionURL: 'https://app.prolific.com/submissions/complete?cc=C12F5J5G',
+  prolificCompletionURL: 'https://app.prolific.com/submissions/complete?cc=C1M5SGFX',
 
   // ---- Prolific SCREEN-OUT (attention-check / eligibility failures) ----
   // Screen-out completion URL (failed attention checks) from the Prolific study settings.
-  screenOutURL: 'https://app.prolific.com/submissions/complete?cc=CAYABD7T',
+  screenOutURL: 'https://app.prolific.com/submissions/complete?cc=C1MXSORU',
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycby8xfQnamRLSbTFLdkvXIWnmMOkrwJrUceLmBaqNmRouGArmSERfF_75EMOJSm8yraF/exec',
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycby1GiduXMv7YpBYJabJOzYJ91Fi4YOJ_6U5gsbE-AY5c9Is2YzMI2sBlS2HnRRwCXsn-g/exec',
 
   // ---- Post-quiz block structure (manager task) ----
   // Each entry is one feedback "set". choiceBefore:
@@ -757,9 +760,9 @@ const CONFIG = {
     { signals: 50, choiceBefore: 'switch' },
     { signals: 50, choiceBefore: 'switch' },
   ],
-  payPerH: 0.05,           // $ per green bonus. One round is randomly selected for payment.
-  showUpFee: 2.00,         // $ flat fee
-  beliefBonusMax: 1.00,    // $ max BSR bonus for the single randomly-selected belief
+  payPerH: 0.05,           // £ per green bonus (5p). One round is randomly selected for payment.
+  showUpFee: 2.00,         // £ flat show-up fee
+  beliefBonusMax: 1.00,    // £ max BSR belief payment for the single randomly-selected belief
                            // (chosen uniformly from initial μ + all round θ and γ beliefs)
   quizTimePerQuestion: 10, // seconds
   numQuizQuestions: 12,
@@ -1364,12 +1367,12 @@ const CONFIG = {
       coPi: 'Christoph Drobner (Central European University)',
       body: `You are invited to participate in a study about decision-making. If you agree to be part of the study, you will be asked to make decisions on your computer. The study is expected to take 10&ndash;15 minutes. The study includes attention checks; if you do not follow the instructions for these checks, you may be removed from the study before it is complete. Data collected during the study will be linked only to your Prolific ID, and in no way will it be linked to your name. Therefore, your behavior during this study is completely anonymous.`,
       benefits: `You may not receive any personal benefits from being in this study. However, others may benefit from the knowledge gained from this study.`,
-      risks: `This study involves behavioral tasks and does not pose more than minimal risks to you physically, psychologically, and legally.`,
+      risks: `This study involves behavioural tasks and does not pose more than minimal risks to you physically, psychologically, and legally.`,
       // {{MAX_BONUS}} and {{SHOW_UP_FEE}} are filled in at render time from CONFIG.
-      compensation: `You will receive a completion fee of \${{SHOW_UP_FEE}}. In addition, you can earn a bonus of up to \${{MAX_BONUS}} based on your decisions during the study. Further details will be given in the instructions when the study begins.`,
+      compensation: `You will receive a completion fee of £{{SHOW_UP_FEE}}. In addition, you can earn a bonus of up to £{{MAX_BONUS}} based on your decisions during the study. Further details will be given in the instructions when the study begins.`,
       voluntary: `Participating in this study is completely voluntary. Even if you decide to participate now, you may change your mind and stop at any time. If you have questions about this study, please contact Christoph Drobner (drobnerc@ceu.edu).`,
       irb: `As part of their review, the University of Michigan Institutional Review Board Health Sciences and Behavioral Sciences has determined that this study is no more than minimal risk and exempt from on-going IRB oversight.`,
-      agreement: `Please check the box below if you attest to being at least 18 years old and agree to take part in the study.`,
+      agreement: `Please tick the box below if you attest to being at least 18 years old and agree to take part in the study.`,
     },
 
     studyRules: `<p>All instructions and information you receive in this study are <strong>true and accurate</strong>.</p>
@@ -1401,7 +1404,7 @@ const CONFIG = {
       backScreen: 'mTask',
       items: [
         { qid: 'rounds50',            text: 'In each round, I will see 50 bonuses.', correct: true },
-        { qid: 'green_red_5c',        text: 'Each bonus is either green (worth 5¢) or red (worth 0¢).', correct: true },
+        { qid: 'green_red_5c',        text: 'Each bonus is either green (worth 5p) or red (worth 0p).', correct: true },
         { qid: 'random_round_paid',   text: 'At the end of the study, one of the 4 rounds will be randomly selected, and I will be paid the bonuses from that round only.', correct: true },
         { qid: 'switch_during_false', text: 'I can switch managers at any time during a round.', correct: false },
         { qid: 'between_rounds_switch', text: 'Between rounds, I can decide whether to stay with my current manager or switch to the other one.', correct: true },
@@ -1430,8 +1433,8 @@ const CONFIG = {
     ambiguityPreferencesBold: `You can choose between drawing a ball from two different urns, urn&nbsp;A and urn&nbsp;B.`,
     urnADescription: `<strong>Urn&nbsp;A</strong> contains 100&nbsp;balls, some are white and some are black. However, you do not know how many balls are white and how many balls are black. Any combination is possible. There might be from 0 to 100 white balls, with the remaining balls being black.`,
     urnBDescription: `<strong>Urn&nbsp;B</strong> contains 100&nbsp;balls as well, but you know that it contains exactly 50&nbsp;white balls and 50&nbsp;black balls.`,
-    ambiguityColorPrompt: `Now choose a color, either <strong>White</strong> or <strong>Black</strong>.`,
-    ambiguityPayoff: `Suppose you win <strong>$100</strong> if you draw a ball of the color you have selected. If the ball is of the other color, you win nothing.`,
+    ambiguityColorPrompt: `Now choose a colour, either <strong>White</strong> or <strong>Black</strong>.`,
+    ambiguityPayoff: `Suppose you win <strong>£100</strong> if you draw a ball of the colour you have selected. If the ball is of the other colour, you win nothing.`,
     ambiguityQuestion: `From which urn would you prefer drawing a ball?`,
 
     prolificRedirect: `<strong>Please click the button below to be redirected back to Prolific and register your submission.</strong>`,
@@ -1880,11 +1883,11 @@ function renderPriorBeliefWidget() {
       <div id="pb-step-mu" class="pbw-block">
         <p>Out of the 100 Prolific participants, how many do you expect to beat on the shared questions?</p>
         <p style="font-size:.95rem;color:#475569;margin:-4px 0 8px;">Click on the slider below to enter your belief.</p>
-        <div class="grid-c">${beliefGridSVG(null)}</div>
         <div class="slider-row">
           <input type="range" id="pb-mu" class="slider-hidden-thumb" min="0" max="100" value="${initMu}" oninput="onPriorMu(this.value)">
         </div>
         <p class="pb-mu-readout" id="pb-mu-readout" style="visibility:hidden;">I expect to beat <strong id="pb-mu-val">${initMu}</strong> out of 100.</p>
+        <div class="grid-c">${beliefGridSVG(null)}</div>
         <div class="pbw-confirm-row" id="pb-mu-confirm" style="display:none;">
           <button class="btn btn-primary" onclick="confirmPriorMu()">Continue →</button>
         </div>
@@ -2733,9 +2736,9 @@ SCREENS.predictionIntro = () => {
   container.innerHTML = `
     <h2 class="m-h1">Questions about what you believe</h2>
     <p class="lead">Now that you have finished the quiz, we will ask you several questions about <strong>what you believe</strong> — starting with how well you did, and covering other topics later in the study. We call these <strong>belief questions</strong>.</p>
-    <p class="lead" style="margin-top:10px;">These are not just for our records: your answers can earn you an <strong>extra payment of up to $${maxBeliefBonus}</strong>, on top of your other earnings — and <strong>the more accurate your beliefs, the more you are likely to earn.</strong></p>
-    <p class="lead" style="margin-top:10px;">At the end, we pick <strong>one of these answers at random</strong> and pay the bonus on that one alone. Every answer is equally likely to be picked, so each one counts.</p>
-    <p class="lead" style="margin-top:10px;">The bonus is set up so that <strong>the surest way to be accurate is simply to answer honestly</strong>: telling us what you truly believe gives you the best chance of earning it. (Full details of how this works are available on request at the end.)</p>
+    <p class="lead" style="margin-top:10px;">These are not just for our records: your answers can earn you a <strong>belief payment of up to £${maxBeliefBonus}</strong>, on top of your other earnings — and <strong>the more accurate your beliefs, the more you are likely to earn.</strong></p>
+    <p class="lead" style="margin-top:10px;">At the end, we pick <strong>one of these answers at random</strong> and pay this belief payment on that one alone. Every answer is equally likely to be picked, so each one counts.</p>
+    <p class="lead" style="margin-top:10px;">This payment is set up so that <strong>the surest way to be accurate is simply to answer honestly</strong>: telling us what you truly believe gives you the best chance of earning it. (Full details of how this works are available on request at the end.)</p>
     <p class="lead" style="margin-top:10px;">Let us begin with your first belief question.</p>
 
     <div class="m-row-end"><button class="m-btn" onclick="showScreen('scoreAndBelief')">Continue →</button></div>`;
@@ -2761,7 +2764,7 @@ SCREENS.scoreAndBelief = () => {
         <div class="quiz-score-sub">questions correct</div>
       </div>
       <p class="lead" style="margin-top:16px;">Take a moment to think about how your score may compare with the scores of the other participants.</p>
-      <p class="lead reminder-note reminder-plain" style="margin-top:14px;">Remember: this belief, along with the ones you will give later, could be randomly selected for payment, earning you up to <strong>$${maxBeliefBonus}</strong> — and the more accurate it is, the more you are likely to earn. The bonus is set up so that the surest way to be accurate is simply to answer honestly.</p>
+      <p class="lead reminder-note reminder-plain" style="margin-top:14px;">Remember: this belief, along with the ones you will give later, could be randomly selected for payment, earning you up to <strong>£${maxBeliefBonus}</strong> — and the more accurate it is, the more you are likely to earn. This payment is set up so that the surest way to be accurate is simply to answer honestly.</p>
       ${renderPriorBeliefWidget()}
     </div>`;
   initPriorBeliefWidget();
@@ -2792,7 +2795,7 @@ SCREENS.mTask = () => {
   container.innerHTML = `
     <h2 class="m-h1">Bonuses from a manager</h2>
 
-    <p class="lead">You will now go through <strong>4 rounds</strong>. In each round you will receive <strong>50 bonuses</strong>. Each bonus is either <strong>green (worth 5¢)</strong> or <strong>red (worth 0¢)</strong>.</p>
+    <p class="lead">You will now go through <strong>4 rounds</strong>. In each round you will receive <strong>50 bonuses</strong>. Each bonus is either <strong>green (worth 5p)</strong> or <strong>red (worth 0p)</strong>.</p>
 
     <p class="lead" style="margin-top:8px;">You can receive the bonuses in each round from two managers — Alex or Sam.</p>
 
@@ -3047,7 +3050,7 @@ function twoWorldCardHTML(person, perfVal, showNums) {
   return `<div class="tw-card">
     <div class="avatar-c">${avatarSVG(person, 76)}</div>
     <div class="tw-name">${managerName(person)}</div>
-    <input type="range" id="tw-slider-${person}" class="mslider" min="0" max="100" value="${perfVal}" oninput="onTwoWorldChange('${person}', this.value)">
+    <input type="range" id="tw-slider-${person}" class="mslider slider-untouched" min="0" max="100" value="${perfVal}" oninput="onTwoWorldChange('${person}', this.value)" onpointerdown="markThetaTouched()">
     <div class="tw-ends"><span>↻ Random</span><span>Performance ■</span></div>
     <div class="tw-readout" id="tw-readout-${person}">${rd}</div>
   </div>`;
@@ -3060,11 +3063,7 @@ function onTwoWorldChange(person, val) {
   if (os) os.value = 100 - v;
   const r1 = document.getElementById('tw-readout-' + person); if (r1) r1.innerHTML = twReadoutText(v);
   const r2 = document.getElementById('tw-readout-' + other); if (r2) r2.innerHTML = twReadoutText(100 - v);
-  if (!window._thetaTouched) {
-    window._thetaTouched = true;
-    const nav = document.getElementById('beliefs-nav');
-    if (nav) nav.style.display = '';
-  }
+  markThetaTouched();
 }
 
 // Set 1: free selection — participant picks their starting manager.
@@ -3172,8 +3171,8 @@ function showSwitchChoiceScreen() {
     <p class="lead">You can now choose your manager for the next round of bonuses.</p>
     <p class="lead" style="margin-top:8px;">Expected bonuses next round (given your current belief):</p>
     <ul class="expected-pay-list">
-      <li>from <strong>${managerName(currentMgr)}</strong>: <strong>${greensCur} of ${nSignals}</strong> green &rarr; <strong>$${dollarsCur}</strong></li>
-      <li>from <strong>${managerName(otherMgr)}</strong>: <strong>${greensOth} of ${nSignals}</strong> green &rarr; <strong>$${dollarsOth}</strong></li>
+      <li>from <strong>${managerName(currentMgr)}</strong>: <strong>${greensCur} of ${nSignals}</strong> green &rarr; <strong>£${dollarsCur}</strong></li>
+      <li>from <strong>${managerName(otherMgr)}</strong>: <strong>${greensOth} of ${nSignals}</strong> green &rarr; <strong>£${dollarsOth}</strong></li>
     </ul>
     <p class="lead" style="margin-top:8px;">Do you want to stay with ${managerName(currentMgr)} or switch to ${managerName(otherMgr)}?</p>
     <div class="choice-row">
@@ -3460,7 +3459,7 @@ function renderRoundCombined() {
   container.innerHTML = `
     <div class="eyebrow">Round ${idx + 1} of ${CONFIG.blocks.length}</div>
 
-    <div class="round-header" style="display:flex;align-items:flex-start;gap:18px;">
+    <div class="round-header" id="round-current-beliefs" style="display:flex;align-items:flex-start;gap:18px;">
       <div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;">
         <div class="avatar-c">${avatarSVG(mgr, 64)}</div>
         <div class="round-header-name" style="margin-top:6px;">${name}</div>
@@ -3545,18 +3544,22 @@ function roundShowBeliefs() {
   const name = managerName(mgr);
   const { prevTheta, prevGamma } = prevBeliefsFor(mgr);
 
-  // Round 1 is the first θ elicitation: force a slider touch before Submit shows
-  // and keep numeric readouts blank (no 50/50 anchor). Later rounds start from
-  // the previously elicited belief, with readouts shown and Submit available.
+  // v2: every round requires a deliberate touch on BOTH belief sliders (confirm or
+  // change) before Submit appears — the thumb stays on the prior belief so a real
+  // "no change" is a one-click confirm, not a lazy default. Round 1 still hides the
+  // θ numeric readout (no 50/50 anchor) until first engagement.
   const isFirstTheta = STATE.rounds.length === 0;
-  window._thetaTouched = !isFirstTheta;
+  window._thetaTouched = false;
+  window._gammaTouched = false;
   const initTheta = isFirstTheta ? 50 : prevTheta;
   const showNums = !isFirstTheta;
-  const navStyle = isFirstTheta ? 'display:none;' : '';
+  const navStyle = 'display:none;';
   const perfOf = {};
   perfOf[mgr] = initTheta;
   perfOf[otherManager(mgr)] = 100 - initTheta;
   const startGamma = prevGamma;
+  blockData.priorTheta = initTheta;    // going-in θ about the current manager (50 in round 1)
+  blockData.priorGamma = startGamma;   // going-in γ
 
   const mgrSection = `
       <div class="belief-section">
@@ -3570,32 +3573,69 @@ function roundShowBeliefs() {
       <div class="belief-section">
         <div class="belief-section-h">Your quiz performance</div>
         <div class="mq-label">Out of the 100 Prolific participants, how many do you expect to beat on the shared questions?</div>
-        <div class="grid-c">${beliefGridSVG(startGamma)}</div>
         <div class="gamma-slider-wrap">
-          <input type="range" id="gamma-round-slider" class="mslider" min="0" max="100" value="${startGamma}" oninput="onRoundGammaChange(this.value)">
+          <input type="range" id="gamma-round-slider" class="mslider slider-untouched" min="0" max="100" value="${startGamma}" oninput="onRoundGammaChange(this.value)" onpointerdown="markGammaTouched()">
         </div>
         <div class="mval">I expect to beat <strong><span id="gamma-round-val">${startGamma}</span></strong> out of 100.</div>
+        <div class="grid-c">${beliefGridSVG(startGamma)}</div>
       </div>`;
   const colsInner = STATE.mgrBeliefLeft ? (mgrSection + quizSection) : (quizSection + mgrSection);
 
   document.getElementById('r1-next-wrap').style.display = 'none';
+  // Drop the "Your current beliefs" banner once the sliders reveal — it is redundant
+  // with the sliders (which start on the prior) and frees space so the bonuses +
+  // sliders sit together. The "What to expect" cards stay.
+  const cb = document.getElementById('round-current-beliefs'); if (cb) cb.style.display = 'none';
   const area = document.getElementById('r1-belief-area');
   const beliefBonusMax = CONFIG.beliefBonusMax.toFixed(0);
   area.innerHTML = `
-    <h2 class="m-h2-umbrella">How do these bonuses affect your beliefs about ${name}'s type and your quiz performance?</h2>
-    <p style="font-size:0.95rem;color:#374151;margin:0 0 10px;">Use the sliders below to adjust your beliefs about ${name}'s type and your quiz performance. <strong>Remember, these two beliefs are related.</strong> The more likely you think ${name} is a Performance Manager based on the bonuses you just received, the more those bonuses should inform your beliefs about your quiz performance.</p>
-    <div class="callout-attention"><strong>Please take your time to think carefully about your answers.</strong> You will have a higher chance of winning the <strong>$${beliefBonusMax}</strong> belief payment if you provide the most accurate beliefs.</div>
+    <h2 class="m-h2-umbrella">How do these bonuses affect your beliefs?</h2>
+    <p style="font-size:0.95rem;color:#374151;margin:0 0 10px;"><strong>Remember,</strong> the more likely you think ${name} is a Performance Manager, the more those bonuses should inform your beliefs about your quiz performance.</p>
+    <div class="callout-attention"><strong>Please take your time to think carefully about your answers.</strong> You will have a higher chance of winning the <strong>£${beliefBonusMax}</strong> belief payment if you provide the most accurate beliefs.</div>
     <div class="belief-cols">${colsInner}</div>
     <div class="m-row-end" id="beliefs-nav" style="${navStyle}"><button class="m-btn" onclick="submitBlockBeliefs()">Submit</button></div>`;
   area.style.display = '';
-  onRoundGammaChange(startGamma);
+  updateGammaReadout(startGamma);   // init only — does NOT mark the slider as touched
 }
 
-// Update gamma readout + fill the belief grid
-function onRoundGammaChange(val) {
+// Update gamma readout + fill the belief grid (init/no-touch version)
+function updateGammaReadout(val) {
   const v = parseInt(val);
   const e = document.getElementById('gamma-round-val'); if (e) e.textContent = v;
   updateBeliefGrid(v);
+}
+// User moved the performance slider
+function onRoundGammaChange(val) {
+  updateGammaReadout(val);
+  markGammaTouched();
+}
+// ---- v2: require a deliberate touch on BOTH belief sliders before Submit ----
+// Confirm-in-place (touching a slider without changing its value) is caught via
+// onpointerdown, so a genuine "no change" still counts as engagement.
+function markThetaTouched() {
+  if (!window._thetaTouched) {
+    window._thetaTouched = true;
+    const mgr = window._pendingRound && window._pendingRound.manager;
+    const s = mgr && document.getElementById('tw-slider-' + mgr);
+    if (s) {   // reveal readouts + un-gray both pegged sliders on first engagement
+      const v = parseInt(s.value), oth = otherManager(mgr);
+      const r1 = document.getElementById('tw-readout-' + mgr); if (r1) r1.innerHTML = twReadoutText(v);
+      const r2 = document.getElementById('tw-readout-' + oth); if (r2) r2.innerHTML = twReadoutText(100 - v);
+      [mgr, oth].forEach(m => { const el = document.getElementById('tw-slider-' + m); if (el) el.classList.remove('slider-untouched'); });
+    }
+  }
+  maybeShowBeliefsNav();
+}
+function markGammaTouched() {
+  window._gammaTouched = true;
+  const g = document.getElementById('gamma-round-slider'); if (g) g.classList.remove('slider-untouched');
+  maybeShowBeliefsNav();
+}
+function maybeShowBeliefsNav() {
+  if (window._thetaTouched && window._gammaTouched) {
+    const nav = document.getElementById('beliefs-nav');
+    if (nav) nav.style.display = '';
+  }
 }
 
 // Submit beliefs → record block → advance to next block (or finish).
@@ -3605,6 +3645,10 @@ function submitBlockBeliefs() {
   // beliefTheta = P(chosen manager = Performance) — read from that face's slider.
   blockData.beliefTheta = parseInt(document.getElementById('tw-slider-' + blockData.manager).value);
   blockData.beliefGamma = parseInt(document.getElementById('gamma-round-slider').value);
+  // v2: with both sliders now requiring a deliberate touch, a "no change" is a real
+  // confirm — record whether each belief was changed vs confirmed-in-place.
+  blockData.thetaChanged = (blockData.beliefTheta !== blockData.priorTheta) ? 1 : 0;
+  blockData.gammaChanged = (blockData.beliefGamma !== blockData.priorGamma) ? 1 : 0;
   blockData.tsBeliefsSubmit = Date.now();
   STATE.rounds.push(blockData);
 
@@ -4095,20 +4139,20 @@ SCREENS.results = () => {
   container.innerHTML = `
     <h2 class="m-h1">Payment</h2>
 
-    <p><strong>${paidRoundLabel}</strong> was randomly selected for the bonus payment. In ${paidRoundLabel} you got <strong>${paidGreens} of ${paidSignals}</strong> green bonuses. Each green is worth <strong>${payCents}¢</strong>, so your bonus pay is <strong>${paidGreens} × ${payCents}¢ = $${STATE.outcomeEarnings.toFixed(2)}</strong>.</p>
+    <p><strong>${paidRoundLabel}</strong> was randomly selected for the bonus payment. In ${paidRoundLabel} you got <strong>${paidGreens} of ${paidSignals}</strong> green bonuses. Each green is worth <strong>${payCents}p</strong>, so your bonus pay is <strong>${paidGreens} × ${payCents}p = £${STATE.outcomeEarnings.toFixed(2)}</strong>.</p>
 
     <div class="results-section">
       <h3>Payment Breakdown</h3>
-      <div class="payment-line"><span>Show-up fee</span><span>$${CONFIG.showUpFee.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Bonus pay (${paidRoundLabel})</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Show-up fee</span><span>£${CONFIG.showUpFee.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Bonus pay (${paidRoundLabel})</span><span>£${STATE.outcomeEarnings.toFixed(2)}</span></div>
       <div class="payment-line">
         <span>Belief payment (${beliefLabel}) <a href="#" id="belief-details-toggle" onclick="toggleBeliefDetails(event)" style="color:#2563eb;text-decoration:underline;font-size:0.92rem;margin-left:6px;">Show details</a></span>
-        <span>$${STATE.beliefBonus_amount.toFixed(2)}</span>
+        <span>£${STATE.beliefBonus_amount.toFixed(2)}</span>
       </div>
       <div id="belief-details-panel" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin:8px 0 14px;font-size:.94rem;color:#334155;line-height:1.55;">
         ${beliefPaymentDetailsHTML()}
       </div>
-      <div class="payment-total"><span>Total payment</span><span>$${STATE.totalBonus.toFixed(2)}</span></div>
+      <div class="payment-total"><span>Total payment</span><span>£${STATE.totalBonus.toFixed(2)}</span></div>
     </div>
 
     <p>The program will calculate your payment and credit it to your Prolific account within five business days.</p>
@@ -4145,9 +4189,9 @@ function beliefPaymentDetailsHTML() {
   const draw = STATE.beliefBonus_draw;
   const wp = STATE.beliefBonus_winProb;
   const drawLine = (draw != null && wp != null)
-    ? `The computer drew a random number between 0 and 1. Result: <strong>${drawStr}</strong> → since ${drawStr} ${won ? '&lt;' : '&gt;'} ${winProbStr}, <strong>you ${won ? 'won' : 'did not win'} the $${prizeAmt} prize.</strong>`
+    ? `The computer drew a random number between 0 and 1. Result: <strong>${drawStr}</strong> → since ${drawStr} ${won ? '&lt;' : '&gt;'} ${winProbStr}, <strong>you ${won ? 'won' : 'did not win'} the £${prizeAmt} belief payment.</strong>`
     : '';
-  const footer = `<p style="margin:10px 0 0;font-style:italic;color:#475569;">This rule is designed so that stating your honest belief maximizes your chance of earning the bonus.</p>`;
+  const footer = `<p style="margin:10px 0 0;font-style:italic;color:#475569;">This rule is designed so that stating your honest belief maximises your chance of earning the belief payment.</p>`;
 
   // Three cases by belief type:
   //   (a) initial μ          → performance belief about γ
@@ -4166,7 +4210,7 @@ function beliefPaymentDetailsHTML() {
     return `
       <p style="margin:0 0 6px;"><strong>Selected belief:</strong> At the start of the study, you reported that you would beat <strong>${mu} out of 100</strong> other Prolific participants.</p>
       <p style="margin:0 0 6px;"><strong>What actually happened:</strong> We randomly drew one of the 100 reference participants. They scored <strong>${oppScore} out of 6</strong> on the shared questions. Your score was <strong>${myScore} out of 6</strong>. You <strong>${beat ? 'beat' : 'did not beat'}</strong> them.</p>
-      <p style="margin:0 0 6px;">Because the event ${beat ? 'happened' : 'did not happen'}, your chance of winning the $${prizeAmt} prize was set to <strong>${formula}</strong> (about ${winProbPct}%).</p>
+      <p style="margin:0 0 6px;">Because the event ${beat ? 'happened' : 'did not happen'}, your chance of winning the £${prizeAmt} belief payment was set to <strong>${formula}</strong> (about ${winProbPct}%).</p>
       <p style="margin:0;">${drawLine}</p>
       ${footer}`;
   }
@@ -4185,7 +4229,7 @@ function beliefPaymentDetailsHTML() {
     return `
       <p style="margin:0 0 6px;"><strong>Selected belief:</strong> In Round ${r.roundNum}, you reported a <strong>${belief}% chance</strong> that ${mgrNm} was the Performance Manager.</p>
       <p style="margin:0 0 6px;"><strong>What actually happened:</strong> ${mgrNm} <strong>${wasPerf ? 'was' : 'was not'}</strong> the Performance Manager.</p>
-      <p style="margin:0 0 6px;">Because the event ${wasPerf ? 'happened' : 'did not happen'}, your chance of winning the $${prizeAmt} prize was set to <strong>${formula}</strong> (about ${winProbPct}%).</p>
+      <p style="margin:0 0 6px;">Because the event ${wasPerf ? 'happened' : 'did not happen'}, your chance of winning the £${prizeAmt} belief payment was set to <strong>${formula}</strong> (about ${winProbPct}%).</p>
       <p style="margin:0;">${drawLine}</p>
       ${footer}`;
   }
@@ -4202,7 +4246,7 @@ function beliefPaymentDetailsHTML() {
   return `
     <p style="margin:0 0 6px;"><strong>Selected belief:</strong> In Round ${r.roundNum}, you reported that you would beat <strong>${belief} out of 100</strong> other Prolific participants.</p>
     <p style="margin:0 0 6px;"><strong>What actually happened:</strong> We randomly drew one of the 100 reference participants. They scored <strong>${oppScore} out of 6</strong> on the shared questions. Your score was <strong>${myScore} out of 6</strong>. You <strong>${beat ? 'beat' : 'did not beat'}</strong> them.</p>
-    <p style="margin:0 0 6px;">Because the event ${beat ? 'happened' : 'did not happen'}, your chance of winning the $${prizeAmt} prize was set to <strong>${formula}</strong> (about ${winProbPct}%).</p>
+    <p style="margin:0 0 6px;">Because the event ${beat ? 'happened' : 'did not happen'}, your chance of winning the £${prizeAmt} belief payment was set to <strong>${formula}</strong> (about ${winProbPct}%).</p>
     <p style="margin:0;">${drawLine}</p>
     ${footer}`;
 }
@@ -4485,6 +4529,8 @@ async function submitData() {
       transferred: rd.transferred, outcomes: rd.outcomes, opponentScores: rd.opponentScores,
       hCount: rd.hCount, earnings: rd.earnings,
       beliefTheta: rd.beliefTheta, beliefGamma: rd.beliefGamma,
+      priorTheta: rd.priorTheta, priorGamma: rd.priorGamma,
+      thetaChanged: rd.thetaChanged, gammaChanged: rd.gammaChanged,
       tsRoundStart: rd.tsRoundStart, tsFeedbackShown: rd.tsFeedbackShown,
       tsBeliefsShown: rd.tsBeliefsShown, tsBeliefsSubmit: rd.tsBeliefsSubmit,
       tsChoiceMade: rd.tsChoiceMade,
