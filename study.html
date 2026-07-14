@@ -746,7 +746,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbz_BLiDdGWnydKPgL6hnBiyYM-KIpRh6t3sKuWw783hT84mIXNQXzbkzUGtUwZAHEP_/exec',
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbwPM4ZuRbm4ICjlzihJnEnp6TvaHWRyLFvux7ZrNwnElzpFmy8TpmCODlyxFnkOf08urw/exec',
 
   // ---- Post-quiz block structure (manager task) ----
   // Each entry is one feedback "set". choiceBefore:
@@ -777,12 +777,15 @@ const CONFIG = {
   // sample on the Study 2 quiz (12 questions: 4 shared + 8 condition-specific).
   // Each entry is a score (number of correct answers out of 12).
   // γ* = fraction of reference scores strictly lower + 0.5 × fraction equal.
-  // Reference = observed shared-6 scores from the UK pilot (N=97, pilot_ej_UK, 2026-07-13),
-  // replacing the earlier low-scoring synthetic pool that inflated γ* (median score 3 → γ*≈60,
-  // making the UK sample look underconfident). UK self-distribution puts score 3 at γ*=50.
-  // Shared-score counts 0..6: [1,12,23,25,23,9,4].
+  // Reference = observed shared-6 scores POOLED across BOTH UK pilots (N=198:
+  // pilot_3_UK N=97 + pilot_4_UK N=101, 2026-07-14), a more representative reference
+  // pool than either alone. Pooled counts 0..6: [2,30,54,54,32,19,7]; γ* map by score:
+  // 0.5 / 8.6 / 29.8 / 57.1 / 78.8 / 91.7 / 98.2. Pilot_4 scored lower than pilot_3, so
+  // pooling raises γ* for middle scores (score 3: 50→57). Net composition on the two UK
+  // samples under this pool: OC share ≈ 0.47, belief−γ* gap ≈ −2.6, Easy→OC ≈ +0.31
+  // (near-balanced, strong first stage). (Was: pilot_3-only N=97 [1,12,23,25,23,9,4].)
   study1ScoresShared: [
-    0,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,6,6,6,6
+    0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6
   ],
 
   // ---- Quiz questions ----
@@ -1465,6 +1468,9 @@ const STATE = {
   mgrBeliefLeft: null,     // Treatment: true → manager-type belief on the LEFT panel of
                            // the belief page (quiz on right); false → manager-type on the
                            // RIGHT (quiz on left). Randomized once per session.
+  coachingThetaFirst: null,// Treatment: true → the prior-θ recall paragraph is shown BEFORE
+                           // the two conditionals in the round coaching; false → AFTER.
+                           // Randomized once per session (between-subject order test).
   clarityFeedback: '',     // Free-text from the Round-1 clarity-check page (optional).
   clarityComprehension: null,        // Selected item qids on the final passing submission.
   clarityComprehensionCorrect: null, // Whether the final submission was all-correct (always true at completion).
@@ -3457,6 +3463,17 @@ function renderRoundCombined() {
   const perfExpected = Math.round(prevGamma * nSignals / 100);
   const randExpected = Math.round(green * nSignals / 100);
 
+  // Round 1: the manager-type prior is INDUCED 50/50 (not elicited), so present it as a
+  // starting point ("unknown so far"), not the participant's belief. Rounds 2+: their
+  // elicited current beliefs. (The quiz-performance belief IS elicited in every round.)
+  const isR1 = idx === 0;
+  const beliefsHeader = isR1 ? `Where you stand going into Round 1:` : `Your current beliefs:`;
+  const typeLi = isR1
+    ? `<li><strong>${name}'s type:</strong> unknown so far — a 50% chance of Performance, 50% chance of Random</li>`
+    : `<li><strong>${name}'s type:</strong> ${theta}% Performance / ${100 - theta}% Random</li>`;
+  const quizLi = isR1
+    ? `<li><strong>Your quiz-performance belief:</strong> beat ${prevGamma} of 100 participants</li>`
+    : `<li><strong>Quiz performance:</strong> You expect to beat ${prevGamma} of 100 participants</li>`;
   container.innerHTML = `
     <div class="eyebrow">Round ${idx + 1} of ${CONFIG.blocks.length}</div>
 
@@ -3466,10 +3483,10 @@ function renderRoundCombined() {
         <div class="round-header-name" style="margin-top:6px;">${name}</div>
       </div>
       <div style="flex:1 1 0;min-width:0;font-size:0.92rem;line-height:1.55;color:#374151;">
-        <div style="font-weight:600;margin-bottom:4px;">Your current beliefs:</div>
+        <div style="font-weight:600;margin-bottom:4px;">${beliefsHeader}</div>
         <ul style="margin:0;padding-left:20px;">
-          <li><strong>${name}'s type:</strong> ${theta}% Performance / ${100 - theta}% Random</li>
-          <li><strong>Quiz performance:</strong> You expect to beat ${prevGamma} of 100 participants</li>
+          ${typeLi}
+          ${quizLi}
         </ul>
       </div>
     </div>
@@ -3591,18 +3608,31 @@ function roundShowBeliefs() {
   // sliders sit together. The "What to expect" cards stay.
   const cb = document.getElementById('round-current-beliefs'); if (cb) cb.style.display = 'none';
   const area = document.getElementById('r1-belief-area');
-  // Computed reminder: greens expressed on the /100 belief scale, and whether that implied
-  // beat-rate is slightly / plainly / substantially higher or lower than the going-in belief
-  // (thresholds 10 / 20). Compared against startGamma (= belief entering the round).
+  // pilot_5 coaching: two conditionals (Random -> keep belief; Performance -> revise it),
+  // with the revision magnitude from the gap between the signal-implied beat rate and the
+  // going-in belief, adImp = |xxImplied - startGamma|: >15 substantially, 5-15 (plain) revise,
+  // <5 slightly. Prior theta (initTheta) recalled AFTER the two conditionals.
   const nSig = blockData.signals;
   const xxImplied = Math.round((blockData.hCount / nSig) * 100);
   const dImp = xxImplied - startGamma, adImp = Math.abs(dImp);
-  const midImp = dImp === 0
-    ? 'which is <strong>about the same as</strong> your current quiz performance beliefs'
-    : `which is <strong>${adImp < 10 ? 'slightly ' : (adImp < 20 ? '' : 'substantially ')}${dImp > 0 ? 'higher' : 'lower'}</strong> than your current quiz performance beliefs`;
+  const magWord = adImp > 15 ? 'substantially ' : (adImp >= 5 ? '' : 'slightly ');
+  const perfClause = adImp === 0
+    ? `these bonuses are in line with your current belief of beating ${startGamma} out of 100 Prolific participants`
+    : `these bonuses suggest that you beat <strong>${magWord}${dImp > 0 ? 'more' : 'less'}</strong> than ${startGamma} out of 100 Prolific participants`;
+  // Round 1: manager-type prior is INDUCED 50/50 (not elicited) -> state it objectively
+  // ("there was a 50% chance"), not as the participant's belief. Rounds 2+: recall their
+  // own elicited prior theta ("you thought there was...").
+  const thetaRecall = isFirstTheta
+    ? `Going into this round there was a <strong>50% chance</strong> ${name} is a Performance Manager and a <strong>50% chance</strong> ${name} is a Random Manager.`
+    : `Going into this round you thought there was a <strong>${initTheta}% chance</strong> ${name} is a Performance Manager and a <strong>${100 - initTheta}% chance</strong> ${name} is a Random Manager.`;
+  const condPara  = `<p style="font-size:0.95rem;color:#374151;margin:0 0 10px;">If ${name} is the Random Manager, you should stick to your quiz performance belief of beating <strong>${startGamma} out of 100</strong> Prolific participants. If ${name} is the Performance Manager, ${perfClause}.</p>`;
+  const thetaPara = `<p style="font-size:0.95rem;color:#374151;margin:0 0 10px;">${thetaRecall}</p>`;
+  // TREATMENT (coachingThetaFirst): randomize whether the prior-θ recall comes BEFORE the two
+  // conditionals (true) or AFTER them (false). Between-subject, fixed per participant.
+  const coachParas = STATE.coachingThetaFirst ? (thetaPara + condPara) : (condPara + thetaPara);
   area.innerHTML = `
     <h2 class="m-h2-umbrella">How do these bonuses affect your beliefs about your quiz performance and ${name}'s type?</h2>
-    <p style="font-size:0.95rem;color:#374151;margin:0 0 10px;">If ${name} is the Random Manager, these bonuses provide no information. If ${name} is the Performance Manager, these bonuses mean that (in expectation) you would beat <strong>${xxImplied} out of 100</strong> participants, ${midImp}. The more likely you think ${name} is the Performance Manager, the more you should update your quiz performance beliefs in this direction.</p>
+    ${coachParas}
     <div class="callout-attention"><strong>Please take your time to think carefully about your answers.</strong> You will have a higher chance of winning the belief payment if you provide the most accurate beliefs.</div>
     <div class="belief-cols">${colsInner}</div>
     <div class="m-row-end" id="beliefs-nav" style="${navStyle}"><button class="m-btn" onclick="submitBlockBeliefs()">Submit</button></div>`;
@@ -4403,6 +4433,7 @@ async function submitData() {
     name_order: STATE.nameOrder ? STATE.nameOrder.join(',') : null,
     takeaway_type_first: STATE.takeawayTypeFirst ? 1 : 0,
     mgr_belief_left: STATE.mgrBeliefLeft ? 1 : 0,
+    coaching_theta_first: STATE.coachingThetaFirst ? 1 : 0,
 
     // ===== Sample question (pre-quiz practice; pre-treatment screen) =====
     sample_question_selected: STATE.sampleQuestionSelected,
@@ -4870,6 +4901,7 @@ function init() {
   STATE.nameOrder = Math.random() < 0.5 ? ['alex', 'sam'] : ['sam', 'alex'];
   STATE.takeawayTypeFirst = Math.random() < 0.5; // counterbalance Round-1 takeaway order
   STATE.mgrBeliefLeft = Math.random() < 0.5;     // treatment: manager-type belief left vs right panel
+  STATE.coachingThetaFirst = Math.random() < 0.5; // treatment: coaching prior-θ recall before (true) vs after (false) the conditionals
   if (isMobileDevice()) {
     showMobileBlocked();
     return;
