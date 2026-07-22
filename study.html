@@ -749,7 +749,7 @@ const CONFIG = {
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzAdCgEYiT-3d4FjkujgpYuJOWm0v2WZrHZoxk8YmEQytu2Ny3ozkZDyD3XvLz-xP1h/exec',
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbzcngKc7vAe0fYidOvaATtUKj3wmy4v437p50vrqgB4GQerGUH5czd-_AaDBbjuM1Bw/exec',
 
   // ---- Post-quiz block structure (manager task) ----
   // Each entry is one feedback "set". choiceBefore:
@@ -3564,23 +3564,69 @@ function selectSwitch(c) {
   const btn = document.getElementById('switch-continue-btn');
   if (btn) btn.disabled = false;
 }
-function confirmSwitch() {
-  makeSwitchChoice(window._switchChoice === 'switch');
+async function confirmSwitch() {
+  const btn = document.getElementById('switch-continue-btn');
+  if (btn) btn.disabled = true;   // prevent double-submit during the branch fetch
+  await makeSwitchChoice(window._switchChoice === 'switch');
 }
 
-function makeSwitchChoice(switched) {
+// Signed-bias stratum for branch randomization. Bins of (μ − γ*) at −20/0/+20:
+// sb1 strong-UC (≤−20), sb2 mild-UC (−20,0], sb3 mild-OC (0,+20], sb4 strong-OC (>+20).
+// The 0 boundary preserves the OC/UC split exactly. 'sbNA' if μ or γ* not yet set.
+function signedBiasBin() {
+  const mu = STATE.initialMu, gs = STATE.gammaStar;
+  if (mu == null || gs == null) return 'sbNA';
+  const sb = mu - gs;
+  if (sb <= -20) return 'sb1';
+  if (sb <=  0)  return 'sb2';
+  if (sb <=  20) return 'sb3';
+  return 'sb4';
+}
+
+// Branch (implemented vs random): drawn by server-side permuted blocks within
+// (signed-bias stratum × decision-round), so implemented/random is balanced within
+// each OC/UC stratum. Idempotent per (pid, round); Math.random() is the offline
+// fallback. Returns { branch, source, stratum }.
+async function fetchBranch(round) {
+  const bin = signedBiasBin();
+  if (CONFIG.googleSheetsURL && STATE.prolificPid && bin !== 'sbNA') {
+    const url = CONFIG.googleSheetsURL
+      + '?action=branch'
+      + '&stratum=' + encodeURIComponent(bin)
+      + '&round='   + encodeURIComponent(round)
+      + '&pid='     + encodeURIComponent(STATE.prolificPid);
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+        const data = await resp.json();
+        if (data && (data.branch === 'implemented' || data.branch === 'random'))
+          return { branch: data.branch, source: 'server', stratum: bin };
+      } catch (err) { /* retry, then fall through to offline fallback */ }
+    }
+  }
+  return { branch: (Math.random() < 0.5) ? 'implemented' : 'random', source: 'fallback', stratum: bin };
+}
+
+async function makeSwitchChoice(switched) {
   const prevMgr = STATE.currentManager;
   const chosenMgr = switched ? otherManager(prevMgr) : prevMgr;
-  // 75% implementation (identification design): with prob 1/2 the choice is carried
-  // out; with prob 1/2 the computer assigns one of the two managers at random (equal).
-  // Net P(realized = chosen) = 3/4. Conditional on the choice, the realized manager is
-  // exogenous — the variation used to separate selection from treatment.
-  let realizedMgr, branch;
-  if (Math.random() < 0.5) { realizedMgr = chosenMgr; branch = 'implemented'; }
-  else { realizedMgr = (Math.random() < 0.5) ? 'alex' : 'sam'; branch = 'random'; }
+  // 75% implementation (identification design): branch 'implemented' (prob 1/2) →
+  // realized = chosen; branch 'random' (prob 1/2) → computer assigns one of the two
+  // managers at random (equal). Net P(realized = chosen) = 3/4. The branch is drawn by
+  // fetchBranch — server-side permuted blocks stratified on signed baseline bias ×
+  // round — so implemented/random is balanced within OC/UC strata (Math.random()
+  // fallback). Conditional on the choice, the realized manager is exogenous: the
+  // variation separating selection from treatment.
+  const round = STATE.currentBlockIdx + 1;            // this decision enters round `round`
+  const b = await fetchBranch(round);
+  const branch = b.branch;
+  let realizedMgr;
+  if (branch === 'implemented') { realizedMgr = chosenMgr; }
+  else { realizedMgr = (Math.random() < 0.5) ? 'alex' : 'sam'; }
   const honored = (realizedMgr === chosenMgr);
   STATE.currentManager = realizedMgr;
-  window._switchMeta = { switched, prevMgr, chosenMgr, realizedMgr, branch, honored };
+  window._switchMeta = { switched, prevMgr, chosenMgr, realizedMgr, branch, honored,
+                         branchSource: b.source, branchStratum: b.stratum };
   showSwitchResultReveal();
 }
 
@@ -3613,7 +3659,8 @@ function revealSwitchResult() {
 function proceedAfterSwitchReveal() {
   const m = window._switchMeta;
   renderBlock({ type:'switch', switched:m.switched, prevManager:m.prevMgr,
-    chosenManager:m.chosenMgr, realizedManager:m.realizedMgr, choiceHonored:m.honored, implementBranch:m.branch });
+    chosenManager:m.chosenMgr, realizedManager:m.realizedMgr, choiceHonored:m.honored,
+    implementBranch:m.branch, branchSource:m.branchSource, branchStratum:m.branchStratum });
 }
 
 // Build the block screen scaffold + generate signals.
@@ -4689,9 +4736,9 @@ function terminateStudy(reason) {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prolificPid: STATE.prolificPid,
+        prolific_pid: STATE.prolificPid,
         terminated: 1,
-        terminationReason: reason,
+        termination_reason: reason,
         timestamp: new Date().toISOString(),
       }),
     }).catch(() => {});
@@ -4752,16 +4799,11 @@ async function submitData() {
   const absDelta0    = deltaGamma0 != null ? Math.abs(deltaGamma0) : null;
   const oc           = deltaGamma0 != null ? (deltaGamma0 > 0 ? 1 : 0) : null;
 
-  // switch_after_t / chosen_managertype_belief_t: one per stay/switch decision
-  // (T-1 decisions, after rounds 1..T-1). chosen θ̂ = current θ̂ if stayed,
-  // else 100 - current θ̂ (pegged sliders).
-  const switchAfter = [], chosenTheta = [];
-  for (let i = 0; i < T - 1; i++) {
-    switchAfter[i] = (rounds[i] && rounds[i + 1]) ? ((rounds[i].manager !== rounds[i + 1].manager) ? 1 : 0) : null;
-    chosenTheta[i] = (rounds[i] && rounds[i + 1] && rounds[i].beliefTheta != null)
-      ? (rounds[i].manager === rounds[i + 1].manager ? rounds[i].beliefTheta : 100 - rounds[i].beliefTheta)
-      : null;
-  }
+  // Per-round decision metadata is built below (in the perRoundFields loop) from
+  // rounds[i].choiceInfo — the TRUE stay/switch decision and its 75%-implementation
+  // outcome — never re-derived from the realized-manager path.
+  const perfName = STATE.perfManagerIsAlex ? 'alex' : 'sam';
+  const bin01 = (x) => (x == null ? null : (x ? 1 : 0));
 
   // bias_reduction_t / norm_correction_t: one per round (t = 1..T)
   const biasReduction = [], normCorrection = [];
@@ -4786,10 +4828,31 @@ async function submitData() {
     perRoundFields['bias_reduction_' + t]     = biasReduction[i];
     perRoundFields['norm_correction_' + t]    = normCorrection[i];
   }
-  for (let i = 0; i < T - 1; i++) {
-    const t = i + 1;
-    perRoundFields['switch_after_' + t]              = switchAfter[i];
-    perRoundFields['chosen_managertype_belief_' + t] = chosenTheta[i];
+  // Decision columns, indexed by the round they lead INTO (t = 1..T). Round 1 is
+  // the free round (no decision) → all null. rounds[i].choiceInfo carries the true
+  // decision that entered round i+1.
+  for (let i = 0; i < T; i++) {
+    const t  = i + 1;
+    const ci = r(i).choiceInfo || null;                       // decision entering round t
+    const prevMgr   = i > 0 ? getMgr(i - 1)        : null;
+    const prevTheta = i > 0 ? r(i - 1).beliefTheta : null;    // θ(prev manager = Performance)
+    // θ that the CHOSEN manager is Performance, evaluated at the decision (from the
+    // previous round's θ about its then-current manager; pegged if they switched).
+    let beliefChosenPerf = null;
+    if (ci && ci.chosenManager && prevTheta != null) {
+      beliefChosenPerf = (ci.chosenManager === prevMgr) ? prevTheta : (100 - prevTheta);
+    }
+    perRoundFields['chosen_manager_' + t]             = ci ? (ci.chosenManager   || null) : null;
+    perRoundFields['switched_' + t]                   = ci ? bin01(ci.switched)      : null;
+    perRoundFields['implement_branch_' + t]           = ci ? (ci.implementBranch || null) : null;
+    perRoundFields['implemented_' + t]                = ci ? (ci.implementBranch === 'implemented' ? 1 : 0) : null;
+    perRoundFields['branch_source_' + t]              = ci ? (ci.branchSource || null) : null;   // 'server' (stratified) / 'fallback'
+    perRoundFields['choice_honored_' + t]             = ci ? bin01(ci.choiceHonored) : null;
+    perRoundFields['chosen_is_perf_manager_' + t]     = (ci && ci.chosenManager) ? (ci.chosenManager === perfName ? 1 : 0) : null;
+    perRoundFields['realized_is_perf_manager_' + t]   = getMgr(i) ? (getMgr(i) === perfName ? 1 : 0) : null;
+    perRoundFields['belief_chosen_is_perf_' + t]      = beliefChosenPerf;              // θ(chosen mgr = Performance) at decision
+    // NB: the realized/implemented manager is manager_t, and the belief that it is
+    // the Performance manager is managertype_belief_t — no aliases duplicated here.
   }
 
   // ---- Honeypot helper ----
@@ -4831,10 +4894,12 @@ async function submitData() {
     random_prob_shown: STATE.randomProbShown,       // 0-100
 
     // ===== Beliefs + per-round structure (all 0-100) =====
-    // Dynamically generated for every round: performance_belief_t (t=0 initial μ,
-    // 1..T per round), managertype_belief_t, manager_t, green_count_t,
-    // bias_reduction_t, norm_correction_t; and per decision (1..T-1):
-    // switch_after_t, chosen_managertype_belief_t.
+    // Dynamically generated for every round t=1..T (performance_belief_t [t=0=initial μ],
+    // managertype_belief_t, manager_t, green_count_t, bias_reduction_t, norm_correction_t)
+    // and the decision that entered each round (null for the free round 1):
+    // chosen_manager_t, switched_t, implement_branch_t, implemented_t, choice_honored_t,
+    // chosen_is_perf_manager_t, realized_is_perf_manager_t, belief_chosen_is_perf_t.
+    // (realized/implemented manager = manager_t; θ about it = managertype_belief_t.)
     ...perRoundFields,
     initial_confidence: STATE.initialConfidence,
     initial_kappa: STATE.initialKappa,
@@ -5027,8 +5092,8 @@ function showMobileBlocked() {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prolificPid: new URLSearchParams(window.location.search).get('PROLIFIC_PID') || 'unknown',
-        quizCondition: 'MOBILE_BLOCKED',
+        prolific_pid: new URLSearchParams(window.location.search).get('PROLIFIC_PID') || 'unknown',
+        mobile_blocked: 1,
         timestamp: new Date().toISOString(),
       }),
     }).catch(() => {});
