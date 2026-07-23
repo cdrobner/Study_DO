@@ -567,7 +567,7 @@ strong { font-weight: 600; }
 .mirror .pct { font-size:1.3rem; font-weight:600; margin-top:8px; }
 .mirror .mlbl { font-size:.8rem; color:#9ca3af; }
 .mq { margin:22px 0; }
-.mq-label { font-weight:500; font-size:1.02rem; margin-bottom:14px; }
+.mq-label { font-weight:400; font-size:1.02rem; margin-bottom:14px; line-height:1.5; }
 .mslider { width:100%; -webkit-appearance:none; appearance:none; height:6px; border-radius:3px; background:#e5e7eb; outline:none; }
 .mslider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:24px; height:24px; border-radius:50%; background:#111827; cursor:pointer; border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.2); }
 .mslider::-moz-range-thumb { width:24px; height:24px; border-radius:50%; background:#111827; cursor:pointer; border:3px solid #fff; }
@@ -741,15 +741,20 @@ function svgOverlay(elements) {
 const CONFIG = {
 
   // ---- Prolific settings ----
-  prolificCompletionURL: 'https://app.prolific.com/submissions/complete?cc=C1M5SGFX',
+  // Default/full completion code. Used for normal completions AND for screen-outs —
+  // screen-outs are compensated and register a normal submission (see terminateStudy);
+  // they stay identifiable in the data via terminated == 1.
+  prolificCompletionURL: 'https://app.prolific.com/submissions/complete?cc=C12F5J5G',
 
-  // ---- Prolific SCREEN-OUT (attention-check / eligibility failures) ----
-  // Screen-out completion URL (failed attention checks) from the Prolific study settings.
-  screenOutURL: 'https://app.prolific.com/submissions/complete?cc=C1MXSORU',
+  // ---- Prolific INCOMPATIBLE DEVICE ----
+  // Used when the participant is on a mobile / tablet / small screen and cannot take
+  // part (see showMobileBlocked), so they can register a submission rather than being
+  // stranded with no way to return. Logged via mobile_blocked == 1.
+  incompatibleDeviceURL: 'https://app.prolific.com/submissions/complete?cc=C1C4BPT9',
 
   // ---- Google Sheets endpoint ----
   // After setting up the Google Apps Script, paste the URL here:
-  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxT0midGgc26jGgssRMqlyN_SJBcvEOWAxwU3zmYMlVCuFawIaoVzkNqzFHcpdyKgHAtw/exec',
+  googleSheetsURL: 'https://script.google.com/macros/s/AKfycbxsDIp2piDJBXvxHUZNmKijppPVLIGnUn4tJFcKGJ71asqFXFPw4if6Th--pnQPAkBToA/exec',
 
   // ---- Post-quiz block structure (manager task) ----
   // Each entry is one feedback "set". choiceBefore:
@@ -762,9 +767,43 @@ const CONFIG = {
     { signals: 50, choiceBefore: 'switch' },
     { signals: 50, choiceBefore: 'switch' },
   ],
-  payPerH: 0.05,           // £ per green bonus (5p). One round is randomly selected for payment.
-  showUpFee: 2.00,         // £ flat show-up fee
-  beliefBonusMax: 1.00,    // £ max BSR belief payment for the single randomly-selected belief
+
+  // ---- Diagnosticity hint (shown to ALL participants, rounds 2..T) ----
+  // In every round after the first, the round header translates the participant's OWN
+  // prior-round θ̂ into how informative the bonuses are about their quiz performance.
+  // Bins are inclusive of the upper cutoff: θ ≤ 20 → bin 1, ≤ 40 → bin 2, … else bin 5.
+  // `lead` carries the verb so the middle bin stays grammatical:
+  //   "the bonuses are not informative …" / "the bonuses may or may not be informative …"
+  // Only `label` is bolded on screen.
+  diagHintBins: [
+    { max: 20,  lead: 'to be ', label: 'not informative'               },
+    { max: 40,  lead: 'to be ', label: 'not very informative'          },
+    { max: 60,  lead: '',       label: 'may or may not be informative' },
+    { max: 80,  lead: 'to be ', label: 'informative'                   },
+    { max: 100, lead: 'to be ', label: 'very informative'              },
+  ],
+
+  // Branch stratification: a participant counts as "low comprehension" (cell c1) if they
+  // got MORE than this many of the NINE manager-instruction checks wrong on the first try
+  // (six on the mTypes screen: q1,q2,q5,q6,q3,q4; three on task-intro: tc1,tc2,tc3);
+  // c0 otherwise. All nine are answered before round 1. See branchStratum().
+  branchCompMaxWrong: 2,
+
+  payPerH: 0.05,           // $ per green bonus (5¢). One round is randomly selected for payment.
+  // Pre-randomization screening tolerance (x): the participant may make up to this
+  // many mistakes across the six verifiable pre-randomization questions (study
+  // duration, moon, known-urn, topic-recall, slider-to-4, quiz-payment comprehension)
+  // and still continue; anyone with MORE than this many mistakes is screened out.
+  // Change this one number to loosen/tighten the screen; the logic follows.
+  preRandMaxMistakes: 3,
+  // Participation payment, split into two parts (framed this way in consent + intro):
+  //   preStudyFee: paid for completing the pre-study measurements section
+  //   mainStudyFee: paid for completing the main study
+  // Full completers receive both (preStudyFee + mainStudyFee); the total also appears
+  // on the results screen.
+  preStudyFee: 0.50,       // $ for completing the pre-study measurements
+  mainStudyFee: 1.50,      // $ for completing the main study
+  beliefBonusMax: 1.00,    // $ max BSR belief payment for the single randomly-selected belief
                            // (chosen uniformly from initial μ + all round θ and γ beliefs)
   quizTimePerQuestion: 10, // seconds
   numQuizQuestions: 12,
@@ -1374,11 +1413,11 @@ const CONFIG = {
       title: 'Consent Form',
       pi: 'Yesim Orhun (University of Michigan)',
       coPi: 'Christoph Drobner (Central European University)',
-      body: `You are invited to participate in a study about decision-making. If you agree to be part of the study, you will be asked to make decisions on your computer. The study is expected to take 10&ndash;15 minutes. The study includes attention checks; if you do not follow the instructions for these checks, you may be removed from the study before it is complete. Data collected during the study will be linked only to your Prolific ID, and in no way will it be linked to your name. Therefore, your behavior during this study is completely anonymous.`,
+      body: `You are invited to participate in a study about decision-making. If you agree to be part of the study, you will be asked to make decisions on your computer. The study has two parts: a short set of pre-study measurements at the start, followed by the main study. The study is expected to take 10&ndash;15 minutes. Data collected during the study will be linked only to your Prolific ID, and in no way will it be linked to your name. Therefore, your behavior during this study is completely anonymous.`,
       benefits: `You may not receive any personal benefits from being in this study. However, others may benefit from the knowledge gained from this study.`,
       risks: `This study involves behavioural tasks and does not pose more than minimal risks to you physically, psychologically, and legally.`,
-      // {{MAX_BONUS}} and {{SHOW_UP_FEE}} are filled in at render time from CONFIG.
-      compensation: `You will receive a completion fee of £{{SHOW_UP_FEE}}. In addition, you can earn a bonus of up to £{{MAX_BONUS}} based on your decisions during the study. Further details will be given in the instructions when the study begins.`,
+      // {{MAX_BONUS}} is filled in at render time from CONFIG (computeMaxBonus).
+      compensation: `You will receive $0.50 for completing the pre-study measurements at the start, and $1.50 for completing the main study. In addition, you can earn a bonus of up to \${{MAX_BONUS}} based on your decisions in the main study. The study includes attention checks. If you do not pass the attention checks, you will be removed from the study and only receive the participation payments that apply until that point. Further details will be given in the instructions when the study begins.`,
       voluntary: `Participating in this study is completely voluntary. Even if you decide to participate now, you may change your mind and stop at any time. If you have questions about this study, please contact Christoph Drobner (drobnerc@ceu.edu).`,
       irb: `As part of their review, the University of Michigan Institutional Review Board Health Sciences and Behavioral Sciences has determined that this study is no more than minimal risk and exempt from on-going IRB oversight.`,
       agreement: `Please tick the box below if you attest to being at least 18 years old and agree to take part in the study.`,
@@ -1408,16 +1447,6 @@ const CONFIG = {
       ],
     },
 
-    comprehensionCheckTask: {
-      prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
-      backScreen: 'mTask',
-      items: [
-        { qid: 'rounds50_paid',       text: 'In each round I will see 50 bonuses, and at the end of the study one of the 2 rounds will be randomly selected and I will be paid the bonuses from that round only.', correct: true },
-        { qid: 'green_red_5c',        text: 'Each bonus is either green (worth 5p) or red (worth 0p).', correct: true },
-        { qid: 'switch_during_false', text: 'I can switch managers at any time during a round.', correct: false },
-        { qid: 'between_rounds_switch', text: 'Between rounds, I can decide whether to stay with my current manager or switch to the other one.', correct: true },
-      ],
-    },
 
     comprehensionCheckTypes: {
       prompt: 'Which of the following statements are <strong>true</strong>? (Select all that are true.)',
@@ -1436,7 +1465,7 @@ const CONFIG = {
     urnADescription: `<strong>Urn&nbsp;A</strong> contains 100&nbsp;balls, some are white and some are black. However, you do not know how many balls are white and how many balls are black. Any combination is possible. There might be from 0 to 100 white balls, with the remaining balls being black.`,
     urnBDescription: `<strong>Urn&nbsp;B</strong> contains 100&nbsp;balls as well, but you know that it contains exactly 50&nbsp;white balls and 50&nbsp;black balls.`,
     ambiguityColorPrompt: `Now choose a colour, either <strong>White</strong> or <strong>Black</strong>.`,
-    ambiguityPayoff: `Suppose you win <strong>£100</strong> if you draw a ball of the colour you have selected. If the ball is of the other colour, you win nothing.`,
+    ambiguityPayoff: `Suppose you win <strong>$100</strong> if you draw a ball of the colour you have selected. If the ball is of the other colour, you win nothing.`,
     ambiguityQuestion: `From which urn would you prefer drawing a ball?`,
 
     prolificRedirect: `<strong>Please click the button below to be redirected back to Prolific and register your submission.</strong>`,
@@ -1464,10 +1493,7 @@ const STATE = {
   mgrBeliefLeft: null,     // Treatment: true → manager-type belief on the LEFT panel of
                            // the belief page (quiz on right); false → manager-type on the
                            // RIGHT (quiz on left). Randomized once per session.
-  clarityFeedback: '',     // Free-text from the Round-1 clarity-check page (optional).
-  clarityComprehension: null,        // Selected item qids on the final passing submission.
-  clarityComprehensionCorrect: null, // Whether the final submission was all-correct (always true at completion).
-  // Per-attempt + per-item tracking lives in STATE.comprehensionDetail (filtered by checkId='clarityCheck').
+  // Per-attempt + per-item comprehension tracking lives in STATE.comprehensionDetail.
   // Flat columns derived at submission via extractCheckFlatFields().
 
   // Sample question (pre-quiz practice; recorded as a pre-treatment attention/comprehension screen)
@@ -1514,8 +1540,17 @@ const STATE = {
   screeningMoon: null,        // moon attention-check answer (pass = '0')
   screeningDuration: null,    // consent-comprehension: expected study length (recorded)
   prolificFrequency: null,    // studies/week on Prolific (covariate)
-  attnCheck1Pass: null,       // moon check passed (screen-out only if BOTH checks fail)
-  attnCheck2Pass: null,       // in-instructions check passed (screen-out only if BOTH checks fail)
+  // Six verifiable PRE-RANDOMIZATION checks. The participant may make up to
+  // CONFIG.preRandMaxMistakes mistakes across these six and still continue; more than
+  // that is screened out (see preRandMistakeCount / maybeScreenOutPreRand). Each flag
+  // is null until answered, true = correct, false = mistake.
+  attnCheck1Pass: null,       // moon check (screening)
+  durationCheckPass: null,    // "study takes 10-15 minutes" (screening)
+  attnCheck2Pass: null,       // slider-to-4 (quiz instructions)
+  attnCheck3Pass: null,       // ambiguity known-urn comprehension, first try (pre-study battery)
+  attnCheck4Pass: null,       // topic-recall "which topics did you answer about" (before quiz)
+  quizCompCheckPass: null,    // quiz-payment comprehension, all-correct first try (quiz comprehension)
+  topicCheckSelected: null,   // array of option ids the participant selected on the topic check
 
   // Payment resolution
   selectedPaymentRound: null,
@@ -1541,7 +1576,8 @@ const STATE = {
   // Comprehension check tracking
   comprehensionAttempts: {},  // { checkId: numberOfFailedAttempts }
   comprehensionDetail: [],    // [{ checkId, attempt, timestamp, responses: [{itemIndex, checked, correct, isError}] }]
-  mtypesChecks: {},           // mTypes inline questions: { qid: {firstTryCorrect, attempts} } for q1..q4
+  mtypesChecks: {},           // mTypes inline questions: { qid: {firstTryCorrect, attempts} } for q1..q6
+  taskComp: {},               // Round-1 reveal T/F comprehension: { tc1..tc3: {firstTryCorrect, firstAnswer, attempts} }
 
   // Timestamps
   startTime: null,
@@ -1787,6 +1823,7 @@ function spinnerSVG(greenPct) {
 }
 
 
+
 /* ==============================================================
    BETA DISTRIBUTION HELPERS
    ============================================================== */
@@ -2016,7 +2053,7 @@ function submitPriorBelief() {
   STATE.initialKappa      = kappa;
   STATE.initialAlpha      = alpha;
   STATE.initialBeta       = beta;
-  showScreen('practiceIntro');   // transition → Stage-1 pond warm-up → 'mTypes'
+  showScreen('mainTaskIntro');
 }
 
 /* ==============================================================
@@ -2033,315 +2070,14 @@ function showScreen(name, options = {}) {
 
 const SCREENS = {};
 
-/* ============================================================
-   PRACTICE (Stage-1 warm-up, shown right before the manager task).
-   Self-contained: injects its own namespaced (.pr-*) CSS, keeps its
-   own state (PST), exposes only window.PR. Renders into the study
-   container. Pond pair (ew/ns) drawn independently of Easy/Hard.
-   ============================================================ */
-window.PR = (function(){
-  const CSS = `
-.pr-root{--pr-ink:#1f2937;--pr-muted:#475569;--pr-faint:#94a3b8;--pr-line:#e2e8f0;--pr-green:#16a34a;--pr-red:#dc2626;--pr-blue:#2563eb;--pr-card:#f8fafc;--pr-amber-bg:#fffbeb;--pr-amber-bd:#fcd34d;--pr-amber-tx:#92400e;color:var(--pr-ink);line-height:1.6;max-width:720px;margin:0 auto;}
-.pr-root *{box-sizing:border-box}
-.pr-root .pr-eyebrow{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--pr-faint);font-weight:700;margin-bottom:6px;}
-.pr-root .pr-h1{font-size:1.5rem;margin:.1rem 0 .7rem;}
-.pr-root .pr-h2{font-size:1.24rem;margin:.1rem 0 .7rem;}
-.pr-root h3{font-size:1rem;margin:0 0 8px;}
-.pr-root p{margin:.6rem 0;}
-.pr-root .pr-lead{color:var(--pr-muted);}
-.pr-root ul{color:var(--pr-muted);margin:.5rem 0;padding-left:22px;}
-.pr-root li{margin:3px 0;}
-.pr-root .pr-btn{appearance:none;border:0;border-radius:9px;padding:11px 20px;font-size:.98rem;font-weight:600;cursor:pointer;background:var(--pr-blue);color:#fff;}
-.pr-root .pr-btn:disabled{background:#c7d2e0;cursor:not-allowed;}
-.pr-root .pr-btn.pr-ghost{background:#fff;color:var(--pr-blue);border:1.5px solid var(--pr-blue);}
-.pr-root .pr-btn.pr-ghost.pr-selopt{background:var(--pr-blue);color:#fff;}
-.pr-root .pr-row-end{display:flex;justify-content:flex-end;margin-top:24px;}
-.pr-root .pr-card{background:var(--pr-card);border:1px solid var(--pr-line);border-radius:12px;padding:16px 18px;margin:14px 0;}
-.pr-root .pr-ponds{display:flex;gap:18px;margin:18px 0 6px;}
-.pr-root .pr-pond{flex:1;text-align:center;min-width:0;}
-.pr-root .pr-pond-name{font-weight:700;margin-bottom:6px;color:#334155;}
-.pr-root .pr-pond-fig{position:relative;}
-.pr-root .pr-pond-fig svg{width:100%;height:auto;display:block;}
-.pr-root .pr-pond-pct{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.3rem;font-weight:800;color:#0f172a;white-space:nowrap;}
-.pr-root .pr-sec{margin:18px 0;}
-.pr-root .pr-cols{display:flex;align-items:flex-start;margin:18px 0;}
-.pr-root .pr-cols>.pr-sec{flex:1 1 0;min-width:0;margin:0;padding-right:24px;}
-.pr-root .pr-cols>.pr-sec+.pr-sec{padding-right:0;padding-left:24px;border-left:1px solid #e5e7eb;}
-@media (max-width:640px){.pr-root .pr-cols{display:block;}.pr-root .pr-cols>.pr-sec{padding-right:0;}.pr-root .pr-cols>.pr-sec+.pr-sec{border-left:none;padding-left:0;border-top:1px solid #e5e7eb;padding-top:16px;margin-top:16px;}}
-.pr-root input[type=range]{width:100%;accent-color:var(--pr-blue);}
-.pr-root .pr-ends{display:flex;justify-content:space-between;font-size:.78rem;color:var(--pr-muted);margin-top:2px;}
-.pr-root .pr-readout{text-align:center;font-weight:700;margin-top:6px;}
-.pr-root .pr-mval{text-align:center;margin-top:6px;color:var(--pr-muted);}
-.pr-root .pr-untouched{filter:grayscale(.7);opacity:.55;}
-.pr-root .pr-reflect{background:var(--pr-amber-bg);border:1px solid var(--pr-amber-bd);border-radius:10px;padding:14px 16px;margin:14px 0;color:var(--pr-amber-tx);}
-.pr-root .pr-reflect textarea{width:100%;margin-top:8px;border:1px solid var(--pr-amber-bd);border-radius:8px;padding:8px 10px;font:inherit;min-height:64px;resize:vertical;color:var(--pr-ink);background:#fff;}
-.pr-root .pr-exp2{display:flex;gap:12px;margin:14px 0;}
-.pr-root .pr-ebox{flex:1;border:1px solid var(--pr-line);border-radius:10px;padding:12px 14px;background:var(--pr-card);}`;
-  let cssDone=false;
-  function injectCSS(){ if(cssDone)return; const s=document.createElement('style'); s.textContent=CSS; document.head.appendChild(s); cssDone=true; }
-  const N=50;
-  const COMPS={
-    ew:{ unknown:'West', known:'East', knownRate:42, signals:{unknownMatch:39, knownMatch:21} },
-    ns:{ unknown:'South', known:'North', knownRate:78, signals:{unknownMatch:21, knownMatch:39} },
-  };
-  function shuf(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-  const PST={ comp:null, sigOrder:[], guess:70, si:0, responses:[], onDone:null, _clarity:null, _tT:false,_gT:false,_pending:null,_whyQueue:null,_whyIdx:0,_whyOption:null,_whyAnswer:'' };
-  let app=null;
-  function setProg(p){ if(typeof updateProgress==='function') updateProgress(0.30 + p*0.03); }
-  const cur=()=>COMPS[PST.comp];
-  function pondBlob(){return `<svg viewBox="0 0 240 158" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M34,84 C20,52 56,30 100,34 C148,38 210,28 216,74 C221,110 176,136 116,130 C62,125 46,114 34,84 Z" fill="#eef4f9" stroke="#7c93a8" stroke-width="2.5"/><path d="M60,96 C90,86 150,86 182,96" fill="none" stroke="#c4d4e2" stroke-width="2" stroke-linecap="round"/></svg>`;}
-  function pondCard(name,pctHTML){return `<div class="pr-pond"><div class="pr-pond-name">${name} Pond</div><div class="pr-pond-fig">${pondBlob()}<div class="pr-pond-pct">${pctHTML}</div></div></div>`;}
-  function start(onDone){
-    injectCSS(); PST.onDone=onDone;
-    PST.comp=(Math.random()<0.5?'ew':'ns');
-    PST.sigOrder=shuf(['unknownMatch','knownMatch']);
-    PST.guess=60; PST.si=0; PST.responses=[]; PST._clarity=null;
-    container.innerHTML='<div class="pr-root" id="pr-root"></div>';
-    app=document.getElementById('pr-root'); scrSetup();
-  }
-  function scrSetup(){
-    const c=cur(); setProg(.2);
-    app.innerHTML=`
-      <div class="pr-eyebrow">Practice</div>
-      <h1 class="pr-h1">🐸 A practice task</h1>
-      <p class="pr-lead">This practice will make the main task easier to follow. It is about frogs and ponds.</p>
-      <div class="pr-card">
-        <p style="margin-top:0">A special species of tadpole can grow into either a <strong style="color:var(--pr-green)">green frog</strong> or a <strong style="color:var(--pr-red)">red frog</strong>. Across many ponds, about <strong>60%</strong> become green frogs on average, but this varies from pond to pond — some ponds produce more green frogs, others fewer.</p>
-        <p style="margin-bottom:0">Each pond starts with <strong>100 tadpoles</strong>. You will look at a pair of ponds.</p>
-      </div>
-      <h2 class="pr-h2">The ${c.known} Pond and the ${c.unknown} Pond</h2>
-      <p>Scientists have already studied the <strong>${c.known} Pond</strong>: <strong>${c.knownRate} of 100</strong> tadpoles became green frogs.</p>
-      <p>The <strong>${c.unknown} Pond</strong> has not been studied yet, so you do not yet know how many of its tadpoles became green frogs.</p>
-      <div class="pr-ponds">${pondCard(c.unknown,'<span id="pr-unk">??</span>% green')}${pondCard(c.known, c.knownRate+'% green')}</div>
-      <div class="pr-sec pr-card">
-        <h3>Your initial expectation</h3>
-        <p style="margin-top:0" class="pr-lead">Out of the 100 tadpoles in the ${c.unknown} Pond, what percentage do you think became green frogs?</p>
-        <input type="range" id="pr-pri" class="pr-untouched" min="0" max="100" value="60" oninput="PR.onPri(this.value)" onpointerdown="PR.priT()">
-        <div class="pr-mval"><strong><span id="pr-priv">60</span>%</strong> became green frogs.</div>
-      </div>
-      <div class="pr-row-end"><button class="pr-btn" id="pr-pc" disabled onclick="PR.submitPrior()">Continue →</button></div>`;
-  }
-  function onPri(v){document.getElementById('pr-priv').textContent=v;const w=document.getElementById('pr-unk');if(w)w.textContent=v;priT();}
-  function priT(){document.getElementById('pr-pri').classList.remove('pr-untouched');document.getElementById('pr-pc').disabled=false;}
-  function submitPrior(){ PST.guess=+document.getElementById('pr-pri').value; scrScenarios(); }
-  function scrScenarios(){
-    const c=cur(), g0=PST.guess; PST.si=0; PST._clarity=null; setProg(.4);
-    app.innerHTML=`
-      <div class="pr-eyebrow">Practice · ${c.unknown}–${c.known}</div>
-      <h2 class="pr-h2">50 frogs were drawn from one of the two ponds (you do not know which)</h2>
-      <div class="pr-exp2">
-        <div class="pr-ebox">If they came from the <strong>${c.known} Pond</strong>: you would expect approximately <strong>${c.knownRate}%</strong> of them to be green on average, because we know ${c.knownRate}% of all the frogs in the ${c.known} Pond are green.</div>
-        <div class="pr-ebox">If they came from the <strong>${c.unknown} Pond</strong>: you would expect approximately <strong>${g0}%</strong> of them to be green on average, because that is what you expect for the ${c.unknown} Pond.</div>
-      </div>
-      <p style="margin-bottom:6px">The proportion of green frogs in the sample gives you two clues:</p>
-      <ul style="margin-top:0">
-        <li><strong>Which pond they came from</strong> — the closer the sample proportion is to one pond's rate, the more likely the frogs came from that pond.</li>
-        <li><strong>The ${c.unknown} Pond's green rate</strong> — the sample can update your expectation for the ${c.unknown} Pond, but <strong>only to the extent</strong> the frogs came from the ${c.unknown} Pond. If they came from the ${c.known} Pond, they tell you nothing about the ${c.unknown} Pond.</li>
-      </ul>
-      <div id="pr-clarity">
-        <p style="font-weight:600;margin-bottom:6px">Before we ask you about 2 scenarios, are these instructions clear?</p>
-        <div style="display:flex;gap:10px">
-          <button class="pr-btn pr-ghost" onclick="PR.clarityYes()">Yes, all clear</button>
-          <button class="pr-btn pr-ghost" onclick="PR.clarityNo()">No, I have a question</button>
-        </div>
-        <div id="pr-clbox" style="display:none;margin-top:10px">
-          <textarea id="pr-cltext" style="width:100%;border:1px solid var(--pr-line);border-radius:8px;padding:8px 10px;font:inherit;min-height:56px" placeholder="What is unclear, or what is your question?" oninput="PR.clarityBoxCheck()"></textarea>
-        </div>
-      </div>
-      <div class="pr-row-end" id="pr-revwrap" style="display:none"><button class="pr-btn" id="pr-revbtn" onclick="PR.revealScenario()">1st scenario →</button></div>
-      <div id="pr-scen"></div>`;
-  }
-  function revealScenario(){
-    const c=cur(), g0=PST.guess, count=c.signals[PST.sigOrder[PST.si]], pct=Math.round(count/N*100);
-    setProg(.4 + (PST.si+1)*0.1);
-    document.getElementById('pr-clarity').style.display='none';
-    document.getElementById('pr-revwrap').style.display='none';
-    PST._tT=false; PST._gT=false;
-    // The two belief questions sit side by side, ordered to match the main task's
-    // belief page (STATE.mgrBeliefLeft): pond likelihood is the manager-type (θ)
-    // analog, % green in the unknown pond is the quiz-performance (γ) analog.
-    const secPond = `
-      <div class="pr-sec">
-        <h3>How likely is it that these 50 frogs came from the ${c.unknown} Pond?</h3>
-        <input type="range" id="pr-tw" class="pr-untouched" min="0" max="100" value="50" oninput="PR.onTw(this.value)" onpointerdown="PR.twT()">
-        <div class="pr-ends"><span>Definitely ${c.known} Pond</span><span>Definitely ${c.unknown} Pond</span></div>
-        <div class="pr-readout" id="pr-twr">—</div>
-      </div>`;
-    const secGreen = `
-      <div class="pr-sec">
-        <h3>What percentage of green frogs do you now expect in the ${c.unknown} Pond?</h3>
-        <p class="pr-lead" style="margin:-2px 0 8px;font-size:.86rem">The more likely you think these frogs came from the ${c.unknown} Pond, the more you should move your expectation toward this proportion of frogs.</p>
-        <input type="range" id="pr-wg" class="pr-untouched" min="0" max="100" value="${g0}" oninput="PR.onWg(this.value)" onpointerdown="PR.wgT()">
-        <div class="pr-mval"><strong><span id="pr-wgv">${g0}</span>%</strong> green.</div>
-      </div>`;
-    const cols = STATE.mgrBeliefLeft ? (secPond + secGreen) : (secGreen + secPond);
-    document.getElementById('pr-scen').innerHTML=`
-      <div class="pr-card" style="text-align:center;font-size:1.12rem">Scenario ${PST.si+1} of 2: <strong>What if ${pct}% of the 50 sampled frogs were green?</strong></div>
-      <p style="font-weight:600">Use everything you know so far to answer:</p>
-      <div class="pr-cols">${cols}</div>
-      <div id="pr-reflect"></div>
-      <div class="pr-row-end"><button class="pr-btn" id="pr-sb" disabled onclick="PR.submitSignal()">Submit →</button></div>`;
-    document.getElementById('pr-scen').scrollIntoView({behavior:'smooth',block:'nearest'});
-  }
-  function clarityYes(){ PST._clarity={clear:true,unclear_text:null}; document.getElementById('pr-clarity').style.display='none'; document.getElementById('pr-revwrap').style.display=''; document.getElementById('pr-revbtn').disabled=false; }
-  function clarityNo(){ PST._clarity={clear:false,unclear_text:''}; document.getElementById('pr-clbox').style.display=''; document.getElementById('pr-revwrap').style.display=''; document.getElementById('pr-revbtn').disabled=true; }
-  function clarityBoxCheck(){ const t=document.getElementById('pr-cltext').value.trim(); if(PST._clarity)PST._clarity.unclear_text=t; document.getElementById('pr-revbtn').disabled=!t; }
-  function onTw(v){document.getElementById('pr-twr').innerHTML=`${cur().known} ${100-v}% &nbsp;·&nbsp; ${cur().unknown} ${v}%`;twT();}
-  function twT(){PST._tT=true;document.getElementById('pr-tw').classList.remove('pr-untouched');if(document.getElementById('pr-twr').textContent==='—')onTw(document.getElementById('pr-tw').value);sbnav();}
-  function onWg(v){document.getElementById('pr-wgv').textContent=v;wgT();}
-  function wgT(){PST._gT=true;document.getElementById('pr-wg').classList.remove('pr-untouched');sbnav();}
-  function sbnav(){ if(PST._tT&&PST._gT) document.getElementById('pr-sb').disabled=false; }
-  function checkTriggers(c,g0,count,theta,g1){
-    const f=Math.round(count/N*100), k=c.knownRate, move=Math.abs(g1-g0); const Qs=[];
-    const closerUnknown=Math.abs(f-g0)<=Math.abs(f-k);
-    if(closerUnknown && theta<50) Qs.push({type:'reversed_source', q:`The proportion of green frogs drawn is closer to the <strong>${c.unknown} Pond</strong>'s green frog rate, but you leaned toward the <strong>${c.known} Pond</strong>. Why?`});
-    else if(!closerUnknown && theta>50) Qs.push({type:'reversed_source', q:`The proportion of green frogs drawn is closer to the <strong>${c.known} Pond</strong>'s green frog rate, but you leaned toward the <strong>${c.unknown} Pond</strong>. Why?`});
-    if(move>1 && f!==g0 && Math.sign(g1-g0)!==Math.sign(f-g0)){
-      const greener=f>g0;
-      Qs.push({type:'wrong_direction_gamma', q:`The green frog proportion is <strong>${greener?'higher':'lower'}</strong> than you initially expected for the ${c.unknown} Pond (${f}% vs ${g0}%).<ul style="margin:8px 0;padding-left:20px"><li>If you think these frogs were sampled from the ${c.known} Pond, you would not change your ${c.unknown} Pond expectation.</li><li>If you think these frogs were sampled from the ${c.unknown} Pond, you would <strong>${greener?'increase':'decrease'}</strong> your expectation towards the proportion in the sample.</li></ul><p style="margin:8px 0 0">But your expectation went in the opposite direction. Why?</p>`});
-    }
-    return Qs;
-  }
-  // Confidence + reason battery (elicited once, after the FIRST practice scenario,
-  // before any corrections). CU measure = the 1–7 ratings on the first five
-  // (cu:true) items; the last two (noise/balanced) are aleatory, 'other' is last.
-  const CU_ITEMS = [
-    { key:'setup',     cu:true,  text:"I am not sure I understood the setup correctly" },
-    { key:'approach',  cu:true,  text:"I am not clear about how to approach this problem" },
-    { key:'rationale', cu:true,  text:"My rationale might actually point to a different answer than the one I gave" },
-    { key:'careless',  cu:true,  text:"I didn't work through the problem very carefully" },
-    { key:'shortcut',  cu:true,  text:"I am worried I might have used a mental shortcut, which may not be accurate" },
-    { key:'noise',     cu:false, text:"Even if my reasoning is correct, the draw is noisy, so the true answer is uncertain" },
-    { key:'balanced',  cu:false, text:"The information felt roughly balanced, so my answers could have gone either way" },
-  ];
-  const CU_OTHER = { key:'other', cu:false, text:"Other reasons" };
-
-  function submitSignal(){
-    const c=cur(), g0=PST.guess, sigKey=PST.sigOrder[PST.si], count=c.signals[sigKey];
-    const theta=+document.getElementById('pr-tw').value, g1=+document.getElementById('pr-wg').value;
-    const f=Math.round(count/N*100), g1star=Math.round(g0+(theta/100)*(f-g0));
-    const all=checkTriggers(c,g0,count,theta,g1); const cl=PST._clarity||{};
-    PST._pending={ comparison:PST.comp, signal:sigKey, count, count_pct:f, prior:g0, theta, gamma:g1, consistent_gamma:g1star, clear:cl.clear, unclear_text:cl.unclear_text||null, triggers:all.map(x=>x.type), reflections:[], confidence:null, cu_reasons:null, cu_mean:null, cu_max:null, t:Date.now() };
-    PST._whyQueue=all;
-    document.getElementById('pr-tw').disabled=true; document.getElementById('pr-wg').disabled=true;
-    document.getElementById('pr-sb').style.display='none';
-    // First scenario only: elicit confidence + reasons before any corrections.
-    if(PST.si===0){ showConfidenceStep(); return; }
-    resolveAfterAnswers();
-  }
-  function resolveAfterAnswers(){
-    const all=PST._whyQueue||[];
-    if(all.length===0){ PST.responses.push(PST._pending); afterScenario(); return; }
-    PST._whyIdx=0; showWhyBox();
-  }
-  function showConfidenceStep(){
-    PST._conf=null;
-    document.getElementById('pr-reflect').innerHTML=`
-      <div class="pr-reflect">
-        <p style="font-weight:600;margin:0 0 8px">On a scale from 0 (not confident at all) to 100 (completely confident), how confident do you feel about these answers?</p>
-        <input type="range" id="pr-conf-slider" class="pr-untouched" min="0" max="100" value="50" oninput="PR.onConfidence(this.value)" onpointerdown="PR.confTouch()">
-        <div class="pr-ends"><span>0 — not confident at all</span><span>100 — completely confident</span></div>
-        <div class="pr-readout" id="pr-conf-readout">—</div>
-        <div class="pr-row-end" id="pr-conf-contwrap" style="display:none"><button class="pr-btn" id="pr-conf-cont" onclick="PR.confidenceContinue()">Continue →</button></div>
-      </div>`;
-    document.getElementById('pr-reflect').scrollIntoView({behavior:'smooth',block:'nearest'});
-  }
-  function onConfidence(v){ PST._conf=+v; const r=document.getElementById('pr-conf-readout'); if(r) r.textContent=`${v} / 100`; confTouch(); }
-  function confTouch(){ const s=document.getElementById('pr-conf-slider'); if(!s) return; s.classList.remove('pr-untouched'); if(PST._conf==null) PST._conf=+s.value; const r=document.getElementById('pr-conf-readout'); if(r&&r.textContent==='—') r.textContent=`${s.value} / 100`; document.getElementById('pr-conf-contwrap').style.display=''; }
-  function confidenceContinue(){
-    PST._pending.confidence=PST._conf;
-    if(PST._conf>=100){ resolveAfterAnswers(); return; }  // fully confident → no reasons to give
-    showCuReasonsStep();
-  }
-  function showCuReasonsStep(){
-    const items=shuf(CU_ITEMS).concat([CU_OTHER]);
-    PST._cuOrder=items.map(x=>x.key); PST._cuAnswers={}; PST._cuTouched={};
-    const conf=PST._pending.confidence;
-    const rows=items.map(it=>`
-      <div style="border-top:1px solid var(--pr-line);padding:16px 0">
-        <div style="margin-bottom:12px">${it.text}</div>
-        <div class="risk-scale">
-          ${[1,2,3,4,5,6,7].map(n=>`<button class="risk-btn" onclick="PR.cuBtn('${it.key}',${n},this)">${n}</button>`).join('')}
-        </div>
-        <div style="display:flex;justify-content:space-between;gap:16px;font-size:0.8rem;color:var(--pr-muted);max-width:460px;margin:2px auto 0;">
-          <span>Explains my lack of confidence a little</span><span style="text-align:right">Explains my lack of confidence a lot</span>
-        </div>
-      </div>`).join('');
-    document.getElementById('pr-reflect').innerHTML=`
-      <div class="pr-reflect">
-        <p style="margin:0 0 6px">For each reason below, please use the slider to indicate the degree to which it explains your less-than-complete confidence.</p>
-        ${rows}
-        <div class="pr-row-end" id="pr-cu-contwrap" style="display:none;margin-top:12px"><button class="pr-btn" id="pr-cu-cont" onclick="PR.submitCuReasons()">Continue →</button></div>
-      </div>`;
-    document.getElementById('pr-reflect').scrollIntoView({behavior:'smooth',block:'nearest'});
-  }
-  function cuBtn(key,n,btn){ PST._cuAnswers[key]=n; PST._cuTouched[key]=true; btn.parentElement.querySelectorAll('.risk-btn').forEach(b=>b.classList.toggle('selected', b===btn)); maybeEnableCu(); }
-  function maybeEnableCu(){ if(PST._cuOrder.every(k=>PST._cuTouched[k])) document.getElementById('pr-cu-contwrap').style.display=''; }
-  function submitCuReasons(){
-    PST._pending.cu_reasons={ ...PST._cuAnswers, _order:PST._cuOrder };
-    const vals=['setup','approach','rationale','careless','shortcut'].map(k=>PST._cuAnswers[k]).filter(v=>v!=null);
-    if(vals.length){ PST._pending.cu_mean=vals.reduce((a,b)=>a+b,0)/vals.length; PST._pending.cu_max=Math.max(...vals); }
-    resolveAfterAnswers();
-  }
-  function showWhyBox(){
-    const x=PST._whyQueue[PST._whyIdx]; PST._whyOption=null; PST._whyAnswer='';
-    document.getElementById('pr-reflect').innerHTML=`
-      <div class="pr-reflect" id="pr-whybox">
-        <div>${x.q}</div>
-        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
-          <button class="pr-btn pr-ghost" onclick="PR.whyOption('confused', this)">I was confused</button>
-          <button class="pr-btn pr-ghost" onclick="PR.whyOption('different', this)">I am thinking about this a different way</button>
-        </div>
-        <div id="pr-whyfollow" style="display:none;margin-top:10px"></div>
-        <div class="pr-row-end" id="pr-whycontwrap" style="display:none"><button class="pr-btn" id="pr-whycont" disabled onclick="PR.whyContinue()">Continue →</button></div>
-      </div>`;
-    document.getElementById('pr-reflect').scrollIntoView({behavior:'smooth',block:'nearest'});
-  }
-  function whyOption(option, el){
-    PST._whyOption=option; PST._whyAnswer='';
-    [...el.parentElement.querySelectorAll('.pr-btn')].forEach(b=>b.classList.remove('pr-selopt'));
-    el.classList.add('pr-selopt');
-    const prompt = option==='confused' ? 'What were you confused about? Is it clear now, or do you have any remaining questions?' : 'Please let us know how you are thinking about it.';
-    document.getElementById('pr-whyfollow').style.display='';
-    document.getElementById('pr-whyfollow').innerHTML=`<div style="margin-bottom:6px">${prompt}</div><textarea id="pr-whytext" style="width:100%;border:1px solid var(--pr-amber-bd);border-radius:8px;padding:8px 10px;font:inherit;min-height:64px;background:#fff;color:var(--pr-ink)" placeholder="Type your answer…" oninput="PR.whyTextCheck()"></textarea>`;
-    document.getElementById('pr-whycontwrap').style.display='';
-    document.getElementById('pr-whycont').disabled=true;
-  }
-  function whyTextCheck(){ const t=document.getElementById('pr-whytext').value.trim(); PST._whyAnswer=t; document.getElementById('pr-whycont').disabled=!t; }
-  function whyContinue(){
-    PST._pending.reflections.push({ type:PST._whyQueue[PST._whyIdx].type, option:PST._whyOption, answer:PST._whyAnswer });
-    PST._whyIdx++;
-    if(PST._whyIdx < PST._whyQueue.length) showWhyBox();
-    else { PST.responses.push(PST._pending); afterScenario(); }
-  }
-  function afterScenario(){
-    PST.si++;
-    if(PST.si < 2){
-      document.getElementById('pr-scen').innerHTML='';
-      const rb=document.getElementById('pr-revbtn'); rb.textContent='2nd scenario →'; rb.disabled=false;
-      document.getElementById('pr-revwrap').style.display='';
-      document.getElementById('pr-revwrap').scrollIntoView({behavior:'smooth',block:'nearest'});
-    } else scrDone();
-  }
-  function scrDone(){
-    setProg(1); STATE.practiceResponses=PST.responses; STATE.practiceComparison=PST.comp;
-    app.innerHTML=`
-      <div class="pr-eyebrow">Practice complete</div>
-      <h2 class="pr-h2">Done with the practice 🐸</h2>
-      <p class="pr-lead"> Next, you will work with two managers the same way you just reasoned about the two ponds.</p>
-      <div class="pr-row-end"><button class="pr-btn" onclick="PR.done()">Continue →</button></div>`;
-  }
-  function done(){ if(typeof PST.onDone==='function') PST.onDone(); }
-  return { start, onPri, priT, submitPrior, revealScenario, clarityYes, clarityNo, clarityBoxCheck, onTw, twT, onWg, wgT, submitSignal, onConfidence, confTouch, confidenceContinue, cuBtn, submitCuReasons, whyOption, whyTextCheck, whyContinue, done };
-})();
-SCREENS.practiceIntro = () => {
+// ---- Transition into the main manager task (practice task removed) ----
+SCREENS.mainTaskIntro = () => {
   container.innerHTML = `
     <h2 class="m-h1">Moving on to the main task</h2>
-    <p class="lead">Thank you. This next part is where you can earn most of your bonus, so it is worth paying close attention. We will start with a short practice round to make the main task easier to follow.</p>
-    <div class="m-row-end" style="margin-top:16px;"><button class="m-btn" onclick="showScreen('practice')">Continue →</button></div>`;
+    <p class="lead">Thank you. This next part is where you can earn most of your bonus, so it is worth paying close attention.</p>
+    <div class="m-row-end" style="margin-top:16px;"><button class="m-btn" onclick="showScreen('mTypes')">Continue →</button></div>`;
   updateProgress(0.33);
 };
-SCREENS.practice = () => { PR.start(() => showScreen('mTypes')); };
 
 // ---- 0. Welcome (device check + study rules) ----
 SCREENS.welcome = () => {
@@ -2379,8 +2115,7 @@ function computeMaxBonus() {
 SCREENS.consent = () => {
   const c = CONFIG.texts.consent;
   const compensation = c.compensation
-    .replace('{{MAX_BONUS}}',    computeMaxBonus().toFixed(2))
-    .replace('{{SHOW_UP_FEE}}',  CONFIG.showUpFee.toFixed(2));
+    .replace('{{MAX_BONUS}}', computeMaxBonus().toFixed(2));
   container.innerHTML = `
     <h2 class="m-h1">${c.title}</h2>
     <p><strong>Principal Investigator:</strong> ${c.pi}<br>
@@ -2396,7 +2131,7 @@ SCREENS.consent = () => {
       <label for="consent-check">${c.agreement}</label>
     </div>
     <div class="nav-row">
-      <button class="btn btn-primary" id="consent-btn" disabled onclick="showScreen('screening')">I Agree →</button>
+      <button class="btn btn-primary" id="consent-btn" disabled onclick="showScreen('preStudyIntro')">I Agree →</button>
     </div>`;
   updateProgress(0.03);
 };
@@ -2412,11 +2147,6 @@ SCREENS.screening = () => {
     <p class="lead">Before the study begins, please answer the questions below. If you are unsure of an answer, you can go back to re-read the study information.</p>
 
     <div style="margin-top:18px;">
-      <p><strong>How many times per week do you travel to the moon?</strong></p>
-      ${opt('s-moon','0','0')}${opt('s-moon','1-2','1–2')}${opt('s-moon','3-5','3–5')}${opt('s-moon','6+','6 or more')}
-    </div>
-
-    <div style="margin-top:18px;">
       <p><strong>About how long is this study expected to take?</strong></p>
       ${opt('s-dur','5-10','5–10 minutes')}${opt('s-dur','10-15','10–15 minutes')}${opt('s-dur','15-20','15–20 minutes')}
     </div>
@@ -2424,6 +2154,11 @@ SCREENS.screening = () => {
     <div style="margin-top:18px;">
       <p><strong>How many studies do you typically complete per week on Prolific?</strong></p>
       ${opt('s-freq','0-1','0–1')}${opt('s-freq','2-5','2–5')}${opt('s-freq','5-10','5–10')}${opt('s-freq','10+','10 or more')}
+    </div>
+
+    <div style="margin-top:18px;">
+      <p><strong>How many times per week do you travel to the moon?</strong></p>
+      ${opt('s-moon','0','0')}${opt('s-moon','1-2','1–2')}${opt('s-moon','3-5','3–5')}${opt('s-moon','6+','6 or more')}
     </div>
 
     <div style="margin-top:18px;">
@@ -2480,11 +2215,30 @@ function submitScreening() {
   STATE.prolificFrequency = freq;
   STATE.demographicGender = gender;
   STATE.demographicAge    = parseInt(age);
-  // Attention check 1: the only correct answer is 0. Record but do NOT terminate here —
-  // screen-out requires failing BOTH checks, and check 2 comes later (quizInstructions).
+  // Two of the six pre-randomization checks live on this screen. Moon: only correct
+  // answer is 0. Duration: the study is expected to take 10-15 minutes. Screen-out is
+  // deferred to the shared tolerance rule (see maybeScreenOutPreRand); a null flag for
+  // a not-yet-reached check never counts as a mistake.
   STATE.attnCheck1Pass = (moon === '0');
-  showScreen('quizInstructions');
+  STATE.durationCheckPass = (dur === '10-15');
+  if (maybeScreenOutPreRand()) return;
+  showScreen('riskPreferences');
 }
+
+// ---- Pre-study measurements intro ----
+// Shown right after consent. Labels the whole pre-study phase (demographics +
+// risk/ambiguity/patience battery) as a distinct, paid section ($1) administered
+// before the main study begins.
+SCREENS.preStudyIntro = () => {
+  container.innerHTML = `
+    <h2 class="m-h1">Pre-study measurements</h2>
+    <p class="lead">Before the main study, we ask a short set of questions, including basic facts about yourself and how you make everyday decisions. You will receive <strong>$0.50</strong> for completing this short section.</p>
+    <p>Please read each question carefully before answering.</p>
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="showScreen('screening')">Continue →</button>
+    </div>`;
+  updateProgress(0.035);
+};
 
 // ---- 1.2 Visual Check (Pseudo-Ebbinghaus AI honeypot) ----
 // Silent log only — answers are recorded to STATE.visualCheck for offline analysis.
@@ -2626,19 +2380,22 @@ SCREENS.quizInstructions = () => {
 };
 
 function submitQuizInstructions() {
-  // Attention check 2: the instructed slider position is 4. Screen out ONLY if the
-  // participant also failed check 1 — a single failure is retained (recorded for analysis).
+  // Attention check 2 of 4: the instructed slider position is 4. This is the last of
+  // the four checks (moon, directed-response, ambiguity urn, slider); screen out on
+  // the cumulative 2-of-4 rule. A single failure is retained (recorded for analysis).
   const v = parseInt(document.getElementById('imc-slider').value, 10);
   STATE.attnCheck2Pass = (v === 4);
-  if (STATE.attnCheck1Pass === false && STATE.attnCheck2Pass === false) {
-    terminateStudy('failed_both_attention_checks'); return;
-  }
+  if (maybeScreenOutPreRand()) return;
   showScreen('quizComprehension');
 }
 
 // ---- 1.4 Quiz Comprehension Check ----
 SCREENS.quizComprehension = () => {
   renderComprehensionCheck(CONFIG.texts.comprehensionCheck0, () => {
+    // Sixth pre-randomization check: quiz-payment comprehension. A "mistake" is any
+    // wrong answer on the first attempt (comprehensionAttempts stores failed attempts).
+    STATE.quizCompCheckPass = ((STATE.comprehensionAttempts['comprehensionCheck0'] || 0) === 0);
+    if (maybeScreenOutPreRand()) return;
     showScreen('sampleQuestion');
   }, 'comprehensionCheck0');
   updateProgress(0.09);
@@ -3026,7 +2783,7 @@ SCREENS.predictionIntro = () => {
   container.innerHTML = `
     <h2 class="m-h1">Your expectations</h2>
     <p class="lead">In the rest of the study, we will sometimes ask you about your expectations. For example, we will ask how well you expect to have scored on the quiz you just took, and we will ask about other topics later on. We call these <strong>expectation questions</strong>.</p>
-    <p class="lead" style="margin-top:10px;">Your answers can earn you <strong>payments of up to £${maxBeliefBonus}</strong>, on top of your other earnings. The more accurate your expectations, the more you are likely to earn.</p>
+    <p class="lead" style="margin-top:10px;">Your answers can earn you <strong>payments of up to $${maxBeliefBonus}</strong>, on top of your other earnings. The more accurate your expectations, the more you are likely to earn.</p>
     <div class="m-row-end" id="pi-more-wrap" style="margin-top:14px;">
       <button class="m-btn" onclick="revealPredictionIntroMore()">More →</button>
     </div>
@@ -3105,12 +2862,31 @@ SCREENS.mTypes = () => {
   const other = managerName(otherManager(STATE.currentManager));
   const peopleVis = peopleGridSVG(23);
   const spinnerVis = spinnerSVG(green);
+  // Worked-example numbers for the manager cards: xx = prior +/-2, yy = gamma* +/-2
+  // (offset randomized once and stored). Derive the out-of-50 count first, then set
+  // the percentage to 2*count so "N out of 50 = P%" is always internally consistent
+  // (each of the 50 spins/comparisons is worth exactly 2%).
+  if (STATE.exPerfOffset == null) STATE.exPerfOffset = Math.random() < 0.5 ? -2 : 2;
+  if (STATE.exRandOffset == null) STATE.exRandOffset = Math.random() < 0.5 ? -2 : 2;
+  const cntPerf = Math.max(0, Math.min(50, Math.round((mu + STATE.exPerfOffset) / 2)));
+  const cntRand = Math.max(0, Math.min(50, Math.round((green + STATE.exRandOffset) / 2)));
+  const xxPerf = cntPerf * 2;
+  const yyRand = cntRand * 2;
+  // Manager-type inference questions (mtq q5, q6): show a green rate close to one
+  // manager's rate and ask which type is more likely. xxType sits near the Random
+  // rate (gamma* = green); yyType near the Performance rate (the participant's mu).
+  // Each offset is randomized once from {-2,-1,1,2} and stored so it is stable.
+  if (STATE.typeQOffXx == null) STATE.typeQOffXx = [-2, -1, 1, 2][Math.floor(Math.random() * 4)];
+  if (STATE.typeQOffYy == null) STATE.typeQOffYy = [-2, -1, 1, 2][Math.floor(Math.random() * 4)];
+  STATE.typeQxx = Math.max(0, Math.min(100, green + STATE.typeQOffXx));  // near the Random rate
+  STATE.typeQyy = Math.max(0, Math.min(100, mu + STATE.typeQOffYy));     // near the Performance rate
+  const xxType = STATE.typeQxx, yyType = STATE.typeQyy;
   container.innerHTML = `
     <h2 class="m-h1">In each of the upcoming three rounds, you will receive bonuses from a manager.</h2>
 
     <p class="lead">There are two managers: Alex and Sam. One is the <strong>Performance Manager</strong>, the other is the <strong>Random Manager</strong>. <u>You do not know who is who</u>.</p>
 
-    <p class="lead" style="margin-top:8px;">In Round 1, you are randomly assigned to either Alex or Sam, from whom you will receive 50 bonuses. Each green bonus pays you 5p, red bonuses do not pay.</p>
+    <p class="lead" style="margin-top:8px;">In Round 1, you are randomly assigned to either Alex or Sam, from whom you will receive 50 bonuses. Each green bonus pays you 5¢, red bonuses do not pay.</p>
 
     <p class="lead" style="margin-top:8px;">In Rounds 2 and 3, you will again receive 50 bonuses each. Before each of these rounds, you can either stay with your current manager or switch to the other one.</p>
 
@@ -3122,16 +2898,6 @@ SCREENS.mTypes = () => {
       <p class="lead" style="margin-top:8px;">Here is how each manager type determines bonuses:</p>
 
       <div class="mgr-types-grid">
-      <div class="mgr-type-card mgr-type-perf">
-        <span class="pill pill-perf">Performance Manager</span>
-        <div class="mgr-type-icon">${peopleVis}</div>
-        <p class="mgr-type-desc">The Performance Manager (■) determines bonuses in each round as follows:</p>
-        <ol class="mgr-type-steps">
-          <li>Compare your score on the shared questions in the logic quiz with that of a randomly drawn other participant.</li>
-          <li>Set the bonus to <strong>green</strong> if your score is higher, <strong>red</strong> otherwise. Ties are decided by a coin flip.</li>
-          <li>Repeat 50 times.</li>
-        </ol>
-      </div>
       <div class="mgr-type-card mgr-type-rand">
         <span class="pill pill-rand">Random Manager</span>
         <div class="mgr-type-icon">${spinnerVis}</div>
@@ -3141,6 +2907,18 @@ SCREENS.mTypes = () => {
           <li>Set the bonus to <strong>green</strong> if the wheel lands on a green field, <strong>red</strong> otherwise.</li>
           <li>Repeat 50 times.</li>
         </ol>
+        <p style="font-size:.88rem;color:#475569;margin-top:12px;line-height:1.5;"> Because ${green}% of the wheel's fields are green, you can expect the Random Manager to pay (on average) <strong>${green}%</strong> green bonuses. </p>
+      </div>
+      <div class="mgr-type-card mgr-type-perf">
+        <span class="pill pill-perf">Performance Manager</span>
+        <div class="mgr-type-icon">${peopleVis}</div>
+        <p class="mgr-type-desc">The Performance Manager (■) determines bonuses in each round as follows:</p>
+        <ol class="mgr-type-steps">
+          <li>Compare your score on the shared questions in the logic quiz with that of a randomly drawn other participant.</li>
+          <li>Set the bonus to <strong>green</strong> if your score is higher, <strong>red</strong> otherwise. Ties are decided by a coin flip.</li>
+          <li>Repeat 50 times.</li>
+        </ol>
+        <p style="font-size:.88rem;color:#475569;margin-top:12px;line-height:1.5;"> Because you reported that you expect your score on the shared questions to beat <strong>${mu}%</strong> of the other Prolific participants, you can expect the Performance Manager to pay (on average) <strong>${mu}%</strong> green bonuses.  </p>
       </div>
       </div>
 
@@ -3149,7 +2927,7 @@ SCREENS.mTypes = () => {
 
     <div id="mtypes-quiz" style="margin-top:20px;display:none;">
       <div id="mtq-q1">
-        <p class="lead" style="margin-bottom:8px;">At the end of the quiz, you reported that you expect your score on the shared questions to beat <strong>${mu}%</strong> of the other Prolific participants. How often would you then expect the Performance Manager to give you a green bonus?</p>
+        <p class="lead" style="margin-bottom:8px;">At this time, <strong>what percentage</strong> of the bonuses would you expect to be green if your manager is the <strong>Performance Manager</strong>? Please enter a percentage between 0 and 100 (not a count).</p>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <input type="number" id="mtq-a1" min="0" max="100" inputmode="numeric" oninput="onMtqInput(1)" style="width:90px;padding:8px;font-size:1rem;border:1px solid #cbd5e1;border-radius:6px;">
           <span class="lead" style="margin:0;">% of the bonuses</span>
@@ -3158,13 +2936,29 @@ SCREENS.mTypes = () => {
         <div id="mtq-fb1" style="display:none;"></div>
       </div>
       <div id="mtq-q2" style="display:none;margin-top:20px;">
-        <p class="lead" style="margin-bottom:8px;">And how often do you expect the Random Manager to give you a green bonus?</p>
+        <p class="lead" style="margin-bottom:8px;"> <strong>What percentage</strong> of the bonuses would you expect to be green if your manager is the <strong>Random Manager</strong>?  Please enter a percentage between 0 and 100 (not a count).</p>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <input type="number" id="mtq-a2" min="0" max="100" inputmode="numeric" oninput="onMtqInput(2)" style="width:90px;padding:8px;font-size:1rem;border:1px solid #cbd5e1;border-radius:6px;">
           <span class="lead" style="margin:0;">% of the bonuses</span>
           <button class="m-btn" id="mtq-b2" disabled onclick="checkMtq(2)">Check</button>
         </div>
         <div id="mtq-fb2" style="display:none;"></div>
+      </div>
+      <div id="mtq-q5" style="display:none;margin-top:20px;">
+        <p class="lead" style="margin-bottom:8px;">If a manager gives you <strong>${xxType}%</strong> green bonuses, which type is it more likely to be?</p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button class="m-btn" id="mtq-b5r" onclick="checkMtqType(5, 'random')">More likely Random</button>
+          <button class="m-btn" id="mtq-b5p" onclick="checkMtqType(5, 'performance')">More likely Performance</button>
+        </div>
+        <div id="mtq-fb5" style="display:none;"></div>
+      </div>
+      <div id="mtq-q6" style="display:none;margin-top:20px;">
+        <p class="lead" style="margin-bottom:8px;">If a manager gives you <strong>${yyType}%</strong> green bonuses, which type is it more likely to be?</p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button class="m-btn" id="mtq-b6r" onclick="checkMtqType(6, 'random')">More likely Random</button>
+          <button class="m-btn" id="mtq-b6p" onclick="checkMtqType(6, 'performance')">More likely Performance</button>
+        </div>
+        <div id="mtq-fb6" style="display:none;"></div>
       </div>
       <div id="mtq-q3" style="display:none;margin-top:20px;">
         <p class="lead" style="margin-bottom:8px;">True or false: bonuses received from the <strong>Performance Manager</strong> are informative about your quiz performance.</p>
@@ -3185,9 +2979,7 @@ SCREENS.mTypes = () => {
     </div>
 
     <div id="mtypes-after" style="display:none;">
-      <div class="callout-important"><strong>Important:</strong> Either Alex or Sam is the Performance Manager and the other one is the Random Manager. Alex's type and Sam's type are both fixed for the entire study and do not change between rounds.</div>
-
-      <div class="m-row-end"><button class="m-btn" onclick="startManagerTask()">Continue →</button></div>
+      <div class="m-row-end"><button class="m-btn" onclick="showScreen('taskIntro')">Continue →</button></div>
     </div>`;
   updateProgress(0.40);
 };
@@ -3215,20 +3007,22 @@ function revealMtypesQuiz() {
 // Record each mTypes inline question's first-attempt correctness (and total
 // attempts). Later attempts only increment the counter — firstTryCorrect is set
 // once, on the first Check click for that question.
-function recordMtypesAttempt(qid, correct) {
+function recordMtypesAttempt(qid, correct, answer) {
   STATE.mtypesChecks = STATE.mtypesChecks || {};
   if (!(qid in STATE.mtypesChecks)) {
-    STATE.mtypesChecks[qid] = { firstTryCorrect: correct, attempts: 1 };
+    STATE.mtypesChecks[qid] = { firstTryCorrect: correct, firstAnswer: answer, attempts: 1, answers: [answer] };
   } else {
     STATE.mtypesChecks[qid].attempts += 1;
+    (STATE.mtypesChecks[qid].answers = STATE.mtypesChecks[qid].answers || []).push(answer);
   }
 }
+
 function checkMtq(n) {
   const val = parseInt(document.getElementById('mtq-a' + n).value, 10);
   const fb  = document.getElementById('mtq-fb' + n);
   const okStyle  = 'display:block;margin-top:10px;padding:9px 12px;border-radius:6px;background:#f0fdf4;color:#166534;font-size:.95rem;';
   const badStyle = 'display:block;margin-top:10px;padding:9px 12px;border-radius:6px;background:#fef2f2;color:#b91c1c;font-size:.95rem;';
-  recordMtypesAttempt('q' + n, val === ((n === 1) ? STATE.initialMu : STATE.randomProbShown));
+  recordMtypesAttempt('q' + n, val === ((n === 1) ? STATE.initialMu : STATE.randomProbShown), (isNaN(val) ? null : val));
   if (n === 1) {
     const mu = STATE.initialMu;
     if (val === mu) {
@@ -3248,11 +3042,41 @@ function checkMtq(n) {
       fb.innerHTML = `Correct. The Random Manager's wheel has ${green} green fields out of 100, so it pays a green bonus about <strong>${green}%</strong> of the time, regardless of your quiz performance.`;
       document.getElementById('mtq-a2').disabled = true;
       document.getElementById('mtq-b2').disabled = true;
-      document.getElementById('mtq-q3').style.display = '';
+      document.getElementById('mtq-q5').style.display = '';
     } else {
       fb.style.cssText = badStyle;
       fb.innerHTML = `Not quite. The Random Manager pays a green bonus whenever its wheel lands on a green field. The wheel has ${green} green fields out of 100, so it pays green about ${green}% of the time. Try again.`;
     }
+  }
+}
+
+// Two gated manager-type inference checks (q5, q6). Each shows a green rate close to
+// one manager's rate and asks which type is more likely. The correct answer is the
+// type whose rate the shown percentage is closest to: q5's rate sits near the Random
+// rate (gamma*), q6's near the Performance rate (the participant's mu). q5 correct
+// unlocks q6; q6 correct unlocks q3. ans is 'random' or 'performance'.
+function checkMtqType(which, ans) {
+  const green = STATE.randomProbShown, mu = STATE.initialMu;
+  const val = (which === 5) ? STATE.typeQxx : STATE.typeQyy;
+  const correct = (Math.abs(val - green) <= Math.abs(val - mu)) ? 'random' : 'performance';
+  const fb = document.getElementById('mtq-fb' + which);
+  const okStyle  = 'display:block;margin-top:10px;padding:9px 12px;border-radius:6px;background:#f0fdf4;color:#166534;font-size:.95rem;';
+  const badStyle = 'display:block;margin-top:10px;padding:9px 12px;border-radius:6px;background:#fef2f2;color:#b91c1c;font-size:.95rem;';
+  recordMtypesAttempt('q' + which, ans === correct, ans);
+  const nearLbl = correct === 'random' ? 'Random' : 'Performance';
+  const nearRate = correct === 'random' ? green : mu;
+  const farLbl  = correct === 'random' ? 'Performance' : 'Random';
+  const farRate = correct === 'random' ? mu : green;
+  const why = `${val}% is closer to the ${nearLbl} Manager's rate (${nearRate}%) than to the ${farLbl} Manager's rate (${farRate}%), so a manager giving ${val}% green is more likely to be the <strong>${nearLbl} Manager</strong>.`;
+  if (ans === correct) {
+    fb.style.cssText = okStyle;
+    document.getElementById('mtq-b' + which + 'r').disabled = true;
+    document.getElementById('mtq-b' + which + 'p').disabled = true;
+    fb.innerHTML = `Correct. ${why}`;
+    document.getElementById(which === 5 ? 'mtq-q6' : 'mtq-q3').style.display = '';
+  } else {
+    fb.style.cssText = badStyle;
+    fb.innerHTML = `Not quite. ${why} Try again.`;
   }
 }
 
@@ -3264,7 +3088,7 @@ function checkMtqTF(n, ans) {
   const fb = document.getElementById('mtq-fb' + n);
   const okStyle  = 'display:block;margin-top:10px;padding:9px 12px;border-radius:6px;background:#f0fdf4;color:#166534;font-size:.95rem;';
   const badStyle = 'display:block;margin-top:10px;padding:9px 12px;border-radius:6px;background:#fef2f2;color:#b91c1c;font-size:.95rem;';
-  recordMtypesAttempt('q' + n, ans === correct);
+  recordMtypesAttempt('q' + n, ans === correct, ans);
   if (ans === correct) {
     fb.style.cssText = okStyle;
     document.getElementById('mtq-b' + n + 't').disabled = true;
@@ -3365,68 +3189,76 @@ function validateComprehension() {
 
   if (allCorrect) {
     STATE.comprehensionAttempts[checkId] = attemptNum - 1; // store number of *failed* attempts
-    // Show the review panel (color-coded items + Continue button), then proceed.
-    showComprehensionReview(items, window._comprehensionCallback);
+    // Proceed straight to the callback. We intentionally do NOT show the color-coded
+    // ✓/✗ review panel: participants already correct their answers in place (a wrong
+    // pick is flagged and must be fixed before submitting), so the extra recap screen
+    // is redundant. First-attempt correctness is what feeds the pre-randomization
+    // screen (comprehensionAttempts[checkId] === 0 ⇔ correct on the first submission).
+    window._comprehensionCallback();
   } else {
     STATE.comprehensionAttempts[checkId] = attemptNum;
     document.getElementById('check-error').classList.add('visible');
   }
 }
 
-// Replace the items + Submit button with a color-coded review of the truth
-// value of each item (green ✓ for TRUE statements, red ✗ for FALSE statements),
-// plus a Continue button that fires `onContinue` (the original onPass callback).
-// `opts.itemsContainerId`: id of the <div> holding the checkbox items.
-// `opts.navSelector`: CSS selector for the nav element to replace.
-// `opts.errorElementId`: optional id of an error message element to hide.
-// `opts.hideElementIds`: optional list of ids to hide (e.g., feedback textarea).
-function showComprehensionReview(items, onContinue, opts) {
-  opts = opts || {};
-  const itemsContainerId = opts.itemsContainerId || 'check-items';
-  const navSelector      = opts.navSelector      || '.nav-row';
-  const errorElementId   = opts.errorElementId   || 'check-error';
 
-  const itemNodes = Array.from(items);
-  const reviewHTML = itemNodes.map((input) => {
-    const isTrue = input.dataset.correct === 'true';
-    const text   = input.parentNode.querySelector('span').innerHTML;
-    const mark   = isTrue ? '✓' : '✗';
-    const tag    = isTrue ? 'TRUE' : 'FALSE';
-    const cls    = isTrue ? 'true' : 'false';
-    return `<div class="check-review-item ${cls}">
-              <span class="check-review-mark">${mark}</span>
-              <span>${text} <span class="check-review-tag">${tag}</span></span>
-            </div>`;
-  }).join('');
+// ---- Task intro page (between mTypes and the Round-1 manager assignment) ----
+// Shows the "Important: one of Alex/Sam is Performance, the other Random, fixed for
+// the study" box; a Next click reveals what happens each round (see the green %, then
+// report the two beliefs, both rewarded for accuracy). Continue → startManagerTask().
+SCREENS.taskIntro = () => {
+  // Name the two expectations in the SAME order the questions will be shown each round
+  // (STATE.mgrBeliefLeft puts the manager-type question first when true).
+  const qQuiz = `how many of the 100 participants you think you beat on the quiz`;
+  const qMgr  = `whether you think your manager in that round (Alex or Sam) is a Performance or Random Manager`;
+  const twoQ  = STATE.mgrBeliefLeft ? `${qMgr}, and ${qQuiz}` : `${qQuiz}, and ${qMgr}`;
+  container.innerHTML = `
+    <h2 class="m-h1">Before the rounds begin</h2>
+    <div class="callout-important"><strong>Important:</strong> Either Alex or Sam is the Performance Manager and the other one is the Random Manager. Alex's type and Sam's type are both fixed for the entire study and do not change between rounds.</div>
+    <div class="m-row-end" id="taskintro-next-wrap" style="margin-top:18px;"><button class="m-btn" onclick="revealTaskIntro()">Next →</button></div>
+    <div id="taskintro-more" style="display:none;">
+      <div class="callout-attention" style="margin-top:18px;">In <strong>every round</strong> you will see the percentage of bonuses that are green provided by your assigned manager. Then, you will report two expectations: ${twoQ}.</div>
+      <p class="lead" style="margin-top:12px;">Both answers are <strong>rewarded for accuracy</strong> — the closer they are to the truth, the more you earn.</p>
 
-  const itemsEl = document.getElementById(itemsContainerId);
-  if (itemsEl) itemsEl.innerHTML = reviewHTML;
-
-  const errEl = document.getElementById(errorElementId);
-  if (errEl) errEl.classList.remove('visible');
-
-  // Hide any additional elements (e.g., the clarity-feedback textarea + label).
-  (opts.hideElementIds || []).forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
-
-  // Replace the nav row with a single Continue button.
-  window._reviewContinue = onContinue;
-  const nav = document.querySelector(navSelector);
-  if (nav) {
-    nav.innerHTML = `<button class="btn btn-primary" onclick="window._reviewContinue()">Continue →</button>`;
-    nav.style.justifyContent = 'flex-end';
-  }
-
-  // Banner above the items.
-  if (itemsEl && !document.getElementById('check-review-banner')) {
-    const banner = document.createElement('div');
-    banner.id = 'check-review-banner';
-    banner.className = 'check-review-banner';
-    banner.textContent = 'All correct! Here is a quick recap of which statements are true and which are false.';
-    itemsEl.parentNode.insertBefore(banner, itemsEl);
-  }
+      <div class="m-row-end" id="taskintro-proceed-wrap" style="margin-top:18px;"><button class="m-btn" onclick="revealTaskIntroChecks()">Proceed, I understand →</button></div>
+      <div id="taskintro-checks" style="display:none;">
+        <p class="lead" style="font-weight:600;margin:18px 0 4px;">A few quick checks before you begin:</p>
+        <div id="tc-q2">
+          <p class="lead" style="margin-bottom:8px;">True or false: The accuracy of my answers to the expectation questions has <strong>no</strong> effect on my payment.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="m-btn" id="tc-b2t" onclick="checkTaskComp(2, true)">True</button>
+            <button class="m-btn" id="tc-b2f" onclick="checkTaskComp(2, false)">False</button>
+          </div>
+          <div id="tc-fb2" style="display:none;"></div>
+        </div>
+        <div id="tc-q3" style="display:none;margin-top:20px;">
+          <p class="lead" style="margin-bottom:8px;">True or false: There are two possibilities — either Sam is the Performance Manager and Alex is the Random Manager, or Alex is the Performance Manager and Sam is the Random Manager. The bonuses may allow me to figure out which is true.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="m-btn" id="tc-b3t" onclick="checkTaskComp(3, true)">True</button>
+            <button class="m-btn" id="tc-b3f" onclick="checkTaskComp(3, false)">False</button>
+          </div>
+          <div id="tc-fb3" style="display:none;"></div>
+        </div>
+        <div id="tc-q1" style="display:none;margin-top:20px;">
+          <p class="lead" style="margin-bottom:8px;">True or false: If I am confident that my manager is the Performance Manager, I should strongly revise my expectation about my quiz performance based on the bonuses; and if I am confident my manager is the Random Manager, I should barely revise it.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="m-btn" id="tc-b1t" onclick="checkTaskComp(1, true)">True</button>
+            <button class="m-btn" id="tc-b1f" onclick="checkTaskComp(1, false)">False</button>
+          </div>
+          <div id="tc-fb1" style="display:none;"></div>
+        </div>
+        <div class="m-row-end" id="tc-continue-wrap" style="display:none;margin-top:20px;"><button class="m-btn" onclick="startManagerTask()">Continue →</button></div>
+      </div>
+    </div>`;
+  updateProgress(0.40);
+};
+function revealTaskIntro() {
+  document.getElementById('taskintro-next-wrap').style.display = 'none';
+  document.getElementById('taskintro-more').style.display = '';
+}
+function revealTaskIntroChecks() {
+  document.getElementById('taskintro-proceed-wrap').style.display = 'none';
+  document.getElementById('taskintro-checks').style.display = '';
 }
 
 // ---- Block-based manager task (free selection → 2 feedback sets → 1 stay/switch point) ----
@@ -3451,6 +3283,7 @@ function startManagerTask() {
 // (parallel to the choice reveal in later rounds) before the round page.
 function showRound1ManagerReveal() {
   const mgr = STATE.currentManager;
+  const name = managerName(mgr);
   container.innerHTML = `
     <div class="eyebrow">Round 1 of ${CONFIG.blocks.length}</div>
     <h2 class="m-h1">Your Round 1 manager</h2>
@@ -3461,8 +3294,9 @@ function showRound1ManagerReveal() {
     <div id="r1mgr-result" style="display:none;">
       <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin:24px 0;">
         <div class="avatar-c">${avatarSVG(mgr, 84)}</div>
-        <p class="lead" style="margin:0;font-size:1.1rem;">Your Round 1 manager is <strong>${managerName(mgr)}</strong>.</p>
+        <p class="lead" style="margin:0;font-size:1.1rem;">Your Round 1 manager is <strong>${name}</strong>.</p>
       </div>
+      <p class="lead">You do not know whether <strong>${name}</strong> is the Performance Manager or the Random Manager.</p>
       <div class="m-row-end"><button class="m-btn" onclick="beginBlock(0)">Continue →</button></div>
     </div>`;
   updateProgress(0.42);
@@ -3471,20 +3305,74 @@ function revealRound1Manager() {
   document.getElementById('r1mgr-reveal-wrap').style.display = 'none';
   document.getElementById('r1mgr-result').style.display = '';
 }
+// Gated true/false comprehension checks on the task-intro page (mTypes format):
+// tc1 (revise strongly if Performance / barely if Random → true), tc2 (accuracy has
+// no effect on payment → false), tc3 (two fixed possibilities, inferable over time →
+// true). Each correct answer unlocks the next; the last reveals Continue.
+// The tc1/tc2/tc3 ids are CONTENT-addressed and never change, so STATE.taskComp keys
+// stay comparable across builds regardless of what order they appear on screen.
+// TASK_COMP_ORDER controls the on-screen sequence ONLY. Here the updating question
+// (tc1) is deliberately shown LAST, after tc2 and tc3.
+const TASK_COMP_ANSWER = { 1: true, 2: false, 3: true };
+const TASK_COMP_ORDER  = [2, 3, 1];   // display order, by content id
+function recordTaskComp(qid, correct, answer) {
+  STATE.taskComp = STATE.taskComp || {};
+  if (!(qid in STATE.taskComp)) STATE.taskComp[qid] = { firstTryCorrect: correct, firstAnswer: answer, attempts: 1 };
+  else STATE.taskComp[qid].attempts += 1;
+}
+function checkTaskComp(n, ans) {
+  const correct = TASK_COMP_ANSWER[n];
+  const fb = document.getElementById('tc-fb' + n);
+  const okStyle  = 'display:block;margin-top:10px;padding:9px 12px;border-radius:6px;background:#f0fdf4;color:#166534;font-size:.95rem;';
+  const badStyle = 'display:block;margin-top:10px;padding:9px 12px;border-radius:6px;background:#fef2f2;color:#b91c1c;font-size:.95rem;';
+  recordTaskComp('tc' + n, ans === correct, ans);
+  const msg = {
+    1: `Only a Performance Manager's bonuses are informative about your quiz performance, so you should revise more when your manager is more likely the Performance Manager and barely when your manager is more likely the Random Manager.`,
+    2: `Your expectation answers are rewarded for accuracy, so they <strong>do</strong> affect your payment.`,
+    3: `Each person's type is fixed for the whole study, and the bonuses you observe over time can help you infer which of Alex or Sam is the Performance Manager.`,
+  }[n];
+  if (ans === correct) {
+    fb.style.cssText = okStyle;
+    document.getElementById('tc-b' + n + 't').disabled = true;
+    document.getElementById('tc-b' + n + 'f').disabled = true;
+    fb.innerHTML = `Correct. ${msg}`;
+    const pos  = TASK_COMP_ORDER.indexOf(n);
+    const next = (pos > -1 && pos < TASK_COMP_ORDER.length - 1)
+      ? ('tc-q' + TASK_COMP_ORDER[pos + 1])
+      : 'tc-continue-wrap';
+    document.getElementById(next).style.display = '';
+  } else {
+    fb.style.cssText = badStyle;
+    fb.innerHTML = `Not quite — this is ${correct ? 'true' : 'false'}. ${msg} Try again.`;
+  }
+}
 
 // ---- Two-worlds pegged manager-type belief control ----
 // Each face gets a slider whose value = P(that person = Performance Manager),
 // 0 (left, ↻ Random) → 100 (right, Performance ■). The two sliders are pegged:
 // P(Alex=Perf) + P(Sam=Perf) = 100, so moving one moves the other oppositely.
-// Manager-type readout for the single round slider: "Performance p% · Random (100-p)%".
-function thetaReadout(perfVal) {
-  const p = parseInt(perfVal);
-  return `<span class="tw-rand">Random ${100 - p}%</span><span class="tw-sep">·</span><span class="tw-perf">Performance ${p}%</span>`;
+function twReadoutText(perfVal) {
+  const p = parseInt(perfVal), r = 100 - p;
+  return `<span class="tw-rand">↻ Random ${r}%</span><span class="tw-sep">·</span><span class="tw-perf">■ Performance ${p}%</span>`;
 }
-function onRoundThetaChange(val) {
-  const r = document.getElementById('theta-round-readout');
-  if (r) r.innerHTML = thetaReadout(val);
-  markThetaTouched();
+function twoWorldCardHTML(person, perfVal, showNums) {
+  const rd = showNums ? twReadoutText(perfVal) : '—';
+  return `<div class="tw-card">
+    <div class="avatar-c">${avatarSVG(person, 76)}</div>
+    <div class="tw-name">${managerName(person)}</div>
+    <input type="range" id="tw-slider-${person}" class="mslider slider-untouched" min="0" max="100" value="${perfVal}" oninput="onTwoWorldChange('${person}', this.value)" onpointerdown="markTwTouched()">
+    <div class="tw-ends"><span>↻ Random</span><span>Performance ■</span></div>
+    <div class="tw-readout" id="tw-readout-${person}">${rd}</div>
+  </div>`;
+}
+// Pegged update: set the other slider/readout to the complement, then mark touched.
+function onTwoWorldChange(person, val) {
+  const v = parseInt(val), other = otherManager(person);
+  const os = document.getElementById('tw-slider-' + other);
+  if (os) os.value = 100 - v;
+  const r1 = document.getElementById('tw-readout-' + person); if (r1) r1.innerHTML = twReadoutText(v);
+  const r2 = document.getElementById('tw-readout-' + other); if (r2) r2.innerHTML = twReadoutText(100 - v);
+  markTwTouched();
 }
 
 // Route into a block: show the appropriate choice screen first (if any), else signals.
@@ -3498,6 +3386,18 @@ function beginBlock(idx) {
 }
 
 // Previous beliefs oriented to a given manager.
+// Map a manager-type belief θ̂ (0-100, P(current manager = Performance)) onto the
+// informativeness phrase shown in the round header. Bins are inclusive of the upper
+// cutoff (see CONFIG.diagHintBins): θ ≤ 20 → 'not informative', … θ > 80 → 'very
+// informative'. Returns lead-verb + bolded label so the sentence reads correctly for
+// every bin. Clamped so out-of-range input still returns the end phrase.
+function diagHintPhrase(theta) {
+  const t = Math.max(0, Math.min(100, Number(theta)));
+  const bins = CONFIG.diagHintBins;
+  const b = bins.find(x => t <= x.max) || bins[bins.length - 1];
+  return `${b.lead}<strong>${b.label}</strong>`;
+}
+
 function prevBeliefsFor(mgr) {
   let prevTheta = 50;
   let prevGamma = STATE.initialMu;
@@ -3536,14 +3436,15 @@ function showSwitchChoiceScreen() {
   const dollarsOth = (greensOth * CONFIG.payPerH).toFixed(2);
 
   window._switchChoice = null;
+  prefetchBranch(idx + 1);      // in flight while they decide; see revealSwitchResult
   container.innerHTML = `
     <div class="eyebrow">Round ${idx + 1} of ${CONFIG.blocks.length} — Your choice</div>
     <h2 class="m-h1">Stay or switch?</h2>
     <p class="lead">You can now indicate your manager choice for the next round. You will get your choice 75% of the time.</p>
     <p class="lead" style="margin-top:8px;">Expected bonuses next round (given your current expectations) are:</p>
     <ul class="expected-pay-list">
-      <li>from <strong>${managerName(currentMgr)}</strong>: <strong> ${grn}% (${greensCur} of ${nSignals})</strong> green &rarr; <strong>£${dollarsCur}</strong></li>
-      <li>from <strong>${managerName(otherMgr)}</strong>: <strong>${grnOth}% (${greensOth} of ${nSignals})</strong> green &rarr; <strong>£${dollarsOth}</strong></li>
+      <li>from <strong>${managerName(currentMgr)}</strong>: <strong> ${grn}% (${greensCur} of ${nSignals})</strong> green &rarr; <strong>$${dollarsCur}</strong></li>
+      <li>from <strong>${managerName(otherMgr)}</strong>: <strong>${grnOth}% (${greensOth} of ${nSignals})</strong> green &rarr; <strong>$${dollarsOth}</strong></li>
     </ul>
     <p class="lead" style="margin-top:8px;">Do you want to stay with ${managerName(currentMgr)} or switch to ${managerName(otherMgr)}?</p>
     <div class="choice-row">
@@ -3587,8 +3488,44 @@ function signedBiasBin() {
 // (signed-bias stratum × decision-round), so implemented/random is balanced within
 // each OC/UC stratum. Idempotent per (pid, round); Math.random() is the offline
 // fallback. Returns { branch, source, stratum }.
+// Manager-instruction comprehension cell: c1 = MORE than CONFIG.branchCompMaxWrong of the
+// NINE checks wrong on the first try, c0 otherwise. The nine are the six mTypes questions
+// (STATE.mtypesChecks: q1,q2,q5,q6,q3,q4) plus the three task-intro true/false items
+// (STATE.taskComp: tc1,tc2,tc3). Both stores use the same firstTryCorrect flag, and both
+// are fully populated before round 1, so this is fixed before any branch draw.
+function comprehensionBin() {
+  const wrong = []
+    .concat(Object.values(STATE.mtypesChecks || {}))
+    .concat(Object.values(STATE.taskComp || {}))
+    .filter(q => q && q.firstTryCorrect === false).length;
+  return wrong > CONFIG.branchCompMaxWrong ? 'c1' : 'c0';
+}
+
+// Full branch-stratification cell: signed-bias bin × quiz condition × comprehension.
+// All three are fixed before the first stay/switch decision, so conditioning the branch
+// draw on them keeps it exogenous. The server blocks on (stratum × round), so extra
+// dimensions need no backend change. Returns 'sbNA' if μ or γ* is not yet set.
+function branchStratum() {
+  const sb = signedBiasBin();
+  if (sb === 'sbNA') return 'sbNA';
+  const cond = (STATE.quizCondition === 'easy') ? 'e' : 'h';
+  return `${sb}-${cond}-${comprehensionBin()}`;
+}
+
+// Start the branch fetch as soon as the stay/switch screen is shown. The draw does NOT
+// depend on the participant's choice (the server only needs stratum + round + pid), so it
+// can be in flight while they decide and read the reveal screen. By the time they click
+// "Reveal your manager" it has normally resolved, so the holding screen never appears.
+// The __resolved flag lets the reveal handler tell, synchronously, whether to show it.
+function prefetchBranch(round) {
+  const p = fetchBranch(round);
+  p.__resolved = false;
+  p.then(() => { p.__resolved = true; }, () => { p.__resolved = true; });
+  window._branchPromise = p;
+}
+
 async function fetchBranch(round) {
-  const bin = signedBiasBin();
+  const bin = branchStratum();
   if (CONFIG.googleSheetsURL && STATE.prolificPid && bin !== 'sbNA') {
     const url = CONFIG.googleSheetsURL
       + '?action=branch'
@@ -3617,44 +3554,69 @@ async function makeSwitchChoice(switched) {
   // round — so implemented/random is balanced within OC/UC strata (Math.random()
   // fallback). Conditional on the choice, the realized manager is exogenous: the
   // variation separating selection from treatment.
-  const round = STATE.currentBlockIdx + 1;            // this decision enters round `round`
-  const b = await fetchBranch(round);
-  const branch = b.branch;
-  let realizedMgr;
-  if (branch === 'implemented') { realizedMgr = chosenMgr; }
-  else { realizedMgr = (Math.random() < 0.5) ? 'alex' : 'sam'; }
-  const honored = (realizedMgr === chosenMgr);
-  STATE.currentManager = realizedMgr;
-  window._switchMeta = { switched, prevMgr, chosenMgr, realizedMgr, branch, honored,
-                         branchSource: b.source, branchStratum: b.stratum };
+  // The branch is already in flight (prefetchBranch, fired when this screen rendered).
+  // We record the choice now and resolve the branch when they click reveal, so the
+  // round-trip overlaps with reading the reveal screen instead of blocking here.
+  window._switchMeta = { switched, prevMgr, chosenMgr,
+                         realizedMgr: null, branch: null, honored: null,
+                         branchSource: null, branchStratum: null };
   showSwitchResultReveal();
 }
 
 // Reveal the realized manager for a stay/switch round (parallel to the Round-1
 // reveal). Name-only: we do NOT tell them whether the choice was honored or
 // overridden, only who they ended up with.
+// Interstitial shown while the branch is fetched from the server (the stratified
+// implemented/random draw). Without it the stay/switch page just sits there behind a
+// dead Continue button for however long the round-trip takes (cold start can be
+// several seconds), which reads as a frozen study.
+function showBranchWait() {
+  const idx = STATE.currentBlockIdx;
+  container.innerHTML = `
+    <div class="eyebrow">Round ${idx + 1} of ${CONFIG.blocks.length} — Your manager</div>
+    <h2 class="m-h1">One moment please…</h2>`;
+  updateProgress(0.58 + (STATE.currentBlockIdx / CONFIG.blocks.length) * 0.30);
+}
+
+// Rendered immediately after the choice — the realized manager is not known yet (the
+// branch is still in flight), so only the reveal button is shown here.
 function showSwitchResultReveal() {
   const idx = STATE.currentBlockIdx;
-  const realized = window._switchMeta.realizedMgr;
   container.innerHTML = `
     <div class="eyebrow">Round ${idx + 1} of ${CONFIG.blocks.length} — Your manager</div>
     <h2 class="m-h1">Your Round ${idx + 1} manager</h2>
-    <p class="lead">Your choice is carried out 75% of the time, but 25% of the time the computer assigned the other manager instead.</p>
+    <p class="lead">Your choice is carried out 75% of the time, but 25% of the time the computer assigns the other manager instead.</p>
     <div class="m-row-end" id="swr-reveal-wrap" style="margin-top:16px;">
       <button class="m-btn" onclick="revealSwitchResult()">Reveal your Round ${idx + 1} manager →</button>
-    </div>
-    <div id="swr-result" style="display:none;">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin:24px 0;">
-        <div class="avatar-c">${avatarSVG(realized, 84)}</div>
-        <p class="lead" style="margin:0;font-size:1.1rem;">Your Round ${idx + 1} manager is <strong>${managerName(realized)}</strong>.</p>
-      </div>
-      <div class="m-row-end"><button class="m-btn" onclick="proceedAfterSwitchReveal()">Continue →</button></div>
     </div>`;
   updateProgress(0.58 + (STATE.currentBlockIdx / CONFIG.blocks.length) * 0.30);
 }
-function revealSwitchResult() {
-  document.getElementById('swr-reveal-wrap').style.display = 'none';
-  document.getElementById('swr-result').style.display = '';
+
+// Resolve the branch (normally already prefetched → instant), derive the realized
+// manager, complete _switchMeta, then render the result.
+async function revealSwitchResult() {
+  const idx = STATE.currentBlockIdx;
+  const m = window._switchMeta;
+  const p = window._branchPromise || fetchBranch(idx + 1);
+  if (!p.__resolved) showBranchWait();     // only if the round-trip is still pending
+  const b = await p;
+  const realizedMgr = (b.branch === 'implemented')
+    ? m.chosenMgr
+    : ((Math.random() < 0.5) ? 'alex' : 'sam');
+  m.branch = b.branch; m.branchSource = b.source; m.branchStratum = b.stratum;
+  m.realizedMgr = realizedMgr;
+  m.honored = (realizedMgr === m.chosenMgr);
+  STATE.currentManager = realizedMgr;
+  window._branchPromise = null;
+  container.innerHTML = `
+    <div class="eyebrow">Round ${idx + 1} of ${CONFIG.blocks.length} — Your manager</div>
+    <h2 class="m-h1">Your Round ${idx + 1} manager</h2>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin:24px 0;">
+      <div class="avatar-c">${avatarSVG(realizedMgr, 84)}</div>
+      <p class="lead" style="margin:0;font-size:1.1rem;">Your Round ${idx + 1} manager is <strong>${managerName(realizedMgr)}</strong>.</p>
+    </div>
+    <div class="m-row-end"><button class="m-btn" onclick="proceedAfterSwitchReveal()">Continue →</button></div>`;
+  updateProgress(0.58 + (STATE.currentBlockIdx / CONFIG.blocks.length) * 0.30);
 }
 function proceedAfterSwitchReveal() {
   const m = window._switchMeta;
@@ -3663,12 +3625,9 @@ function proceedAfterSwitchReveal() {
     implementBranch:m.branch, branchSource:m.branchSource, branchStratum:m.branchStratum });
 }
 
-// Build the block screen scaffold + generate signals.
-// Round flow (Alternative B): each step replaces container content fully.
-// Step 1: Primer (manager intro + informativeness + Round-1-only expected counts)
-// Step 2: Payments revealed (ledger + summary)
-// Step 3: γ update (compact header carries forward; γ slider only)
-// Step 4: θ̂ update (compact header + comparison panel + θ̂ slider)
+// Build the round's pending-state object, then hand off to the single combined
+// round page (renderRoundCombined): reference bar → click-to-reveal bonuses →
+// belief questions (θ + γ), all on one screen.
 function renderBlock(choiceInfo) {
   const idx = STATE.currentBlockIdx;
   const block = CONFIG.blocks[idx];
@@ -3688,184 +3647,18 @@ function renderBlock(choiceInfo) {
     tsBeliefsSubmit: null, tsChoiceMade: choiceInfo ? Date.now() : null,
   };
   // Every round uses the same combined page (banner → reveal bonuses → belief
-  // questions). The old Round-1 layered primer (renderStepPrimerLayered) is no
-  // longer called: manager mechanics + comprehension are handled once on mTypes.
+  // questions). Manager mechanics + comprehension are handled once, up front, on
+  // the mTypes screen.
   renderRoundCombined();
   updateProgress(0.58 + ((idx + 1) / CONFIG.blocks.length) * 0.30);
 }
 
-// Round-1 layered primer: the anchor line, the "If NAME is…" fork, and both type
-// cards (with expected counts) render immediately. One "Continue" click reveals
-// the two cross-column takeaway lines and the "What we will ask you" panel, then
-// the "Proceed, I understand" button appears.
-function renderStepPrimerLayered() {
-  const blockData = window._pendingRound;
-  const idx = STATE.currentBlockIdx;
-  const nSignals = blockData.signals;
-  const mgr = blockData.manager;
-  const name = managerName(mgr);
-  const { prevTheta, prevGamma } = prevBeliefsFor(mgr);
-  const green = STATE.randomProbShown;
-  const perfExpected = Math.round(prevGamma * nSignals / 100);
-  const randExpected = Math.round(green * nSignals / 100);
-  const perfPct = Math.round(perfExpected / nSignals * 100);
-  const randPct = Math.round(randExpected / nSignals * 100);
-
-  // Round-1 comprehension checks, now shown one-by-one on this page (they used to
-  // live on a separate "Before you start" page). Each is a true/false question;
-  // a wrong answer gets feedback and the next question unlocks only on a correct
-  // answer. First-attempt results are recorded under checkId 'clarityCheck'.
-  const compItems = [
-    { qid: 'mech', correct: true,
-      text: `The closer the proportion of green bonuses from ${name} is to the Performance Manager rate (${prevGamma}%) — and the further it is from the Random Manager rate (${green}%) — the more likely ${name} is the Performance Manager.`,
-      bad: `This statement is <strong>true</strong>. You expect a Performance Manager to give green about ${prevGamma}% of the time (your quiz-performance expectation), while a Random Manager gives green ${green}% of the time (its wheel). So the closer the bonuses land to ${prevGamma}%, the more likely ${name} is the Performance Manager; the closer to ${green}%, the more likely the Random Manager. Try again.` },
-    { qid: 'revise', correct: true,
-      text: `If you are confident ${name} is the Performance Manager, you should strongly revise your expectation about your quiz performance based on the bonuses. If you are confident ${name} is the Random Manager, you should barely revise it.`,
-      bad: `This statement is <strong>true</strong>. Only a Performance Manager's bonuses are informative about your quiz performance, so how much you revise depends on how likely ${name} is the Performance Manager. Try again.` },
-    { qid: 'accuracy_pays', correct: false,
-      text: `The accuracy of your answers to the expectation questions has <strong>no</strong> effect on your payment.`,
-      bad: `This statement is <strong>false</strong>. Your expectation answers are rewarded for accuracy, so they <strong>do</strong> affect your payment. Try again.` },
-    { qid: 'bonuses_pay', correct: false,
-      text: `The ${nSignals} bonuses have <strong>no</strong> effect on your payment.`,
-      bad: `This statement is <strong>false</strong>. Each green bonus is worth ${Math.round(CONFIG.payPerH * 100)}p. At the end one of the ${CONFIG.blocks.length} rounds is picked at random and the total of ${nSignals} bonuses in that round are paid to you, so the ${nSignals} bonuses you receive <strong>do</strong> affect your payment. Try again.` },
-  ];
-  window._primerCompItems = compItems;
-  window._primerCompState = {};
-  const compHTML = compItems.map((it, i) => `
-        <div class="primer-comp-q" id="pcq-${i}" style="display:${i === 0 ? 'block' : 'none'};margin-top:${i === 0 ? '4px' : '16px'};${i === 0 ? '' : 'border-top:1px solid #e2e8f0;padding-top:14px;'}">
-          <p style="margin:0 0 8px;"><strong>${i + 1}.</strong> ${it.text}</p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="m-btn m-btn-ghost" id="pcq-${i}-t" onclick="primerComp(${i}, true)">True</button>
-            <button class="m-btn m-btn-ghost" id="pcq-${i}-f" onclick="primerComp(${i}, false)">False</button>
-          </div>
-          <div id="pcq-fb-${i}" style="display:none;"></div>
-        </div>`).join('');
-
-  window._primerStep = 0;
-  window._primerMaxStep = 2;
-
-  container.innerHTML = `
-    <h2 class="m-h1">You are assigned to ${name} in Round ${idx + 1} of ${CONFIG.blocks.length}</h2>
-    <div class="round-header" id="round-current-beliefs" style="display:flex;align-items:flex-start;gap:18px;">
-      <div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;">
-        <div class="avatar-c">${avatarSVG(mgr, 64)}</div>
-        <div class="round-header-name" style="margin-top:6px;">${name}</div>
-      </div>
-      <div style="flex:1 1 0;min-width:0;font-size:0.92rem;line-height:1.55;color:#374151;">
-        <div style="font-weight:600;margin-bottom:4px;">Your current expectations:</div>
-        <ul style="margin:0;padding-left:20px;">
-          <li><strong>${name}'s type:</strong> unknown so far: a 50% chance of Performance, 50% chance of Random</li>
-          <li><strong>Quiz performance:</strong> You expect to beat ${prevGamma}%</li>
-        </ul>
-      </div>
-    </div>
-
-    <div id="primer-reveal">
-      <p class="lead" style="margin:18px 0 8px;font-weight:600;">What to expect from this round, given your current expectations:</p>
-      <div class="rc-expect-grid">
-        <div class="rc-expect-card rc-expect-perf">
-          <span class="pill pill-perf">If ${name} is PERFORMANCE</span>
-          <p class="rc-expect-line">Expect <strong>${perfPct}%</strong> green</p>
-        </div>
-        <div class="rc-expect-card rc-expect-rand">
-          <span class="pill pill-rand">If ${name} is RANDOM</span>
-          <p class="rc-expect-line">Expect <strong>${randPct}%</strong> green</p>
-        </div>
-      </div>
-      <div class="primer-takeaways" data-rstep="1" style="display:none;">
-        <div class="primer-takeaway-item"><strong>Before you see the bonuses, note:</strong> The proportion of green bonuses can teach you both about which type of manager ${name} is (based on the information and expectations you have so far) and possibly about your performance on the quiz (to the extent you think ${name} is the Performance Manager). If ${name} is the Random Manager, the bonuses are not informative about your performance.</div>
-      </div>
-      <div class="primer-elicit" data-rstep="2" style="display:none;">
-        <p style="font-weight:700;margin:0 0 12px;">Before we show you the ${nSignals} bonuses from ${name}, please answer these true/false checks.</p>
-        ${compHTML}
-      </div>
-    </div>
-
-    <div class="m-row-end">
-      <button class="m-btn m-btn-ghost" id="primer-next-btn" onclick="primerReveal()">Continue →</button>
-      <span id="primer-continue-wrap" style="display:none;"><button class="m-btn" onclick="renderRoundCombined()">Proceed, I understand</button></span>
-    </div>`;
-}
-
-// (The old separate "Before you start Round 1" clarity page — renderClarityCheck /
-//  saveClarityFeedback / validateClarityCheck — was removed. Its four true/false
-//  checks now render one-by-one on the primer page via primerComp / finalizePrimerComp,
-//  which write the same STATE.comprehensionDetail entry under checkId 'clarityCheck'.)
-
-function primerReveal() {
-  window._primerStep = (window._primerStep || 0) + 1;
-  const step = window._primerStep;
-  document.querySelectorAll('#primer-reveal [data-rstep]').forEach(el => {
-    if (parseInt(el.getAttribute('data-rstep')) <= step) el.style.display = '';
-  });
-  const nextBtn = document.getElementById('primer-next-btn');
-  if (step >= (window._primerMaxStep || 3)) {
-    nextBtn.style.display = 'none';
-    // The final "Proceed, I understand" stays hidden until every check is correct.
-  } else if (step === 1) {
-    // After the "Important" box, pause before the questions with a deliberate click.
-    nextBtn.textContent = 'Proceed, I understand these instructions.';
-  }
-}
-
-// Round-1 primer comprehension checks (moved onto this page, one at a time). Each
-// true/false question records its first-attempt correctness; a wrong answer shows
-// feedback and lets the participant retry; a correct answer unlocks the next
-// question. After the last, the first-attempt results are written to
-// STATE.comprehensionDetail (checkId 'clarityCheck') and "Proceed" is revealed.
-function primerComp(i, ans) {
-  const it = window._primerCompItems[i];
-  const correct = (ans === it.correct);
-  window._primerCompState = window._primerCompState || {};
-  if (!(it.qid in window._primerCompState)) {
-    window._primerCompState[it.qid] = { firstTryCorrect: correct, attempts: 1 };
-  } else {
-    window._primerCompState[it.qid].attempts += 1;
-  }
-  const fb = document.getElementById('pcq-fb-' + i);
-  const okStyle  = 'display:block;margin-top:10px;padding:9px 12px;border-radius:6px;background:#f0fdf4;color:#166534;font-size:.95rem;';
-  const badStyle = 'display:block;margin-top:10px;padding:9px 12px;border-radius:6px;background:#fef2f2;color:#b91c1c;font-size:.95rem;';
-  if (correct) {
-    fb.style.cssText = okStyle;
-    fb.innerHTML = 'Correct.';
-    document.getElementById('pcq-' + i + '-t').disabled = true;
-    document.getElementById('pcq-' + i + '-f').disabled = true;
-    const next = i + 1;
-    if (next < window._primerCompItems.length) {
-      document.getElementById('pcq-' + next).style.display = '';
-    } else {
-      finalizePrimerComp();
-      document.getElementById('primer-continue-wrap').style.display = '';
-    }
-  } else {
-    fb.style.cssText = badStyle;
-    fb.innerHTML = it.bad;
-  }
-}
-function finalizePrimerComp() {
-  const items = window._primerCompItems || [];
-  const st = window._primerCompState || {};
-  let allFirstCorrect = true;
-  const responses = items.map((it, i) => {
-    const rec = st[it.qid] || { firstTryCorrect: true };
-    const isError = rec.firstTryCorrect === false;
-    if (isError) allFirstCorrect = false;
-    return { qid: it.qid, itemIndex: i, checked: it.correct, correct: it.correct, isError };
-  });
-  STATE.comprehensionDetail.push({
-    checkId: 'clarityCheck', attempt: 1, timestamp: Date.now(),
-    passed: allFirstCorrect, responses,
-  });
-  STATE.clarityComprehension = items.filter(it => it.correct).map(it => it.qid);
-  STATE.clarityComprehensionCorrect = true;
-}
 
 // ---- Combined round page (banner → click-to-reveal bonuses → beliefs) ----
 // Used for every round. The banner summarizes the most recently elicited beliefs
 // and the implied expected payment under each manager type. The bonuses are
 // hidden behind a "click to reveal" button; the belief questions appear after
-// that. Round 1 reaches this page via the layered primer + clarity check;
-// round 2 comes here directly from renderBlock (no long primer page).
+// that. Every round reaches this page directly from renderBlock.
 function renderRoundCombined() {
   const blockData = window._pendingRound;
   const idx = STATE.currentBlockIdx;
@@ -3874,11 +3667,7 @@ function renderRoundCombined() {
   const nSignals = blockData.signals;
   const { prevTheta, prevGamma } = prevBeliefsFor(mgr);
   const theta = prevTheta;                // Going-in type belief (50/50 in Round 1).
-  const green = STATE.randomProbShown;
-  const perfExpected = Math.round(prevGamma * nSignals / 100);
-  const randExpected = Math.round(green * nSignals / 100);
-  const perfPct = Math.round(perfExpected / nSignals * 100);
-  const randPct = Math.round(randExpected / nSignals * 100);
+  const green = STATE.randomProbShown;    // Random rate (gamma*); prevGamma = Performance rate (mu)
 
   // Round 1: the manager-type prior is INDUCED 50/50 (subjects were told the two types
   // are equally likely; they never reported it), so label it as a starting point, not a
@@ -3889,62 +3678,53 @@ function renderRoundCombined() {
     ? `<li><strong>${name}'s type:</strong> unknown so far: a 50% chance of Performance, 50% chance of Random</li>`
     : `<li><strong>${name}'s type:</strong> ${theta}% Performance / ${100 - theta}% Random</li>`;
 
+  // Round header: the going-in manager-type expectation plus what it implies about how
+  // informative the bonuses are. Shown in EVERY round — round 1 uses the induced 50/50
+  // prior, so it reads "may or may not be informative". The quiz-performance sentence
+  // was dropped here; γ̂ still appears in the "what to expect" card below.
+  // Round 1 has no elicited θ̂ (the 50/50 is induced), so it states the no-information
+  // case and asserts the implication flatly; rounds 2+ report the participant's own θ̂
+  // with its complement, and attribute the implication to them.
+  const sMgr = isR1
+    ? `You have no information yet about whether ${name} is the Random or the Performance Manager.`
+    : `You expect ${name} to be the Performance Manager with a <strong>${theta}%</strong> chance (Random Manager with <strong>${100 - theta}%</strong> chance).`;
+  const sHint = isR1
+    ? ` This implies that the bonuses from ${name} ${diagHintPhrase(theta)} about your quiz performance.`
+    : ` This implies that you expect the bonuses from ${name} ${diagHintPhrase(theta)} about your quiz performance.`;
+  const sGamma = `You currently expect to beat <strong>${prevGamma}%</strong> of the other participants in the shared questions on the quiz.`;
+  const expectTop = `${sGamma} ${sMgr}${sHint}`;
+
   container.innerHTML = `
     <div class="eyebrow">Round ${idx + 1} of ${CONFIG.blocks.length}</div>
 
-    <div class="round-header" id="round-current-beliefs" style="display:flex;align-items:center;gap:14px;">
-      <div class="avatar-c">${avatarSVG(mgr, 52)}</div>
+    <div style="display:flex;align-items:center;gap:10px;margin:4px 0 12px;">
+      <div class="avatar-c" style="margin:0;flex:0 0 auto;">${avatarSVG(mgr, 40)}</div>
       <div class="round-header-name">${name}</div>
     </div>
 
-    <div id="rc-ref-bar" style="position:sticky;top:0;z-index:5;background:#fff;padding:12px 16px;margin:16px 0 6px;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 8px -6px rgba(0,0,0,.15);font-size:1.02rem;color:#334155;line-height:1.75;">
-      <div>If ${name} is the Random Manager, you expect <strong>${randPct}%</strong> of bonuses to be green, because the wheel has ${randPct} green fields.</div>
-      <div>If ${name} is the Performance Manager, you expect <strong>${perfPct}%</strong> of bonuses to be green, because you expect to beat ${perfPct}% of participants on the logic quiz.</div>
-    </div>
-    <p class="lead" id="rc-expect-lead" style="margin:10px 0 10px;">${isR1 ? `Going into this round, you expect to beat <strong>${prevGamma}%</strong> of the other participants on the quiz. You have no information yet about whether ${name} is the Performance or the Random Manager. The more likely you think ${name} is the Performance Manager, the more you should move your expectation about your quiz performance toward the bonus proportion.` : `Going into this round, you expect to beat <strong>${prevGamma}%</strong> of the other participants on the quiz, and you expect ${name} to be the Performance Manager with a <strong>${theta}%</strong> chance. The more likely you think ${name} is the Performance Manager, the more you should move your expectation about your quiz performance toward the bonus proportion.`}</p>
+    <p class="lead" id="rc-expect-top" style="margin:6px 0 12px;">${expectTop}</p>
 
-    ${isR1 ? `<div class="m-row-end" id="r1-precheck-wrap" style="margin-top:16px;"><button class="m-btn" onclick="r1ShowThetaCheck()">Continue →</button></div>
-    <div id="r1-theta-check" class="callout-attention" style="margin-top:16px;display:none;">
-      <p style="margin:0 0 8px;font-weight:600;">Before you see the bonuses, a quick check:</p>
-      <p style="margin:0 0 10px;">True or false: the closer the proportion of green bonuses is to the Random rate (${randPct}%) — and the further it is from the Performance rate (${perfPct}%) — the more likely ${name} is the Random Manager.</p>
-      <div style="display:flex;gap:10px;">
-        <button class="m-btn m-btn-ghost" onclick="r1ThetaCheck(true)">True</button>
-        <button class="m-btn m-btn-ghost" onclick="r1ThetaCheck(false)">False</button>
+    <p class="lead" style="font-weight:600;margin:14px 0 6px;">What bonuses to expect from this round, given your current expectations:</p>
+    <div class="rc-expect-grid">
+      <div class="rc-expect-card rc-expect-rand">
+        <span class="pill pill-rand">If ${name} is RANDOM</span>
+        <p class="rc-expect-line" style="margin:8px 0 0;">Expect about <strong>${green}%</strong> green.</p>
       </div>
-      <div id="r1-theta-fb" style="display:none;margin-top:10px;"></div>
-    </div>` : ''}
+      <div class="rc-expect-card rc-expect-perf">
+        <span class="pill pill-perf">If ${name} is PERFORMANCE</span>
+        <p class="rc-expect-line" style="margin:8px 0 0;">Expect about <strong>${prevGamma}%</strong> green.</p>
+      </div>
+    </div>
+   
+
     <div id="r1-bonus-area" style="margin-top:20px;"></div>
-    <div class="m-row-end" id="r1-reveal-wrap" style="margin-top:18px;${isR1 ? 'display:none;' : ''}">
+    <div class="m-row-end" id="r1-reveal-wrap" style="margin-top:18px;">
       <button class="m-btn" id="r1-reveal-btn" onclick="roundRevealBonuses()">Click to reveal the bonuses from ${name}</button>
     </div>
     <div id="r1-belief-area" style="display:none;margin-top:8px;"></div>
     <div class="m-row-end" id="r1-next-wrap" style="display:none;margin-top:18px;">
       <button class="m-btn" onclick="roundShowBeliefs()">Continue →</button>
     </div>`;
-}
-
-// Round-1-only comprehension check that teaches the manager-type (θ) inference:
-// the closer the green proportion is to one rate than the other, the more it points
-// to that manager type. Correct answer is True; the reveal button stays hidden until
-// it is passed. First-attempt correctness is recorded.
-function r1ShowThetaCheck() {
-  const w = document.getElementById('r1-precheck-wrap'); if (w) w.style.display = 'none';
-  const c = document.getElementById('r1-theta-check'); if (c) c.style.display = '';
-}
-function r1ThetaCheck(ans) {
-  if (STATE.r1ThetaCheckFirstCorrect == null) STATE.r1ThetaCheckFirstCorrect = (ans === true) ? 1 : 0;
-  const fb = document.getElementById('r1-theta-fb');
-  const nm = managerName(STATE.currentManager);
-  if (ans === true) {
-    fb.style.display = '';
-    fb.innerHTML = `<span style="color:#166534;font-weight:600;">Correct.</span> The closer the green proportion sits to one rate than the other, the more it points to that manager type.`;
-    const c = document.getElementById('r1-theta-check');
-    if (c) c.querySelectorAll('button').forEach(b => b.disabled = true);
-    const rw = document.getElementById('r1-reveal-wrap'); if (rw) rw.style.display = '';
-  } else {
-    fb.style.display = '';
-    fb.innerHTML = `<span style="color:#b91c1c;font-weight:600;">Not quite — this is true.</span> The closer the green proportion is to the Random rate and the further from the Performance rate, the more likely ${nm} is the Random Manager. Try again.`;
-  }
 }
 
 // Generate this round's outcomes and reveal the bonus ledger in place, then
@@ -3964,17 +3744,12 @@ function roundRevealBonuses() {
   blockData.earnings = earnings;
 
   const pctGreen = Math.round((hCount / nSignals) * 100);
-  // Practice-round-style delivery: the bonus proportion is stated as a single large
-  // line (percentage first, count in parentheses) — no per-signal box grid, no title.
   document.getElementById('r1-bonus-area').innerHTML = `
-    <div class="rc-bonus-big"><strong>${pctGreen}%</strong> of bonuses from ${name} are green.</div>`;
+    <div class="rc-bonus-big"><strong>${pctGreen}%</strong> of the 50 bonuses from ${name} are green.</div>`;
 
   document.getElementById('r1-reveal-wrap').style.display = 'none';
-  // The "quick check" box disappears as the bonus proportion is revealed.
-  const tc = document.getElementById('r1-theta-check'); if (tc) tc.style.display = 'none';
-  const pw = document.getElementById('r1-precheck-wrap'); if (pw) pw.style.display = 'none';
-  // Belief questions appear immediately on the same page, right after the bonuses.
-  roundShowBeliefs();
+  // Show the Continue button; it reveals the expectation questions on click.
+  document.getElementById('r1-next-wrap').style.display = '';
 }
 
 // Reveal the two belief questions in place (manager type + quiz performance),
@@ -4002,21 +3777,28 @@ function roundShowBeliefs() {
   blockData.priorTheta = initTheta;    // going-in θ about the current manager (50 in round 1)
   blockData.priorGamma = startGamma;   // going-in γ
 
-  // Manager-type belief: a single slider about the current manager (practice-round
-  // style), 0 = Definitely Random → 100 = Definitely Performance. Round 1 hides
-  // the numeric readout until first engagement (no 50/50 anchor).
+  // Manager-type belief: two pegged avatar sliders (P(Alex=Perf) + P(Sam=Perf) = 100),
+  // the round manager shown first. Each slider 0 = Random → 100 = Performance. Round 1
+  // hides the numeric readouts until first engagement (no 50/50 anchor).
+  const perfOf = {};
+  perfOf[mgr] = initTheta;                          // P(current manager = Performance)
+  perfOf[otherManager(mgr)] = 100 - initTheta;
   const mgrSection = `
       <div class="belief-section">
-        <div class="mq-label">What is the likelihood that ${name} is the Performance Manager?</div>
-        <input type="range" id="theta-round-slider" class="mslider slider-untouched" min="0" max="100" value="${initTheta}" oninput="onRoundThetaChange(this.value)" onpointerdown="markThetaTouched()">
-        <div class="tw-ends"><span>Definitely Random</span><span>Definitely Performance</span></div>
-        <div class="tw-readout" id="theta-round-readout">${showNums ? thetaReadout(initTheta) : '—'}</div>
+        <div class="mq-label">Given these bonuses, <strong>is ${name} more likely the Random or Performance Manager?</strong></div>
+        <div class="tw-stack">
+          ${twoWorldCardHTML(mgr, perfOf[mgr], showNums)}
+          ${twoWorldCardHTML(otherManager(mgr), perfOf[otherManager(mgr)], showNums)}
+        </div>
+        ${isFirstTheta ? `<div class="mq-remember" style="font-size:.9rem;color:#64748b;font-weight:400;margin:12px 0 2px;line-height:1.5;">Because exactly one of Alex and Sam is the Performance Manager and the other is the Random Manager, setting how likely ${name} is to be the Performance Manager automatically sets ${managerName(otherManager(mgr))}'s probability — the two always add up to 100%.</div>` : ''}
       </div>`;
   const quizSection = `
       <div class="belief-section">
-        <div class="mq-label">Out of the 100 Prolific participants, what percentage do you expect to beat on the shared questions?</div>
+        <div class="mq-label">Given these bonuses, <strong>what percent of 100 other Prolific participants do you now expect to beat</strong> on the shared questions?</div>
+
         <input type="range" id="gamma-round-slider" class="mslider slider-untouched" min="0" max="100" value="${startGamma}" oninput="onRoundGammaChange(this.value)" onpointerdown="markGammaTouched()">
         <div class="mval">I expect to beat <strong><span id="gamma-round-val">${startGamma}</span>%</strong> of participants.</div>
+        <div class="grid-c">${beliefGridSVG(startGamma)}</div>
       </div>`;
   const colsInner = STATE.mgrBeliefLeft ? (mgrSection + quizSection) : (quizSection + mgrSection);
 
@@ -4026,9 +3808,7 @@ function roundShowBeliefs() {
   // the participant answers the belief questions.
   const area = document.getElementById('r1-belief-area');
   area.innerHTML = `
-    <p style="font-weight:700;margin:14px 0 4px;">Use all the information and expectations you have so far to answer:</p>
     <div class="belief-cols">${colsInner}</div>
-    <div class="callout-attention" style="margin-top:18px;"><strong>Please take your time to think carefully about your answers.</strong> You will have a higher chance of winning the expectation payment if you provide the most accurate expectations. </div>
     <div class="m-row-end" id="beliefs-nav" style="${navStyle}"><button class="m-btn" onclick="submitBlockBeliefs()">Submit</button></div>`;
   area.style.display = '';
 }
@@ -4042,20 +3822,20 @@ function updateGammaReadout(val) {
 // User moved the performance slider
 function onRoundGammaChange(val) {
   updateGammaReadout(val);
+  updateBeliefGrid(parseInt(val));
   markGammaTouched();
 }
 // ---- v2: require a deliberate touch on BOTH belief sliders before Submit ----
 // Confirm-in-place (touching a slider without changing its value) is caught via
 // onpointerdown, so a genuine "no change" still counts as engagement.
-function markThetaTouched() {
+function markTwTouched() {
   if (!window._thetaTouched) {
-    window._thetaTouched = true;
-    const s = document.getElementById('theta-round-slider');
-    if (s) {   // reveal the readout + un-gray the slider on first engagement
-      const r = document.getElementById('theta-round-readout');
-      if (r) r.innerHTML = thetaReadout(s.value);
-      s.classList.remove('slider-untouched');
-    }
+    window._thetaTouched = true;   // reveal readouts + un-gray both pegged sliders
+    ['alex', 'sam'].forEach(p => {
+      const s = document.getElementById('tw-slider-' + p); if (s) s.classList.remove('slider-untouched');
+      const r = document.getElementById('tw-readout-' + p);
+      if (r && s) r.innerHTML = twReadoutText(s.value);
+    });
   }
   maybeShowBeliefsNav();
 }
@@ -4075,8 +3855,8 @@ function maybeShowBeliefsNav() {
 // Both θ̂ and γ are read here, since they now live on one combined page.
 function submitBlockBeliefs() {
   const blockData = window._pendingRound;
-  // beliefTheta = P(current manager = Performance) — read from the single slider.
-  blockData.beliefTheta = parseInt(document.getElementById('theta-round-slider').value);
+  // beliefTheta = P(current manager = Performance) — read from that manager's pegged slider.
+  blockData.beliefTheta = parseInt(document.getElementById('tw-slider-' + blockData.manager).value);
   blockData.beliefGamma = parseInt(document.getElementById('gamma-round-slider').value);
   // v2: with both sliders now requiring a deliberate touch, a "no change" is a real
   // confirm — record whether each belief was changed vs confirmed-in-place.
@@ -4096,14 +3876,14 @@ function submitBlockBeliefs() {
 // ---- End-of-study CU battery (right after the final round) ----
 // Mirrors the practice-round confidence + reason follow-up verbatim: a 0-100
 // confidence slider about the last round's answers; if below 100, rate each reason
-// 1-7. CU score = the five cu:true items (setup/approach/rationale/careless/shortcut).
+// 1-7. CU score = the five cu:true items (setup/rationale/careless/shortcut/calc).
 const END_CU_ITEMS = [
   { key:'setup',     cu:true,  text:"I am not sure I understood the setup correctly" },
-  { key:'approach',  cu:true,  text:"I am not certain about how I should have gone about answering these questions" },
-  { key:'rationale', cu:true,  text:"My rationale might actually point to a different answer than the one I gave" },
+  { key:'rationale', cu:true,  text:"My reasoning might have been flawed" },
   { key:'careless',  cu:true,  text:"I didn't work through the questions very carefully" },
   { key:'shortcut',  cu:true,  text:"I am worried I might have used a mental shortcut, which may not be accurate" },
-  { key:'noise',     cu:false, text:"Even if my reasoning is correct, the comparison to others depends on the draw of the other participant, so the true answer is uncertain" },
+  { key:'calc',      cu:true,  text:"I think my reasoning was correct, but I may not have done the necessary numerical calculations correctly" },
+  { key:'noise',     cu:false, text:"Even if my reasoning were correct, the comparison to others depends on the draw of the other participant, so the true answer is uncertain" },
   { key:'balanced',  cu:false, text:"The information felt roughly balanced, so my answers could have gone either way" },
 ];
 const END_CU_OTHER = { key:'other', cu:false, text:"Other reasons" };
@@ -4112,7 +3892,7 @@ function showEndConfidence() {
   updateProgress(0.86);
   container.innerHTML = `
     <div class="eyebrow">A few final questions about your answers</div>
-    <p class="lead" style="margin:16px 0 10px;">In the last ${CONFIG.blocks.length} rounds, you answered two expectation questions each: how likely your manager was the Performance Manager, and what percentage of other participants you expected to beat on the quiz.</p>
+    <p class="lead" style="margin:16px 0 10px;">In the last ${CONFIG.blocks.length} rounds, you answered two expectation questions each: ${STATE.mgrBeliefLeft ? `how likely your manager was the Performance Manager, and what percentage of other participants you expected to beat on the quiz` : `what percentage of other participants you expected to beat on the quiz, and how likely your manager was the Performance Manager`}.</p>
     <p style="font-weight:600;margin:16px 0 8px;">On a scale from 0 (not confident at all) to 100 (completely confident), how confident are you in those answers?</p>
     <input type="range" id="end-conf-slider" class="mslider slider-untouched" min="0" max="100" value="50" oninput="onEndConfidence(this.value)" onpointerdown="endConfTouch()">
     <div class="tw-ends"><span>0 — not confident at all</span><span>100 — completely confident</span></div>
@@ -4168,7 +3948,7 @@ function maybeEnableEndCu() {
 }
 function submitEndCuReasons() {
   STATE.endCuReasons = { ...STATE._endCuAnswers, _order: STATE._endCuOrder };
-  const vals = ['setup', 'approach', 'rationale', 'careless', 'shortcut'].map(k => STATE._endCuAnswers[k]).filter(v => v != null);
+  const vals = ['setup', 'rationale', 'careless', 'shortcut', 'calc'].map(k => STATE._endCuAnswers[k]).filter(v => v != null);
   if (vals.length) { STATE.endCuMean = vals.reduce((a, b) => a + b, 0) / vals.length; STATE.endCuMax = Math.max(...vals); }
   showScreen('roundsComplete');
 }
@@ -4178,9 +3958,9 @@ SCREENS.roundsComplete = () => {
   container.innerHTML = `
     <h2 class="m-h1">You are almost done.</h2>
     <p>You have completed all ${CONFIG.blocks.length} rounds with your managers.</p>
-    <p>A few more questions follow (about 3–4 minutes), and then you will see your payment.</p>
+    <p>One short final step, and then you will see your payment.</p>
     <div class="nav-row">
-      <button class="btn btn-primary" onclick="showScreen('riskPreferences')">Continue →</button>
+      <button class="btn btn-primary" onclick="computePayment()">Continue →</button>
     </div>`;
   updateProgress(0.88);
 };
@@ -4203,7 +3983,7 @@ SCREENS.riskPreferences = () => {
     <div class="nav-row">
       <button class="btn btn-primary" id="risk-next" disabled onclick="submitRisk()">Submit</button>
     </div>`;
-  updateProgress(0.90);
+  updateProgress(0.05);
 };
 
 function selectRisk(val) {
@@ -4219,7 +3999,7 @@ function submitRisk() {
     document.getElementById('risk-error').classList.add('visible');
     return;
   }
-  showScreen('patiencePreferences');
+  showScreen('ambiguityPreferences');
 }
 
 // ---- 3.1b Patience Preferences (Falk et al. 2018 GPS) ----
@@ -4240,7 +4020,7 @@ SCREENS.patiencePreferences = () => {
     <div class="nav-row">
       <button class="btn btn-primary" id="patience-next" disabled onclick="submitPatience()">Submit</button>
     </div>`;
-  updateProgress(0.92);
+  updateProgress(0.06);
 };
 
 function selectPatience(val) {
@@ -4256,7 +4036,64 @@ function submitPatience() {
     document.getElementById('patience-error').classList.add('visible');
     return;
   }
-  showScreen('ambiguityPreferences');
+  showScreen('topicCheck');
+}
+
+// ---- Topic-recall attention check (attention check 4 of 4) ----
+// Administered right after the pre-study battery, before the quiz instructions.
+// Asks which listed topics the participant answered a question about (all except pay).
+// Every listed option WAS asked (risk preferences, gender, study length, studies per
+// week) except "How much the study will pay", which is only mentioned in the consent
+// and never elicited. Pass iff the participant selects exactly that one option.
+// Multi-select; failing counts toward the cumulative 2-of-4 screen-out.
+// Question: "Which of the following topics did you answer a question about?" The
+// correct set is every topic that WAS asked; only "How much the study will pay" was
+// never elicited (it is mentioned in consent only), so it is the sole wrong option.
+const TOPIC_CHECK_OPTIONS = [
+  { id: 'risk',   label: 'Risk preferences',                          correct: true  },
+  { id: 'gender', label: 'Your gender',                               correct: true  },
+  { id: 'length', label: 'How long the study will take',              correct: true  },
+  { id: 'pay',    label: 'How much the study will pay',               correct: false },
+  { id: 'freq',   label: 'How many studies you typically complete per week', correct: true  },
+];
+SCREENS.topicCheck = () => {
+  STATE.topicCheckSelected = STATE.topicCheckSelected || [];
+  const row = (o) => `
+    <label style="display:flex;align-items:center;gap:10px;margin:8px 0;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;">
+      <input type="checkbox" value="${o.id}" onchange="selectTopic()"${STATE.topicCheckSelected.includes(o.id) ? ' checked' : ''}>
+      <span>${o.label}</span>
+    </label>`;
+  container.innerHTML = `
+    <h2 class="m-h1">Thinking back</h2>
+    <p class="lead">Think back over the questions you have answered so far. Which of the following topics did you answer a question about? Select all that apply.</p>
+    <div id="topic-options" style="max-width:560px;margin:14px 0;">
+      ${TOPIC_CHECK_OPTIONS.map(row).join('')}
+    </div>
+    <div class="error-msg" id="topic-error">Please select at least one option.</div>
+    <div class="nav-row">
+      <button class="btn btn-primary" id="topic-next" disabled onclick="submitTopicCheck()">Submit</button>
+    </div>`;
+  updateProgress(0.065);
+};
+
+function selectTopic() {
+  const picked = Array.from(document.querySelectorAll('#topic-options input:checked')).map(el => el.value);
+  STATE.topicCheckSelected = picked;
+  document.getElementById('topic-next').disabled = picked.length === 0;
+}
+
+function submitTopicCheck() {
+  const picked = STATE.topicCheckSelected || [];
+  if (picked.length === 0) {
+    document.getElementById('topic-error').classList.add('visible');
+    return;
+  }
+  // Attention check 4 of 4: pass iff the ONLY selected option is the correct one
+  // (the topic that was never asked = "How much the study will pay").
+  const correctIds = TOPIC_CHECK_OPTIONS.filter(o => o.correct).map(o => o.id);
+  STATE.attnCheck4Pass = (picked.length === correctIds.length && correctIds.every(id => picked.includes(id)));
+  if (maybeScreenOutPreRand()) return;
+  showScreen('quizInstructions');
 }
 
 // ---- 3.2 Ambiguity Preferences (Cavatorta & Schröder) ----
@@ -4367,7 +4204,7 @@ SCREENS.ambiguityPreferences = () => {
     <div class="nav-row">
       <button class="btn btn-primary" id="amb-next" disabled onclick="submitAmbiguity()">Submit</button>
     </div>`;
-  updateProgress(0.93);
+  updateProgress(0.055);
 };
 
 function selectAmbiguityColor(color, btn) {
@@ -4444,9 +4281,12 @@ function checkAmbiguityComplete() {
 }
 
 function submitAmbiguity() {
-  // Age and gender are now collected up front on the screening screen, so the
-  // end-of-study demographics screen is skipped; go straight to payment.
-  computePayment();
+  // Attention check 3 of 4: the known-urn comprehension question (which urn has a
+  // known composition = Urn B), scored on first try. Screen out on the cumulative
+  // 2-of-4 rule, otherwise continue the battery with the patience item.
+  STATE.attnCheck3Pass = (STATE.ambiguityAnswers.checkCorrectFirstTry === true);
+  if (maybeScreenOutPreRand()) return;
+  showScreen('patiencePreferences');
 }
 
 // ---- Payment computation ----
@@ -4521,7 +4361,7 @@ function computePayment() {
     }
   }
 
-  STATE.totalBonus = CONFIG.showUpFee + STATE.outcomeEarnings + STATE.beliefBonus_amount;
+  STATE.totalBonus = CONFIG.preStudyFee + CONFIG.mainStudyFee + STATE.outcomeEarnings + STATE.beliefBonus_amount;
 
   // Visual check is the last screen before the participant sees the payoff (results).
   showScreen('visualCheck');
@@ -4606,20 +4446,21 @@ SCREENS.results = () => {
   container.innerHTML = `
     <h2 class="m-h1">Payment</h2>
 
-    <p><strong>${paidRoundLabel}</strong> was randomly selected for the bonus payment. In ${paidRoundLabel} you got <strong>${paidGreens} of ${paidSignals}</strong> green bonuses. Each green is worth <strong>${payCents}p</strong>, so your bonus pay is <strong>${paidGreens} × ${payCents}p = £${STATE.outcomeEarnings.toFixed(2)}</strong>.</p>
+    <p><strong>${paidRoundLabel}</strong> was randomly selected for the bonus payment. In ${paidRoundLabel} you got <strong>${paidGreens} of ${paidSignals}</strong> green bonuses. Each green is worth <strong>${payCents}¢</strong>, so your bonus pay is <strong>${paidGreens} × ${payCents}¢ = $${STATE.outcomeEarnings.toFixed(2)}</strong>.</p>
 
     <div class="results-section">
       <h3>Payment Breakdown</h3>
-      <div class="payment-line"><span>Show-up fee</span><span>£${CONFIG.showUpFee.toFixed(2)}</span></div>
-      <div class="payment-line"><span>Bonus pay (${paidRoundLabel})</span><span>£${STATE.outcomeEarnings.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Pre-study measurements</span><span>$${CONFIG.preStudyFee.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Main study completion</span><span>$${CONFIG.mainStudyFee.toFixed(2)}</span></div>
+      <div class="payment-line"><span>Bonus pay (${paidRoundLabel})</span><span>$${STATE.outcomeEarnings.toFixed(2)}</span></div>
       <div class="payment-line">
         <span>Expectation payment (${beliefLabel}) <a href="#" id="belief-details-toggle" onclick="toggleBeliefDetails(event)" style="color:#2563eb;text-decoration:underline;font-size:0.92rem;margin-left:6px;">Show details</a></span>
-        <span>£${STATE.beliefBonus_amount.toFixed(2)}</span>
+        <span>$${STATE.beliefBonus_amount.toFixed(2)}</span>
       </div>
       <div id="belief-details-panel" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin:8px 0 14px;font-size:.94rem;color:#334155;line-height:1.55;">
         ${beliefPaymentDetailsHTML()}
       </div>
-      <div class="payment-total"><span>Total payment</span><span>£${STATE.totalBonus.toFixed(2)}</span></div>
+      <div class="payment-total"><span>Total payment</span><span>$${STATE.totalBonus.toFixed(2)}</span></div>
     </div>
 
     <p>The program will calculate your payment and credit it to your Prolific account within five business days.</p>
@@ -4656,7 +4497,7 @@ function beliefPaymentDetailsHTML() {
   const draw = STATE.beliefBonus_draw;
   const wp = STATE.beliefBonus_winProb;
   const drawLine = (draw != null && wp != null)
-    ? `The computer drew a random number between 0 and 1. Result: <strong>${drawStr}</strong> → since ${drawStr} ${won ? '&lt;' : '&gt;'} ${winProbStr}, <strong>you ${won ? 'won' : 'did not win'} the £${prizeAmt} belief payment.</strong>`
+    ? `The computer drew a random number between 0 and 1. Result: <strong>${drawStr}</strong> → since ${drawStr} ${won ? '&lt;' : '&gt;'} ${winProbStr}, <strong>you ${won ? 'won' : 'did not win'} the $${prizeAmt} expectation payment.</strong>`
     : '';
   const footer = `<p style="margin:10px 0 0;font-style:italic;color:#475569;">This rule is designed so that stating your honest expectation maximises your chance of earning the expectation payment.</p>`;
 
@@ -4677,7 +4518,7 @@ function beliefPaymentDetailsHTML() {
     return `
       <p style="margin:0 0 6px;"><strong>Selected expectation:</strong> At the start of the study, you reported that you would beat <strong>${mu}%</strong> of other Prolific participants.</p>
       <p style="margin:0 0 6px;"><strong>What actually happened:</strong> We randomly drew one of the 100 reference participants. They scored <strong>${oppScore} out of 6</strong> on the shared questions. Your score was <strong>${myScore} out of 6</strong>. You <strong>${beat ? 'beat' : 'did not beat'}</strong> them.</p>
-      <p style="margin:0 0 6px;">Because the event ${beat ? 'happened' : 'did not happen'}, your chance of winning the £${prizeAmt} expectation payment was set to <strong>${formula}</strong> (about ${winProbPct}%).</p>
+      <p style="margin:0 0 6px;">Because the event ${beat ? 'happened' : 'did not happen'}, your chance of winning the $${prizeAmt} expectation payment was set to <strong>${formula}</strong> (about ${winProbPct}%).</p>
       <p style="margin:0;">${drawLine}</p>
       ${footer}`;
   }
@@ -4696,7 +4537,7 @@ function beliefPaymentDetailsHTML() {
     return `
       <p style="margin:0 0 6px;"><strong>Selected expectation:</strong> In Round ${r.roundNum}, you reported a <strong>${belief}% chance</strong> that ${mgrNm} was the Performance Manager.</p>
       <p style="margin:0 0 6px;"><strong>What actually happened:</strong> ${mgrNm} <strong>${wasPerf ? 'was' : 'was not'}</strong> the Performance Manager.</p>
-      <p style="margin:0 0 6px;">Because the event ${wasPerf ? 'happened' : 'did not happen'}, your chance of winning the £${prizeAmt} expectation payment was set to <strong>${formula}</strong> (about ${winProbPct}%).</p>
+      <p style="margin:0 0 6px;">Because the event ${wasPerf ? 'happened' : 'did not happen'}, your chance of winning the $${prizeAmt} expectation payment was set to <strong>${formula}</strong> (about ${winProbPct}%).</p>
       <p style="margin:0;">${drawLine}</p>
       ${footer}`;
   }
@@ -4713,7 +4554,7 @@ function beliefPaymentDetailsHTML() {
   return `
     <p style="margin:0 0 6px;"><strong>Selected expectation:</strong> In Round ${r.roundNum}, you reported that you would beat <strong>${belief}%</strong> of other Prolific participants.</p>
     <p style="margin:0 0 6px;"><strong>What actually happened:</strong> We randomly drew one of the 100 reference participants. They scored <strong>${oppScore} out of 6</strong> on the shared questions. Your score was <strong>${myScore} out of 6</strong>. You <strong>${beat ? 'beat' : 'did not beat'}</strong> them.</p>
-    <p style="margin:0 0 6px;">Because the event ${beat ? 'happened' : 'did not happen'}, your chance of winning the £${prizeAmt} expectation payment was set to <strong>${formula}</strong> (about ${winProbPct}%).</p>
+    <p style="margin:0 0 6px;">Because the event ${beat ? 'happened' : 'did not happen'}, your chance of winning the $${prizeAmt} expectation payment was set to <strong>${formula}</strong> (about ${winProbPct}%).</p>
     <p style="margin:0;">${drawLine}</p>
     ${footer}`;
 }
@@ -4722,15 +4563,54 @@ function redirectToProlific() {
   window.location.href = CONFIG.prolificCompletionURL;
 }
 
+// ---- Pre-randomization screen-out (allow up to CONFIG.preRandMaxMistakes of 6) ----
+// Six verifiable questions are administered before treatment randomization, in this
+// order: study-duration + moon (screening), known-urn (ambiguity), topic-recall
+// (before quiz), slider-to-4 (quiz instructions), quiz-payment comprehension (quiz
+// comprehension). The participant may make up to CONFIG.preRandMaxMistakes mistakes
+// and still continue; MORE than that is screened out. Each flag is null until its
+// question is answered, so a null (not-yet-reached) never counts as a mistake, and
+// the check fires as soon as the running mistake count exceeds the tolerance.
+// Change CONFIG.preRandMaxMistakes alone to loosen/tighten; nothing else needs editing.
+function preRandCheckFlags() {
+  return [
+    STATE.durationCheckPass,   // study takes 10-15 minutes (screening)
+    STATE.attnCheck1Pass,      // moon (screening)
+    STATE.attnCheck3Pass,      // known urn (ambiguity)
+    STATE.attnCheck4Pass,      // topic recall (before quiz)
+    STATE.attnCheck2Pass,      // slider-to-4 (quiz instructions)
+    STATE.quizCompCheckPass,   // quiz affects payment (quiz comprehension)
+  ];
+}
+function preRandMistakeCount() {
+  return preRandCheckFlags().filter(v => v === false).length;
+}
+function maybeScreenOutPreRand(reason) {
+  if (preRandMistakeCount() > CONFIG.preRandMaxMistakes) {
+    terminateStudy(reason || 'failed_pre_randomization_checks');
+    return true;
+  }
+  return false;
+}
+
 // Screen-out: failed a (pre-treatment) attention check. Log it, show a neutral
-// message, and redirect to the Prolific SCREEN-OUT completion URL. We do NOT
-// reveal which check failed (avoids coaching future participants).
+// message, and send them to the Prolific COMPLETION code — screen-outs are still
+// compensated, so they register a normal submission. We do NOT reveal which check
+// failed (avoids coaching future participants). Screen-outs remain identifiable in
+// the data via terminated == 1 / termination_reason.
+// Click-to-redirect (same as the completion path) rather than a timed auto-redirect:
+// it registers the submission more reliably, and it means dev testing is no longer
+// interrupted by an automatic navigation.
 function terminateStudy(reason) {
   const isDev = new URLSearchParams(window.location.search).get('dev') === '1' && (typeof isDevAllowed === 'function' && isDevAllowed());
   container.innerHTML = `
     <h2 class="m-h1">Thank you</h2>
-    <p class="lead">Based on your responses, you do not qualify to continue this study. You will now be redirected back to Prolific. Thank you for your time.</p>
-    ${isDev ? `<p style="color:#b45309;margin-top:12px;"><em>[dev mode] Screen-out fired (${reason}). In production this redirects to CONFIG.screenOutURL; suppressed here so you can keep testing.</em></p>` : ''}`;
+    <p class="lead">Based on your responses, the study has ended early for you. Your participation is complete and you will be paid for it.</p>
+    <p>${CONFIG.texts.prolificRedirect}</p>
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="redirectToProlific()">Complete Study →</button>
+    </div>
+    ${isDev ? `<p style="color:#b45309;margin-top:12px;"><em>[dev mode] Screen-out fired (${reason}). The button redirects to CONFIG.prolificCompletionURL.</em></p>` : ''}`;
   if (CONFIG.googleSheetsURL) {
     fetch(CONFIG.googleSheetsURL, {
       method: 'POST', mode: 'no-cors',
@@ -4743,7 +4623,6 @@ function terminateStudy(reason) {
       }),
     }).catch(() => {});
   }
-  if (!isDev) setTimeout(() => { window.location.href = CONFIG.screenOutURL; }, 1500);
 }
 
 
@@ -4827,6 +4706,12 @@ async function submitData() {
     perRoundFields['green_count_' + t]        = getGreens(i);
     perRoundFields['bias_reduction_' + t]     = biasReduction[i];
     perRoundFields['norm_correction_' + t]    = normCorrection[i];
+    // Reading time on the round page: from the page being built (tsRoundStart) to the
+    // click on "Click to reveal the bonuses" (tsFeedbackShown). Includes idle time if
+    // the participant tabs away — cross-check with focus_events_json if that matters.
+    perRoundFields['ms_to_reveal_' + t] =
+      (r(i).tsFeedbackShown != null && r(i).tsRoundStart != null)
+        ? (r(i).tsFeedbackShown - r(i).tsRoundStart) : null;
   }
   // Decision columns, indexed by the round they lead INTO (t = 1..T). Round 1 is
   // the free round (no decision) → all null. rounds[i].choiceInfo carries the true
@@ -4852,7 +4737,7 @@ async function submitData() {
     perRoundFields['realized_is_perf_manager_' + t]   = getMgr(i) ? (getMgr(i) === perfName ? 1 : 0) : null;
     perRoundFields['belief_chosen_is_perf_' + t]      = beliefChosenPerf;              // θ(chosen mgr = Performance) at decision
     // NB: the realized/implemented manager is manager_t, and the belief that it is
-    // the Performance manager is managertype_belief_t — no aliases duplicated here.
+    // the Performance Manager is managertype_belief_t — no aliases duplicated here.
   }
 
   // ---- Honeypot helper ----
@@ -4912,20 +4797,13 @@ async function submitData() {
     oc: oc,
 
     // ===== Comprehension checks (flat per-check summaries) =====
-    clarity_feedback: STATE.clarityFeedback,
-    clarity_comprehension: STATE.clarityComprehension ? STATE.clarityComprehension.join(',') : null,
-    clarity_comprehension_correct: STATE.clarityComprehensionCorrect ? 1 : 0,
     // Quiz-instructions comprehension (post-quizInstructions): 2 items
     ...extractCheckFlatFields('comprehensionCheck0', 'quiz_check',
         ['quiz_pay', 'quiz_no_effect_false']),
-    // Clarity check (post-primer, Round 1): 4 items
-    ...extractCheckFlatFields('clarityCheck', 'clarity_check',
-        ['mech', 'revise', 'accuracy_pays', 'bonuses_pay']),
-    // Sum of incorrect answers on the FIRST attempt across the remaining gated
-    // comprehension checks: quiz-instructions (comprehensionCheck0), the round-1
-    // clarity check (clarityCheck), the four mTypes inline questions (green-rate
-    // ×2 + informativeness true/false ×2), and the ambiguity urn check. The
-    // deleted mTaskCheck/mTypesCheck contribute nothing.
+    // Sum of incorrect answers on the FIRST attempt across the gated comprehension
+    // checks: quiz-instructions (comprehensionCheck0), the four mTypes inline
+    // questions (green-rate ×2 + informativeness true/false ×2), and the ambiguity
+    // urn check.
     ...(function () {
       const detail = STATE.comprehensionDetail || [];
       const firstErr = (id) => {
@@ -4933,15 +4811,13 @@ async function submitData() {
         return f ? f.responses.filter(r => r.isError).length : 0;
       };
       const quiz = firstErr('comprehensionCheck0');
-      const clarity = firstErr('clarityCheck');
       const mtypes = Object.values(STATE.mtypesChecks || {}).filter(q => q.firstTryCorrect === false).length;
       const ambiguity = (STATE.ambiguityAnswers && STATE.ambiguityAnswers.checkCorrectFirstTry === false) ? 1 : 0;
       return {
         comprehension_incorrect_quiz: quiz,
-        comprehension_incorrect_clarity: clarity,
         comprehension_incorrect_mtypes: mtypes,
         comprehension_incorrect_ambiguity: ambiguity,
-        comprehension_incorrect_sum: quiz + clarity + mtypes + ambiguity,
+        comprehension_incorrect_sum: quiz + mtypes + ambiguity,
       };
     })(),
 
@@ -4955,8 +4831,16 @@ async function submitData() {
     screening_moon: STATE.screeningMoon,
     screening_duration: STATE.screeningDuration,
     prolific_frequency: STATE.prolificFrequency,
-    attn_check1_pass: STATE.attnCheck1Pass === null ? null : (STATE.attnCheck1Pass ? 1 : 0),
-    attn_check2_pass: STATE.attnCheck2Pass === null ? null : (STATE.attnCheck2Pass ? 1 : 0),
+    // Six pre-randomization checks (1 = correct, 0 = mistake, null = not reached).
+    prerand_moon_pass:     STATE.attnCheck1Pass === null ? null : (STATE.attnCheck1Pass ? 1 : 0),
+    prerand_duration_pass: STATE.durationCheckPass === null ? null : (STATE.durationCheckPass ? 1 : 0),
+    prerand_urn_pass:      STATE.attnCheck3Pass === null ? null : (STATE.attnCheck3Pass ? 1 : 0),   // ambiguity known-urn first try
+    prerand_topic_pass:    STATE.attnCheck4Pass === null ? null : (STATE.attnCheck4Pass ? 1 : 0),   // topic-recall "which was NOT a topic"
+    prerand_slider_pass:   STATE.attnCheck2Pass === null ? null : (STATE.attnCheck2Pass ? 1 : 0),   // slider-to-4
+    prerand_quizcomp_pass: STATE.quizCompCheckPass === null ? null : (STATE.quizCompCheckPass ? 1 : 0), // quiz affects payment, first try
+    topic_check_selected: STATE.topicCheckSelected ? STATE.topicCheckSelected.join('|') : null,
+    prerand_mistake_count: preRandMistakeCount(),
+    prerand_max_mistakes:  CONFIG.preRandMaxMistakes,
 
     ambiguity_color: STATE.ambiguityAnswers ? STATE.ambiguityAnswers.color : null,
     ambiguity_urn_preference: STATE.ambiguityAnswers ? STATE.ambiguityAnswers.urnPreference : null,
@@ -5018,16 +4902,8 @@ async function submitData() {
     comprehension_attempts_json: JSON.stringify(STATE.comprehensionAttempts || {}),
     comprehension_detail_json: JSON.stringify(STATE.comprehensionDetail || []),
     mtypes_checks_json: JSON.stringify(STATE.mtypesChecks || {}),
-    practice_comparison: STATE.practiceComparison || null,
-    practice_json: JSON.stringify(STATE.practiceResponses || []),
-    // Confidence + CU battery (elicited after the first practice scenario). CU =
-    // mean/max of the 1–5 (cu:true) reason ratings. Full per-item ratings live in
-    // practice_json[0].cu_reasons.
-    r1_theta_check_first_correct: STATE.r1ThetaCheckFirstCorrect == null ? null : STATE.r1ThetaCheckFirstCorrect,
-    practice_confidence: (STATE.practiceResponses && STATE.practiceResponses[0]) ? STATE.practiceResponses[0].confidence : null,
-    practice_cu_mean:    (STATE.practiceResponses && STATE.practiceResponses[0]) ? STATE.practiceResponses[0].cu_mean : null,
-    practice_cu_max:     (STATE.practiceResponses && STATE.practiceResponses[0]) ? STATE.practiceResponses[0].cu_max : null,
-    // End-of-study CU battery (after the final round), same instrument as the practice.
+    task_comp_json: JSON.stringify(STATE.taskComp || {}),
+    // End-of-study CU battery (after the final round).
     end_confidence:      STATE.endConfidence == null ? null : STATE.endConfidence,
     end_cu_mean:         STATE.endCuMean == null ? null : STATE.endCuMean,
     end_cu_max:          STATE.endCuMax == null ? null : STATE.endCuMax,
@@ -5079,12 +4955,19 @@ function isMobileDevice() {
   return false;
 }
 
+function redirectIncompatibleDevice() {
+  window.location.href = CONFIG.incompatibleDeviceURL;
+}
+
 function showMobileBlocked() {
   container.innerHTML = `
     <h2 class="m-h1">Desktop Required</h2>
     <p>This study can only be completed on a <strong>desktop or laptop computer</strong>. Mobile devices, tablets, and small screens are not supported.</p>
-    <p>Please reopen this link on a desktop or laptop computer to participate.</p>
-    <p>If you believe this is an error, please contact the researchers.</p>`;
+    <p>If you have access to a desktop or laptop, please reopen this link there to take part.</p>
+    <p>Otherwise, please click the button below to return to Prolific and register your submission.</p>
+    <div class="nav-row">
+      <button class="btn btn-primary" onclick="redirectIncompatibleDevice()">Return to Prolific →</button>
+    </div>`;
 
   // Log rejection to Google Sheets
   if (CONFIG.googleSheetsURL) {
@@ -5235,15 +5118,19 @@ function synthesizeRoundsForDev(upToBlockCount) {
 const DEV_TARGETS = [
   { id: 'welcome',              group: 'Phase 1',       label: 'Welcome' },
   { id: 'consent',              group: 'Phase 1',       label: 'Consent' },
-  { id: 'screening',            group: 'Phase 1',       label: 'Screening (attention check 1 + demographics)' },
+  { id: 'preStudyIntro',        group: 'Phase 1 pre',   label: 'Pre-study measurements intro ($1)' },
+  { id: 'screening',            group: 'Phase 1 pre',   label: 'Screening (attention check 1 + demographics)' },
+  { id: 'riskPreferences',      group: 'Phase 1 pre',   label: 'Risk preferences (GPS)' },
+  { id: 'ambiguityPreferences', group: 'Phase 1 pre',   label: 'Ambiguity preferences (+ attention check 3)' },
+  { id: 'patiencePreferences',  group: 'Phase 1 pre',   label: 'Patience preferences (GPS)' },
+  { id: 'topicCheck',           group: 'Phase 1 pre',   label: 'Topic-recall check (attention check 4)' },
   { id: 'quizInstructions',     group: 'Phase 1',       label: 'Quiz instructions (+ attention check 2)' },
   { id: 'quizComprehension',    group: 'Phase 1',       label: 'Quiz comprehension check' },
   { id: 'sampleQuestion',       group: 'Phase 1',       label: 'Sample question' },
   { id: 'predictionIntro',      group: 'Phase 1',       label: 'Predictions & prizes (BSR explainer)' },
   { id: 'scoreAndBelief',       group: 'Phase 1',       label: 'Score + prior belief (μ + confidence + bin table)' },
-  { id: 'practiceIntro',        group: 'Phase 1',       label: 'Practice intro (transition after belief)' },
-  { id: 'practice',             group: 'Phase 1',       label: 'Practice round (pond warm-up → routes to mTypes)' },
   { id: 'mTypes',               group: 'Phase 2 intro', label: 'Manager types (Performance vs Random mechanisms)' },
+  { id: 'taskIntro',            group: 'Phase 2 intro', label: 'Task intro (Important + every-round overview)' },
   { id: 'round1Reveal',         group: 'Phase 2 task',  label: 'Reveal Round 1 manager',            custom: true },
   { id: 'block1',               group: 'Phase 2 task',  label: 'Batch 1 signals (50)',              custom: true },
   { id: 'switch1',              group: 'Phase 2 task',  label: 'First stay/switch decision',        custom: true },
@@ -5252,9 +5139,6 @@ const DEV_TARGETS = [
   { id: 'block3',               group: 'Phase 2 task',  label: 'Batch 3 (after stay/switch 2)',     custom: true },
   { id: 'endConfidence',        group: 'Phase 3',       label: 'End-of-study confidence + reasons', custom: true },
   { id: 'roundsComplete',       group: 'Phase 3',       label: 'Rounds complete' },
-  { id: 'riskPreferences',      group: 'Phase 3',       label: 'Risk preferences (GPS)' },
-  { id: 'patiencePreferences',  group: 'Phase 3',       label: 'Patience preferences (GPS)' },
-  { id: 'ambiguityPreferences', group: 'Phase 3',       label: 'Ambiguity preferences' },
   { id: 'visualCheck',          group: 'Phase 3',       label: 'Visual check (Ebbinghaus — AI honeypot, silent log)' },
   { id: 'revealOption',         group: 'Phase 3',       label: 'Opt-in: learn quiz performance + manager identities' },
   { id: 'revealInfo',           group: 'Phase 3',       label: 'Reveal screen (if opted in)' },
